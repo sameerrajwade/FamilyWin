@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FamilyWin — Android Studio & Play Store Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F8F9FF;--surface:#fff;--border:#E5E7EB;--text:#1A1A2E;--muted:#6B7280;
+  --primary:#6C63FF;--primary-dim:#EDE9FF;--success:#22C55E;--success-light:#DCFCE7;
+  --warning:#F59E0B;--warning-light:#FEF3C7;--danger:#EF4444;--danger-light:#FEE2E2;
+  --code-bg:#1e1e2e;--code-text:#cdd6f4;
+}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
+
+/* ── TOP NAV ─── */
+.topbar{background:var(--primary);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(108,99,255,0.3);}
+.topbar-title{font-size:16px;font-weight:900;letter-spacing:-0.5px;}
+.topbar-sub{font-size:11px;opacity:0.8;margin-top:2px;}
+.progress-container{display:flex;align-items:center;gap:8px;}
+.progress-bar-outer{width:160px;height:8px;background:rgba(255,255,255,0.25);border-radius:4px;overflow:hidden;}
+.progress-bar-inner{height:100%;background:#fff;border-radius:4px;transition:width .4s ease;width:0%;}
+.progress-label{font-size:11px;font-weight:700;opacity:0.9;white-space:nowrap;}
+
+/* ── SIDEBAR ─── */
+.layout{display:flex;min-height:calc(100vh - 58px);}
+.sidebar{width:260px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:20px 0;position:sticky;top:58px;height:calc(100vh - 58px);overflow-y:auto;}
+.sidebar::-webkit-scrollbar{width:4px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.sidebar-section{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);padding:12px 20px 6px;}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:8px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-left:3px solid transparent;transition:all .15s;}
+.sidebar-item:hover{background:var(--primary-dim);color:var(--primary);}
+.sidebar-item.active{background:var(--primary-dim);color:var(--primary);border-left-color:var(--primary);}
+.sidebar-item.done .step-num{background:var(--success)!important;color:#fff!important;}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--border);color:var(--muted);font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sidebar-item.active .step-num{background:var(--primary);color:#fff;}
+
+/* ── CONTENT ─── */
+.content{flex:1;padding:0;overflow-y:auto;}
+
+/* ── PHASE ─── */
+.phase{display:none;padding:32px 40px 60px;max-width:860px;}
+.phase.active{display:block;}
+.phase-badge{display:inline-flex;align-items:center;gap:6px;background:var(--primary-dim);color:var(--primary);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;padding:4px 12px;border-radius:100px;margin-bottom:16px;}
+.phase-title{font-size:clamp(22px,3vw,36px);font-weight:900;letter-spacing:-0.5px;color:var(--text);margin-bottom:8px;line-height:1.2;}
+.phase-desc{font-size:15px;color:var(--muted);margin-bottom:32px;line-height:1.7;max-width:640px;}
+
+/* ── STEP CARD ─── */
+.step-card{background:var(--surface);border:1.5px solid var(--border);border-radius:16px;margin-bottom:20px;overflow:hidden;}
+.step-header{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;user-select:none;}
+.step-header:hover{background:var(--bg);}
+.step-circle{width:36px;height:36px;border-radius:18px;background:var(--primary);color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.step-info{flex:1;}
+.step-title{font-size:15px;font-weight:800;color:var(--text);}
+.step-hint{font-size:12px;color:var(--muted);margin-top:2px;}
+.step-toggle{font-size:16px;color:var(--muted);transition:transform .2s;}
+.step-toggle.open{transform:rotate(180deg);}
+.step-body{border-top:1px solid var(--border);padding:20px;display:none;}
+.step-body.open{display:block;}
+
+/* ── INSTRUCTION ITEMS ─── */
+.instruction{display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;}
+.inst-num{width:28px;height:28px;border-radius:14px;background:var(--primary);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.inst-body{flex:1;}
+.inst-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.inst-desc{font-size:13px;color:var(--muted);line-height:1.6;}
+
+/* ── CODE BLOCKS ─── */
+.code-block{background:var(--code-bg);border-radius:10px;padding:14px 16px;margin:10px 0;position:relative;overflow-x:auto;}
+.code-block pre{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--code-text);line-height:1.7;white-space:pre;}
+.code-block .copy-btn{position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s;}
+.code-block .copy-btn:hover{background:rgba(255,255,255,0.2);color:#fff;}
+.code-block .copy-btn.copied{background:var(--success);color:#fff;border-color:var(--success);}
+.code-inline{font-family:'JetBrains Mono',monospace;font-size:12px;background:#f1f5f9;padding:2px 7px;border-radius:4px;color:#475569;}
+
+/* ── INFO / WARNING / DANGER BOXES ─── */
+.info-box{border-radius:12px;padding:14px 16px;margin:12px 0;display:flex;gap:12px;font-size:13px;line-height:1.6;}
+.info-box .box-icon{font-size:20px;flex-shrink:0;margin-top:1px;}
+.box-info{background:var(--primary-dim);border:1.5px solid rgba(108,99,255,0.3);}
+.box-info .box-text{color:#4a42cc;}
+.box-warn{background:var(--warning-light);border:1.5px solid rgba(245,158,11,0.3);}
+.box-warn .box-text{color:#92400e;}
+.box-danger{background:var(--danger-light);border:1.5px solid rgba(239,68,68,0.3);}
+.box-danger .box-text{color:#7f1d1d;}
+.box-success{background:var(--success-light);border:1.5px solid rgba(34,197,94,0.3);}
+.box-success .box-text{color:#14532d;}
+
+/* ── CHECKLIST ─── */
+.checklist{list-style:none;display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+.checklist li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text);}
+.checklist li input[type=checkbox]{width:18px;height:18px;accent-color:var(--primary);flex-shrink:0;margin-top:2px;cursor:pointer;}
+.checklist li label{cursor:pointer;line-height:1.5;}
+.checklist li.checked label{text-decoration:line-through;color:var(--muted);}
+
+/* ── SCREENSHOT PLACEHOLDER ─── */
+.screen-mockup{background:var(--bg);border:2px dashed var(--border);border-radius:12px;padding:24px;margin:12px 0;text-align:center;font-size:13px;color:var(--muted);}
+.screen-mockup .sm-icon{font-size:36px;margin-bottom:8px;}
+.screen-mockup .sm-title{font-weight:700;color:var(--text);margin-bottom:4px;}
+
+/* ── WHERE TO CLICK ─── */
+.click-path{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;margin:8px 0;}
+.click-node{background:var(--primary-dim);color:var(--primary);padding:3px 10px;border-radius:6px;font-weight:700;font-size:12px;}
+.click-arrow{color:var(--muted);font-size:14px;}
+
+/* ── FILE TREE ─── */
+.file-tree{background:#f8faff;border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin:10px 0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;}
+.file-tree .dir{color:var(--primary);font-weight:700;}
+.file-tree .file{color:var(--text);}
+.file-tree .highlight{color:var(--success);font-weight:700;}
+.file-tree .warn-file{color:var(--warning);font-weight:700;}
+
+/* ── NAV BUTTONS ─── */
+.nav-buttons{display:flex;gap:12px;margin-top:32px;padding-top:24px;border-top:1px solid var(--border);}
+.nav-btn-prev{padding:12px 24px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s;}
+.nav-btn-prev:hover{border-color:var(--primary);color:var(--primary);}
+.nav-btn-next{padding:12px 28px;border-radius:10px;background:var(--primary);color:#fff;border:none;font-size:13px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;box-shadow:0 4px 12px rgba(108,99,255,0.3);transition:all .15s;}
+.nav-btn-next:hover{background:#4a42cc;box-shadow:0 6px 20px rgba(108,99,255,0.4);}
+
+/* ── TABLE ─── */
+.info-table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0;}
+.info-table th{background:var(--bg);padding:8px 12px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--border);}
+.info-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text);}
+.info-table tr:last-child td{border-bottom:none;}
+.tag{display:inline-block;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;}
+.tag-green{background:var(--success-light);color:var(--success);}
+.tag-amber{background:var(--warning-light);color:var(--warning);}
+.tag-red{background:var(--danger-light);color:var(--danger);}
+
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .phase{padding:20px;}
+  .progress-container{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">🏆 FamilyWin — Android Deployment Guide</div>
+    <div class="topbar-sub">From source code → Android Studio → Google Play Store</div>
+  </div>
+  <div class="progress-container">
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="progress-bar"></div></div>
+    <div class="progress-label" id="progress-label">Step 1 of 7</div>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-section">Setup</div>
+  <div class="sidebar-item active" onclick="goTo(0)" id="nav-0">
+    <div class="step-num">1</div>Install Prerequisites
+  </div>
+  <div class="sidebar-item" onclick="goTo(1)" id="nav-1">
+    <div class="step-num">2</div>Firebase Project
+  </div>
+  <div class="sidebar-item" onclick="goTo(2)" id="nav-2">
+    <div class="step-num">3</div>Configure the App
+  </div>
+
+  <div class="sidebar-section">Android Studio</div>
+  <div class="sidebar-item" onclick="goTo(3)" id="nav-3">
+    <div class="step-num">4</div>Generate & Open Project
+  </div>
+  <div class="sidebar-item" onclick="goTo(4)" id="nav-4">
+    <div class="step-num">5</div>Run on Your Phone
+  </div>
+
+  <div class="sidebar-section">Publish</div>
+  <div class="sidebar-item" onclick="goTo(5)" id="nav-5">
+    <div class="step-num">6</div>Build Release APK / AAB
+  </div>
+  <div class="sidebar-item" onclick="goTo(6)" id="nav-6">
+    <div class="step-num">7</div>Google Play Store
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+<!-- ═══════════════════════════════════════════════════════
+     PHASE 1 — PREREQUISITES
+═══════════════════════════════════════════════════════ -->
+<div class="phase active" id="phase-0">
+  <div class="phase-badge">🛠 Step 1 of 7</div>
+  <h1 class="phase-title">Install Prerequisites</h1>
+  <p class="phase-desc">Before touching Android Studio, you need 4 tools on your computer. This is a one-time setup — everything will be usable for all future apps too.</p>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">A</div>
+      <div class="step-info">
+        <div class="step-title">Node.js — the JavaScript engine</div>
+        <div class="step-hint">Required to run npm, install packages, and run the Expo build tools</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction">
+        <div class="inst-num">1</div>
+        <div class="inst-body">
+          <div class="inst-title">Download Node.js LTS</div>
+          <div class="inst-desc">Go to <strong>nodejs.org</strong> → click the big green <strong>LTS</strong> button (not Current) → run the installer → click Next through everything</div>
+        </div>
+      </div>
+      <div class="instruction">
+        <div class="inst-num">2</div>
+        <div class="inst-body">
+          <div class="inst-title">Verify it worked</div>
+          <div class="inst-desc">Open <strong>Command Prompt</strong> (search "cmd" in Start menu) and type:</div>
+          <div class="code-block"><pre>node --version
+npm --version</pre><button class="copy-btn" onclick="copy(this,'node --version\nnpm --version')">Copy</button></div>
+          <div class="inst-desc">You should see version numbers like <code class="code-inline">v20.11.0</code> and <code class="code-inline">10.2.3</code></div>
+        </div>
+      </div>
+      <div class="box-info info-box"><div class="box-icon">ℹ️</div><div class="box-text">If you already have Node installed, make sure it's version 18 or higher. Run <code>node --version</code> to check.</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">B</div>
+      <div class="step-info">
+        <div class="step-title">Java Development Kit (JDK 17)</div>
+        <div class="step-hint">Android Studio needs Java to compile Android apps</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction">
+        <div class="inst-num">1</div>
+        <div class="inst-body">
+          <div class="inst-title">Download JDK 17</div>
+          <div class="inst-desc">Go to <strong>adoptium.net</strong> → Download <strong>Temurin 17 LTS</strong> → Run the installer (Windows .msi or macOS .pkg) → Accept all defaults</div>
+        </div>
+      </div>
+      <div class="instruction">
+        <div class="inst-num">2</div>
+        <div class="inst-body">
+          <div class="inst-title">Verify it worked</div>
+          <div class="code-block"><pre>java -version</pre><button class="copy-btn" onclick="copy(this,'java -version')">Copy</button></div>
+          <div class="inst-desc">Should show: <code class="code-inline">openjdk version "17.x.x"</code></div>
+        </div>
+      </div>
+      <div class="box-warn info-box"><div class="box-icon">⚠️</div><div class="box-text">Use JDK 17 specifically — not JDK 21 or JDK 11. Android Gradle works best with 17.</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">C</div>
+      <div class="step-info">
+        <div class="step-title">Android Studio</div>
+        <div class="step-hint">The official IDE for Android development — includes the Android SDK and emulator</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction">
+        <div class="inst-num">1</div>
+        <div class="inst-body">
+          <div class="inst-title">Download Android Studio</div>
+          <div class="inst-desc">Go to <strong>developer.android.com/studio</strong> → Download the installer → Run it → Click Next through the Setup Wizard</div>
+        </div>
+      </div>
+      <div class="instruction">
+        <div class="inst-num">2</div>
+        <div class="inst-body">
+          <div class="inst-title">Complete the Setup Wizard</div>
+          <div class="inst-desc">When Android Studio opens for the first time, it runs a setup wizard. Choose <strong>Standard</strong> install → It will download the Android SDK automatically (~2 GB, takes 10–20 minutes)</div>
+        </div>
+      </div>
+      <div class="instruction">
+        <div class="inst-num">3</div>
+        <div class="inst-body">
+          <div class="inst-title">Install Android SDK 34</div>
+          <div class="inst-desc">In Android Studio: open <strong>SDK Manager</strong></div>
+          <div class="click-path"><span class="click-node">Android Studio</span><span class="click-arrow">→</span><span class="click-node">Settings</span><span class="click-arrow">→</span><span class="click-node">Appearance &amp; Behavior</span><span class="click-arrow">→</span><span class="click-node">System Settings</span><span class="click-arrow">→</span><span class="click-node">Android SDK</span></div>
+          <div class="inst-desc">Check <strong>Android 14.0 (API 34)</strong> → Apply → OK</div>
+        </div>
+      </div>
+      <div class="box-warn info-box"><div class="box-icon">⚠️</div><div class="box-text">Also set <strong>ANDROID_HOME</strong> environment variable to your SDK path. On Windows it's usually <code>C:\Users\YourName\AppData\Local\Android\Sdk</code>. Google "how to set ANDROID_HOME Windows" if unsure.</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">D</div>
+      <div class="step-info">
+        <div class="step-title">Firebase CLI + Expo CLI</div>
+        <div class="step-hint">Command-line tools for deploying functions and building the app</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="inst-title" style="margin-bottom:8px">Install both in one go:</div>
+      <div class="code-block"><pre>npm install -g firebase-tools
+npm install -g eas-cli</pre><button class="copy-btn" onclick="copy(this,'npm install -g firebase-tools\nnpm install -g eas-cli')">Copy</button></div>
+      <div class="instruction">
+        <div class="inst-num">1</div>
+        <div class="inst-body">
+          <div class="inst-title">Log in to Firebase</div>
+          <div class="code-block"><pre>firebase login</pre><button class="copy-btn" onclick="copy(this,'firebase login')">Copy</button></div>
+          <div class="inst-desc">A browser window opens → sign in with your Google account → close it</div>
+        </div>
+      </div>
+      <div class="info-box box-success"><div class="box-icon">✅</div><div class="box-text">You're all set! Prerequisites complete. Move on to Firebase project setup.</div></div>
+    </div>
+  </div>
+
+  <!-- CHECKLIST -->
+  <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:20px;margin-top:24px;">
+    <div style="font-size:14px;font-weight:800;margin-bottom:14px;">✓ Prerequisites Checklist</div>
+    <ul class="checklist">
+      <li><input type="checkbox" id="c1" onchange="checkItem(this)"><label for="c1">Node.js LTS installed — <code class="code-inline">node --version</code> shows v18+</label></li>
+      <li><input type="checkbox" id="c2" onchange="checkItem(this)"><label for="c2">JDK 17 installed — <code class="code-inline">java -version</code> shows openjdk 17</label></li>
+      <li><input type="checkbox" id="c3" onchange="checkItem(this)"><label for="c3">Android Studio installed with Android SDK 34</label></li>
+      <li><input type="checkbox" id="c4" onchange="checkItem(this)"><label for="c4">ANDROID_HOME environment variable set</label></li>
+      <li><input type="checkbox" id="c5" onchange="checkItem(this)"><label for="c5">Firebase CLI installed — <code class="code-inline">firebase --version</code> works</label></li>
+    </ul>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn-next" onclick="goTo(1)">Next: Firebase Project Setup →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PHASE 2 — FIREBASE PROJECT
+═══════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-1">
+  <div class="phase-badge">🔥 Step 2 of 7</div>
+  <h1 class="phase-title">Firebase Project Setup</h1>
+  <p class="phase-desc">Create your Firebase project, enable the services, and download the <code class="code-inline">google-services.json</code> file that connects your Android app to Firebase.</p>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">1</div>
+      <div class="step-info">
+        <div class="step-title">Create the Firebase Project</div>
+        <div class="step-hint">Takes about 2 minutes</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Go to Firebase Console</div><div class="inst-desc">Open <strong>console.firebase.google.com</strong> in your browser → Sign in with your Google account</div></div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Create a new project</div><div class="inst-desc">Click <strong>Add project</strong> → Name it <strong>FamilyWin</strong> → Enable Google Analytics (optional but recommended) → Click <strong>Create project</strong></div></div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Add your Android app</div><div class="inst-desc">In your new project dashboard, click the <strong>Android icon</strong> (looks like a robot)</div></div></div>
+      <div class="instruction"><div class="inst-num">4</div><div class="inst-body"><div class="inst-title">Fill in the app details</div>
+        <div style="background:var(--bg);border-radius:10px;padding:14px;margin:8px 0;font-size:13px;">
+          <div style="margin-bottom:6px;"><strong>Android package name:</strong> <code class="code-inline">com.familywin.app</code></div>
+          <div style="margin-bottom:6px;"><strong>App nickname:</strong> FamilyWin</div>
+          <div><strong>Debug signing certificate SHA-1:</strong> (get this in Step 3 below)</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">2</div>
+      <div class="step-info">
+        <div class="step-title">Get your SHA-1 Fingerprint</div>
+        <div class="step-hint">Firebase needs this to verify your app is really yours</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Unzip your project first</div><div class="inst-desc">Unzip <code class="code-inline">FamilyWin-Firebase.zip</code> to a folder, e.g. <code class="code-inline">C:\Projects\FamilyWin</code> (Windows) or <code class="code-inline">~/Projects/FamilyWin</code> (Mac)</div></div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Install packages</div>
+        <div class="code-block"><pre>cd C:\Projects\FamilyWin    # or your path
+npm install</pre><button class="copy-btn" onclick="copy(this,'npm install')">Copy</button></div>
+        <div class="inst-desc">This takes 2–5 minutes — downloads ~500 MB of packages</div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Generate the android/ folder</div>
+        <div class="code-block"><pre>npx expo prebuild --platform android</pre><button class="copy-btn" onclick="copy(this,'npx expo prebuild --platform android')">Copy</button></div>
+        <div class="inst-desc">This creates the <code class="code-inline">android/</code> folder. This is the native Android project.</div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">4</div><div class="inst-body"><div class="inst-title">Get the SHA-1 fingerprint</div>
+        <div class="code-block"><pre>cd android
+./gradlew signingReport     # Mac/Linux
+gradlew signingReport       # Windows</pre><button class="copy-btn" onclick="copy(this,'cd android\n./gradlew signingReport')">Copy</button></div>
+        <div class="inst-desc">In the output, find the <strong>debug</strong> variant and copy the <strong>SHA1</strong> line. It looks like: <code class="code-inline">AA:BB:CC:DD:EE:FF:...</code></div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">5</div><div class="inst-body"><div class="inst-title">Paste SHA-1 into Firebase Console</div><div class="inst-desc">Go back to Firebase Console → your Android app → <strong>Project Settings</strong> → <strong>Your apps</strong> → Add the SHA-1 fingerprint</div></div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">3</div>
+      <div class="step-info">
+        <div class="step-title">Download google-services.json</div>
+        <div class="step-hint">The most important file — connects your app to Firebase</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Download the file</div><div class="inst-desc">In Firebase Console → Register app → Click <strong>Download google-services.json</strong></div></div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Place it in your project root AND android/app/</div>
+        <div class="file-tree">
+<span class="dir">FamilyWin/</span>
+├── <span class="highlight">google-services.json</span>     ← copy here (Expo reads it)
+├── android/
+│   └── app/
+│       └── <span class="highlight">google-services.json</span> ← also copy here (Gradle reads it)
+├── lib/
+├── app/
+└── package.json</div>
+      </div></div>
+      <div class="box-danger info-box"><div class="box-icon">🚫</div><div class="box-text"><strong>Never commit google-services.json to GitHub</strong> if your repo is public. Add it to .gitignore. It contains API keys.</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">4</div>
+      <div class="step-info">
+        <div class="step-title">Enable Firebase Services</div>
+        <div class="step-hint">Authentication, Firestore, and Cloud Messaging</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <table class="info-table">
+        <tr><th>Service</th><th>Where</th><th>What to do</th><th>Status</th></tr>
+        <tr><td><strong>Authentication</strong></td><td>Authentication → Sign-in method</td><td>Enable <strong>Email/Password</strong> and <strong>Google</strong></td><td><span class="tag tag-green">Required</span></td></tr>
+        <tr><td><strong>Firestore</strong></td><td>Firestore Database → Create database</td><td>Choose <strong>Production mode</strong>, pick a region</td><td><span class="tag tag-green">Required</span></td></tr>
+        <tr><td><strong>Cloud Messaging</strong></td><td>Cloud Messaging</td><td>Enabled by default ✓</td><td><span class="tag tag-green">Auto</span></td></tr>
+        <tr><td><strong>Analytics</strong></td><td>Analytics</td><td>Enabled when you created the project</td><td><span class="tag tag-amber">Optional</span></td></tr>
+      </table>
+
+      <div class="inst-title" style="margin:16px 0 8px">Get Web Client ID for Google Sign-In</div>
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-desc">Firebase Console → ⚙️ Project Settings → <strong>General</strong> tab → scroll to <strong>Your apps</strong> → find the <strong>Web app</strong> (create one if not there) → copy the <strong>Web client ID</strong></div></div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Paste into lib/googleAuth.ts</div>
+        <div class="code-block"><pre>// lib/googleAuth.ts  — line 20
+const WEB_CLIENT_ID = 'YOUR_ID_HERE.apps.googleusercontent.com';</pre><button class="copy-btn" onclick="copy(this,'const WEB_CLIENT_ID = \'YOUR_ID_HERE.apps.googleusercontent.com\';')">Copy</button></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">5</div>
+      <div class="step-info">
+        <div class="step-title">Deploy Firestore Rules + Cloud Functions</div>
+        <div class="step-hint">Sets up database security and the weekly reset automation</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Initialize Firebase in your project folder</div>
+        <div class="code-block"><pre>cd C:\Projects\FamilyWin    # your project root
+firebase init</pre><button class="copy-btn" onclick="copy(this,'firebase init')">Copy</button></div>
+        <div class="inst-desc">When prompted, select (use spacebar): <strong>Firestore</strong> and <strong>Functions</strong> → press Enter → choose your FamilyWin project → accept all defaults</div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Copy the rules file</div><div class="inst-desc">Copy <code class="code-inline">firebase/firestore.rules</code> to <code class="code-inline">firestore.rules</code> in your project root (the firebase init may have created this already)</div></div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Install Cloud Function dependencies</div>
+        <div class="code-block"><pre>cd firebase/functions
+npm install
+cd ../..</pre><button class="copy-btn" onclick="copy(this,'cd firebase/functions\nnpm install\ncd ../..')">Copy</button></div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">4</div><div class="inst-body"><div class="inst-title">Deploy everything</div>
+        <div class="code-block"><pre>firebase deploy --only firestore:rules,functions</pre><button class="copy-btn" onclick="copy(this,'firebase deploy --only firestore:rules,functions')">Copy</button></div>
+        <div class="inst-desc">This takes 3–5 minutes. You'll see success messages for both the rules and the weekly reset function.</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn-prev" onclick="goTo(0)">← Back</button>
+    <button class="nav-btn-next" onclick="goTo(2)">Next: Configure the App →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PHASE 3 — CONFIGURE
+═══════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-2">
+  <div class="phase-badge">⚙️ Step 3 of 7</div>
+  <h1 class="phase-title">Configure the App</h1>
+  <p class="phase-desc">A few small edits before your first build. This is the only code you need to touch.</p>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">1</div>
+      <div class="step-info">
+        <div class="step-title">Set Your Web Client ID</div>
+        <div class="step-hint">Required for Google Sign-In to work</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body">
+        <div class="inst-title">Open lib/googleAuth.ts in any text editor</div>
+        <div class="inst-desc">Find line 20 and replace the placeholder:</div>
+        <div class="code-block"><pre><span style="color:#f38ba8">// BEFORE:</span>
+const WEB_CLIENT_ID = 'YOUR_WEB_CLIENT_ID...apps.googleusercontent.com';
+
+<span style="color:#a6e3a1">// AFTER (paste your real ID):</span>
+const WEB_CLIENT_ID = '123456789-abcdef.apps.googleusercontent.com';</pre></div>
+      </div></div>
+      <div class="box-info info-box"><div class="box-icon">📍</div><div class="box-text">Find your Web Client ID in: Firebase Console → ⚙️ Project Settings → General → Your apps → Web app → OAuth 2.0 client IDs</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">2</div>
+      <div class="step-info">
+        <div class="step-title">Verify app.json Package Name</div>
+        <div class="step-hint">Must match exactly what you registered in Firebase</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="inst-desc" style="margin-bottom:8px">Open <code class="code-inline">app.json</code> and check the android section:</div>
+      <div class="code-block"><pre>{
+  "expo": {
+    "android": {
+      "package": "com.familywin.app",  <span style="color:#a6e3a1">← must match Firebase</span>
+      "googleServicesFile": "./google-services.json"  <span style="color:#a6e3a1">← path correct?</span>
+    }
+  }
+}</pre></div>
+      <div class="box-warn info-box"><div class="box-icon">⚠️</div><div class="box-text">If you change the package name here, you must also update it in Firebase Console and re-download <code>google-services.json</code>.</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">3</div>
+      <div class="step-info">
+        <div class="step-title">Create Firestore Indexes</div>
+        <div class="step-hint">Without these, certain queries will silently fail</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="inst-desc" style="margin-bottom:12px">Go to: <strong>Firebase Console → Firestore → Indexes → Add index</strong></div>
+      <table class="info-table">
+        <tr><th>Collection path</th><th>Fields to index</th><th>Scope</th></tr>
+        <tr><td><code class="code-inline">families/{id}/transactions</code></td><td>memberId ASC, createdAt ASC</td><td>Collection</td></tr>
+        <tr><td><code class="code-inline">families/{id}/transactions</code></td><td>createdAt ASC</td><td>Collection</td></tr>
+        <tr><td><code class="code-inline">families/{id}/completions</code></td><td>memberId ASC, weekId ASC</td><td>Collection</td></tr>
+        <tr><td><code class="code-inline">families/{id}/completions</code></td><td>memberId ASC, wasAutoFailed ASC, completedAt ASC</td><td>Collection</td></tr>
+        <tr><td><code class="code-inline">families/{id}/notificationConfigs</code></td><td>enabled ASC</td><td>Collection</td></tr>
+      </table>
+      <div class="box-info info-box"><div class="box-icon">💡</div><div class="box-text">Tip: When you run the app and a query needs an index that doesn't exist, Firebase will log an error with a direct link to create it automatically. So you can also just run the app first and follow those links.</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">4</div>
+      <div class="step-info">
+        <div class="step-title">Regenerate the Android Folder</div>
+        <div class="step-hint">After any config change, always regenerate</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="code-block"><pre>cd C:\Projects\FamilyWin
+npx expo prebuild --platform android --clean</pre><button class="copy-btn" onclick="copy(this,'npx expo prebuild --platform android --clean')">Copy</button></div>
+      <div class="inst-desc" style="margin-top:8px">The <code class="code-inline">--clean</code> flag wipes the old android/ folder and generates a fresh one. This ensures <code>google-services.json</code> and all Firebase config is picked up correctly.</div>
+      <div class="box-success info-box"><div class="box-icon">✅</div><div class="box-text">When this completes you'll see an <code>android/</code> folder in your project. That's your full Android Studio project.</div></div>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn-prev" onclick="goTo(1)">← Back</button>
+    <button class="nav-btn-next" onclick="goTo(3)">Next: Open in Android Studio →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PHASE 4 — ANDROID STUDIO
+═══════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-3">
+  <div class="phase-badge">🤖 Step 4 of 7</div>
+  <h1 class="phase-title">Generate &amp; Open in Android Studio</h1>
+  <p class="phase-desc">Open the generated Android project, let Gradle sync, and verify everything is wired up correctly.</p>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">1</div>
+      <div class="step-info">
+        <div class="step-title">Open the android/ folder in Android Studio</div>
+        <div class="step-hint">Do NOT open the parent FamilyWin folder — open android/ specifically</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body">
+        <div class="inst-title">Open Android Studio</div>
+        <div class="inst-desc">Launch Android Studio → click <strong>Open</strong> (not "New Project")</div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body">
+        <div class="inst-title">Navigate to the android/ subfolder</div>
+        <div class="file-tree"><span class="dir">FamilyWin/</span>          ← DON'T open this
+├── android/           <span class="highlight">← OPEN THIS FOLDER</span>
+│   ├── app/
+│   ├── build.gradle
+│   └── settings.gradle
+├── lib/
+├── app/
+└── package.json</div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body">
+        <div class="inst-title">Wait for Gradle Sync</div>
+        <div class="inst-desc">Android Studio will automatically start Gradle sync. You'll see a progress bar at the bottom. This takes <strong>5–15 minutes the first time</strong> (downloads dependencies).</div>
+      </div></div>
+      <div class="box-warn info-box"><div class="box-icon">⚠️</div><div class="box-text">If Gradle sync fails with "SDK location not found", click <strong>File → Project Structure → SDK Location</strong> and point it to your Android SDK folder.</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">2</div>
+      <div class="step-info">
+        <div class="step-title">Verify google-services.json is in the right place</div>
+        <div class="step-hint">The most common setup mistake</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="inst-desc" style="margin-bottom:12px">In Android Studio's file tree (left sidebar), verify:</div>
+      <div class="file-tree"><span class="dir">app/</span>
+├── src/
+├── build.gradle
+└── <span class="highlight">google-services.json</span>    ← must be here!</div>
+      <div class="inst-desc" style="margin-top:12px">If it's missing, copy it from your project root into <code class="code-inline">android/app/google-services.json</code></div>
+      <div class="instruction" style="margin-top:12px"><div class="inst-num">!</div><div class="inst-body">
+        <div class="inst-title">Also verify build.gradle has the Google services plugin</div>
+        <div class="inst-desc">Open <code class="code-inline">android/app/build.gradle</code> — look for this line at the bottom:</div>
+        <div class="code-block"><pre>apply plugin: 'com.google.gms.google-services'</pre></div>
+        <div class="inst-desc">If it's missing, add it. Expo prebuild should have added it automatically.</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">3</div>
+      <div class="step-info">
+        <div class="step-title">Fix Common Gradle Errors</div>
+        <div class="step-hint">These come up for almost everyone the first time</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <table class="info-table">
+        <tr><th>Error message</th><th>Fix</th></tr>
+        <tr><td>"SDK location not found"</td><td>File → Project Structure → SDK Location → point to your Android SDK folder</td></tr>
+        <tr><td>"Minimum SDK version" error</td><td>Open android/app/build.gradle → change <code>minSdkVersion</code> to 24</td></tr>
+        <tr><td>"JDK location not found" or "Invalid JDK"</td><td>File → Project Structure → SDK Location → JDK Location → browse to your JDK 17 install</td></tr>
+        <tr><td>"google-services.json file is missing"</td><td>Copy google-services.json into android/app/ folder</td></tr>
+        <tr><td>Gradle download very slow</td><td>Normal. First sync downloads ~1 GB. Let it run.</td></tr>
+        <tr><td>"Could not resolve com.google.firebase"</td><td>Check internet connection. Gradle needs to download Firebase dependencies.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">4</div>
+      <div class="step-info">
+        <div class="step-title">Understanding the Android Studio Layout</div>
+        <div class="step-hint">Quick orientation so you know where everything is</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <table class="info-table">
+        <tr><th>Panel / Area</th><th>What it's for</th></tr>
+        <tr><td><strong>Left panel (Project)</strong></td><td>File browser. Most important folder: <code>app/src/main/</code></td></tr>
+        <tr><td><strong>Top toolbar</strong></td><td>The ▶ Run button (green triangle) and 🔨 Build button</td></tr>
+        <tr><td><strong>Bottom panel</strong></td><td>Build output, Logcat (live phone logs), Terminal</td></tr>
+        <tr><td><strong>Logcat tab</strong></td><td>See live logs from your running app — very useful for debugging</td></tr>
+        <tr><td><strong>Build → Generate Signed Bundle/APK</strong></td><td>Where you create release builds</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn-prev" onclick="goTo(2)">← Back</button>
+    <button class="nav-btn-next" onclick="goTo(4)">Next: Run on Your Phone →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PHASE 5 — RUN ON DEVICE
+═══════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-4">
+  <div class="phase-badge">📱 Step 5 of 7</div>
+  <h1 class="phase-title">Run on Your Android Phone</h1>
+  <p class="phase-desc">This is the exciting part — seeing the app running on a real device for the first time. You'll test everything works before building a release.</p>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">1</div>
+      <div class="step-info">
+        <div class="step-title">Enable Developer Mode on Your Android Phone</div>
+        <div class="step-hint">A one-time phone setting</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Open Settings on your phone</div><div class="inst-desc">Go to <strong>Settings → About phone → Software information</strong></div></div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Tap Build Number 7 times</div><div class="inst-desc">Tap <strong>Build number</strong> repeatedly until you see "You are now a developer!"</div></div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Enable USB Debugging</div><div class="inst-desc">Go back to <strong>Settings → Developer options</strong> (now visible) → Turn on <strong>USB debugging</strong></div></div></div>
+      <div class="box-info info-box"><div class="box-icon">📝</div><div class="box-text">The exact menu path varies by phone brand. On Samsung it's under "Settings → About phone → Software information → Build number". On Pixel it's "Settings → About phone → Build number".</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">2</div>
+      <div class="step-info">
+        <div class="step-title">Connect Phone to Computer via USB</div>
+        <div class="step-hint">Use the original USB cable that came with your phone</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Plug in your phone</div><div class="inst-desc">Connect your Android phone to your computer with a USB cable</div></div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Accept the "Allow USB debugging" prompt on your phone</div><div class="inst-desc">A dialog will appear on your phone asking "Allow USB debugging?" — tap <strong>Allow</strong>. Check "Always allow from this computer"</div></div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Verify Android Studio sees your phone</div><div class="inst-desc">In Android Studio, look at the top toolbar — you should see your phone's name in the device dropdown (e.g., "Samsung Galaxy S21")</div></div></div>
+      <div class="box-warn info-box"><div class="box-icon">⚠️</div><div class="box-text">If your phone doesn't appear: change the USB connection type on your phone from "Charging" to "File Transfer" or "MTP".</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">3</div>
+      <div class="step-info">
+        <div class="step-title">Press Run ▶</div>
+        <div class="step-hint">The moment of truth!</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Click the green Run button ▶</div><div class="inst-desc">In Android Studio's top toolbar, click the green triangle ▶ — or press <strong>Shift+F10</strong></div></div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Select your device</div><div class="inst-desc">A "Select deployment target" dialog appears — choose your connected phone → OK</div></div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Wait for it to build and install</div><div class="inst-desc">First build takes <strong>3–8 minutes</strong>. Android Studio compiles the React Native JavaScript bundle, builds the APK, and installs it on your phone.</div></div></div>
+      <div class="instruction"><div class="inst-num">4</div><div class="inst-body"><div class="inst-title">App opens automatically!</div><div class="inst-desc">The FamilyWin app will launch on your phone. The splash screen plays, then the login screen appears. 🎉</div></div></div>
+      <div class="box-success info-box"><div class="box-icon">🎉</div><div class="box-text">You're running a real native Android app on your phone! Test all the features — sign up, create a family, add tasks. Make sure Google Sign-In works.</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">4</div>
+      <div class="step-info">
+        <div class="step-title">Making Code Changes After This Point</div>
+        <div class="step-hint">Your workflow once the app is running</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="inst-desc" style="margin-bottom:12px">When you edit the TypeScript/React Native code (screens, components, logic):</div>
+      <table class="info-table">
+        <tr><th>Type of change</th><th>What to do</th><th>Time</th></tr>
+        <tr><td>UI / screen changes (JSX, styles)</td><td>Edit .tsx file → press ▶ in Android Studio → app refreshes</td><td>~30 sec</td></tr>
+        <tr><td>New npm package added</td><td><code>npm install</code> → <code>npx expo prebuild --platform android</code> → re-open in Android Studio → Gradle sync → Run</td><td>5–10 min</td></tr>
+        <tr><td>app.json changes (permissions, icons)</td><td>Same as above — re-run prebuild</td><td>5 min</td></tr>
+        <tr><td>Firebase config changes</td><td>Re-download google-services.json → copy to android/app/ → re-run</td><td>2 min</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn-prev" onclick="goTo(3)">← Back</button>
+    <button class="nav-btn-next" onclick="goTo(5)">Next: Build Release APK/AAB →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PHASE 6 — RELEASE BUILD
+═══════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-5">
+  <div class="phase-badge">📦 Step 6 of 7</div>
+  <h1 class="phase-title">Build the Release Version</h1>
+  <p class="phase-desc">The debug build you ran on your phone has extra logging and is not suitable for Play Store. You need a <strong>signed release build</strong>. This requires a keystore — a digital certificate that proves the app is really from you.</p>
+
+  <div class="box-danger info-box"><div class="box-icon">🔑</div><div class="box-text"><strong>CRITICAL:</strong> Your keystore file and its password are the keys to your app — forever. If you lose them, you can NEVER update your app on the Play Store. Back them up to multiple safe places (password manager, cloud storage, USB drive).</div></div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">1</div>
+      <div class="step-info">
+        <div class="step-title">Create Your Keystore (one-time only)</div>
+        <div class="step-hint">This is your app's permanent digital signature</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Open a terminal / command prompt</div></div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Run the keytool command</div>
+        <div class="code-block"><pre>keytool -genkey -v -keystore familywin-release.keystore \
+  -alias familywin -keyalg RSA -keysize 2048 -validity 10000</pre><button class="copy-btn" onclick="copy(this,'keytool -genkey -v -keystore familywin-release.keystore -alias familywin -keyalg RSA -keysize 2048 -validity 10000')">Copy</button></div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Answer the prompts</div>
+        <div style="background:var(--bg);border-radius:10px;padding:14px;margin:8px 0;font-size:13px;line-height:2;">
+          <div><strong>Enter keystore password:</strong> Choose something strong, e.g. <code>FamilyWin2025!</code></div>
+          <div><strong>Re-enter password:</strong> same</div>
+          <div><strong>First and last name:</strong> Your name</div>
+          <div><strong>Organizational unit:</strong> press Enter to skip</div>
+          <div><strong>Organization:</strong> your family name or company</div>
+          <div><strong>City:</strong> your city</div>
+          <div><strong>State:</strong> your state/county</div>
+          <div><strong>Country code:</strong> US, GB, IN, etc.</div>
+          <div><strong>Is this correct?</strong> type <code>yes</code></div>
+        </div>
+        <div class="inst-desc">This creates <code class="code-inline">familywin-release.keystore</code> — BACK THIS UP NOW.</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">2</div>
+      <div class="step-info">
+        <div class="step-title">Add Keystore to Your Android Project</div>
+        <div class="step-hint">Tells Gradle to use your keystore when building a release</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Copy the keystore file</div>
+        <div class="inst-desc">Copy <code class="code-inline">familywin-release.keystore</code> into your <code class="code-inline">android/app/</code> folder</div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Create android/keystore.properties</div>
+        <div class="code-block"><pre>storeFile=familywin-release.keystore
+storePassword=YourKeystorePassword
+keyAlias=familywin
+keyPassword=YourKeystorePassword</pre><button class="copy-btn" onclick="copy(this,'storeFile=familywin-release.keystore\nstorePassword=YourKeystorePassword\nkeyAlias=familywin\nkeyPassword=YourKeystorePassword')">Copy</button></div>
+        <div class="inst-desc">Replace YourKeystorePassword with the password you set above</div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Edit android/app/build.gradle</div>
+        <div class="inst-desc">Add this to the top of the file (before the <code>android {</code> block):</div>
+        <div class="code-block"><pre>def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}</pre></div>
+        <div class="inst-desc">Then inside the <code>android {</code> block, add:</div>
+        <div class="code-block"><pre>signingConfigs {
+    release {
+        keyAlias keystoreProperties['keyAlias']
+        keyPassword keystoreProperties['keyPassword']
+        storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+        storePassword keystoreProperties['storePassword']
+    }
+}
+buildTypes {
+    release {
+        signingConfig signingConfigs.release
+        minifyEnabled true
+        proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+    }
+}</pre></div>
+      </div></div>
+      <div class="box-danger info-box"><div class="box-icon">🚫</div><div class="box-text">Add <code>keystore.properties</code> and <code>*.keystore</code> to your <code>.gitignore</code> file. Never commit these to version control.</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">3</div>
+      <div class="step-info">
+        <div class="step-title">Build the Release AAB (for Play Store)</div>
+        <div class="step-hint">AAB = Android App Bundle — required by Google Play</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body">
+        <div class="inst-title">In Android Studio menu bar:</div>
+        <div class="click-path">
+          <span class="click-node">Build</span>
+          <span class="click-arrow">→</span>
+          <span class="click-node">Generate Signed Bundle / APK...</span>
+        </div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Choose Android App Bundle</div><div class="inst-desc">Select <strong>Android App Bundle</strong> (not APK) → Next</div></div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Select your keystore</div><div class="inst-desc">Click <strong>Choose existing...</strong> → browse to your <code>familywin-release.keystore</code> → enter your passwords → Next</div></div></div>
+      <div class="instruction"><div class="inst-num">4</div><div class="inst-body"><div class="inst-title">Choose release variant</div><div class="inst-desc">Select <strong>release</strong> → click <strong>Finish</strong></div></div></div>
+      <div class="instruction"><div class="inst-num">5</div><div class="inst-body"><div class="inst-title">Find your AAB file</div><div class="inst-desc">Android Studio shows a notification when done → click <strong>locate</strong>. The file is at: <code class="code-inline">android/app/release/app-release.aab</code></div></div></div>
+      <div class="box-success info-box"><div class="box-icon">📦</div><div class="box-text">You now have an <code>app-release.aab</code> file. This is what you upload to Google Play Store.</div></div>
+
+      <div style="margin-top:16px;font-weight:700;font-size:13px;margin-bottom:8px">Alternative: Build APK (for direct install / testing)</div>
+      <div class="inst-desc" style="margin-bottom:8px">If you want an APK to install directly on phones (not via Play Store):</div>
+      <div class="code-block"><pre>cd android
+./gradlew assembleRelease</pre><button class="copy-btn" onclick="copy(this,'cd android\n./gradlew assembleRelease')">Copy</button></div>
+      <div class="inst-desc">Output: <code class="code-inline">android/app/build/outputs/apk/release/app-release.apk</code></div>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn-prev" onclick="goTo(4)">← Back</button>
+    <button class="nav-btn-next" onclick="goTo(6)">Next: Publish to Play Store →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PHASE 7 — PLAY STORE
+═══════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-6">
+  <div class="phase-badge">🚀 Step 7 of 7</div>
+  <h1 class="phase-title">Publish to Google Play Store</h1>
+  <p class="phase-desc">The final step — getting your app into the hands of your family and anyone else who wants it.</p>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">1</div>
+      <div class="step-info">
+        <div class="step-title">Create a Google Play Developer Account</div>
+        <div class="step-hint">One-time $25 registration fee</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Go to Google Play Console</div><div class="inst-desc"><strong>play.google.com/console</strong> → Sign in with your Google account → click <strong>Get started</strong></div></div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Pay the $25 registration fee</div><div class="inst-desc">One-time fee, not annual. Enter payment details → confirm.</div></div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Complete your developer profile</div><div class="inst-desc">Fill in your name, email, phone number. Google may verify via SMS. This usually takes 1–2 hours to be approved.</div></div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">2</div>
+      <div class="step-info">
+        <div class="step-title">Prepare Your Store Assets</div>
+        <div class="step-hint">These are required before you can submit</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <table class="info-table">
+        <tr><th>Asset</th><th>Size / Format</th><th>Where to make it</th><th>Required?</th></tr>
+        <tr><td><strong>App Icon</strong></td><td>512×512 PNG, no transparency</td><td>canva.com (free)</td><td><span class="tag tag-green">Yes</span></td></tr>
+        <tr><td><strong>Feature Graphic</strong></td><td>1024×500 PNG or JPG</td><td>canva.com (free)</td><td><span class="tag tag-green">Yes</span></td></tr>
+        <tr><td><strong>Screenshots</strong></td><td>2+ phone screenshots (min 320px wide)</td><td>Take them with your phone</td><td><span class="tag tag-green">Yes (min 2)</span></td></tr>
+        <tr><td><strong>Short Description</strong></td><td>80 characters max</td><td>Write it yourself</td><td><span class="tag tag-green">Yes</span></td></tr>
+        <tr><td><strong>Full Description</strong></td><td>4000 characters max</td><td>Write it yourself</td><td><span class="tag tag-green">Yes</span></td></tr>
+        <tr><td><strong>Privacy Policy URL</strong></td><td>A webpage URL</td><td>termly.io (free generator)</td><td><span class="tag tag-green">Yes</span></td></tr>
+      </table>
+      <div class="box-info info-box"><div class="box-icon">💡</div><div class="box-text"><strong>Suggested short description:</strong> "Turn family chores into a fun competition. Earn points, climb the leaderboard, win rewards every week!" (78 chars)</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">3</div>
+      <div class="step-info">
+        <div class="step-title">Create Your App in Play Console</div>
+        <div class="step-hint">Set up the store listing</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Create the app</div>
+        <div class="click-path"><span class="click-node">Play Console</span><span class="click-arrow">→</span><span class="click-node">All apps</span><span class="click-arrow">→</span><span class="click-node">Create app</span></div>
+        <div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:8px;font-size:13px;line-height:2;">
+          <div><strong>App name:</strong> FamilyWin</div>
+          <div><strong>Default language:</strong> English (United States)</div>
+          <div><strong>App or Game:</strong> App</div>
+          <div><strong>Free or Paid:</strong> Free</div>
+        </div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Fill in the Main store listing</div>
+        <div class="click-path"><span class="click-node">Grow</span><span class="click-arrow">→</span><span class="click-node">Store presence</span><span class="click-arrow">→</span><span class="click-node">Main store listing</span></div>
+        <div class="inst-desc">Add your short description, full description, screenshots, icon, and feature graphic</div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Complete the Content Rating questionnaire</div>
+        <div class="click-path"><span class="click-node">Policy</span><span class="click-arrow">→</span><span class="click-node">App content</span><span class="click-arrow">→</span><span class="click-node">Content rating</span></div>
+        <div class="inst-desc">Click Start questionnaire → choose <strong>Utility</strong> → answer the questions (FamilyWin has no violence, no adult content) → Submit → your rating will be <strong>Everyone</strong></div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">4</div><div class="inst-body"><div class="inst-title">Set target audience</div>
+        <div class="click-path"><span class="click-node">Policy</span><span class="click-arrow">→</span><span class="click-node">App content</span><span class="click-arrow">→</span><span class="click-node">Target audience</span></div>
+        <div class="inst-desc">Select age range — for FamilyWin, choose <strong>13 and over</strong> (since children use it under parental supervision)</div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">5</div><div class="inst-body"><div class="inst-title">Add your Privacy Policy URL</div>
+        <div class="click-path"><span class="click-node">Policy</span><span class="click-arrow">→</span><span class="click-node">App content</span><span class="click-arrow">→</span><span class="click-node">Privacy policy</span></div>
+        <div class="inst-desc">Go to <strong>termly.io</strong> → generate a free privacy policy → get its URL → paste it here</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">4</div>
+      <div class="step-info">
+        <div class="step-title">Upload Your AAB and Release</div>
+        <div class="step-hint">The actual submission to Google</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Go to Internal Testing first (recommended)</div>
+        <div class="click-path"><span class="click-node">Release</span><span class="click-arrow">→</span><span class="click-node">Testing</span><span class="click-arrow">→</span><span class="click-node">Internal testing</span><span class="click-arrow">→</span><span class="click-node">Create new release</span></div>
+        <div class="inst-desc">Internal testing lets you and your family test the Play Store version before it goes public. No review needed — available instantly.</div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Upload your AAB</div><div class="inst-desc">Click <strong>Upload</strong> → select your <code class="code-inline">app-release.aab</code> file → wait for it to upload and process</div></div></div>
+      <div class="instruction"><div class="inst-num">3</div><div class="inst-body"><div class="inst-title">Add release notes</div><div class="inst-desc">Enter: "Initial release of FamilyWin - family chore gamification app"</div></div></div>
+      <div class="instruction"><div class="inst-num">4</div><div class="inst-body"><div class="inst-title">Review and roll out</div><div class="inst-desc">Click <strong>Review release</strong> → fix any warnings → <strong>Start rollout to Internal testing</strong></div></div></div>
+      <div class="instruction"><div class="inst-num">5</div><div class="inst-body"><div class="inst-title">Test with your family</div><div class="inst-desc">Add testers under <strong>Testers</strong> tab → share the opt-in link with family members → they install it from Play Store</div></div></div>
+      <div class="instruction"><div class="inst-num">6</div><div class="inst-body"><div class="inst-title">When ready — promote to Production</div>
+        <div class="click-path"><span class="click-node">Release</span><span class="click-arrow">→</span><span class="click-node">Production</span><span class="click-arrow">→</span><span class="click-node">Create new release</span></div>
+        <div class="inst-desc">Promote the same release to Production → Google reviews it → <strong>3–7 days</strong> for first review → approved → anyone can find and install your app</div>
+      </div></div>
+      <div class="box-success info-box"><div class="box-icon">🚀</div><div class="box-text">Your app is live! Share the Play Store link with your family. For updates: make code changes → build new AAB → upload to Play Console → update version code in build.gradle → submit.</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header" onclick="toggle(this)">
+      <div class="step-circle">5</div>
+      <div class="step-info">
+        <div class="step-title">Publishing Updates Later</div>
+        <div class="step-hint">How to push updates to existing users</div>
+      </div>
+      <div class="step-toggle">▼</div>
+    </div>
+    <div class="step-body">
+      <div class="instruction"><div class="inst-num">1</div><div class="inst-body"><div class="inst-title">Bump the version code</div>
+        <div class="inst-desc">Open <code class="code-inline">android/app/build.gradle</code> and increment <code>versionCode</code>:</div>
+        <div class="code-block"><pre>android {
+    defaultConfig {
+        versionCode 2        // ← increase by 1 each release
+        versionName "1.1.0"  // ← your visible version number
+    }
+}</pre></div>
+      </div></div>
+      <div class="instruction"><div class="inst-num">2</div><div class="inst-body"><div class="inst-title">Build new AAB → upload to Play Console → rollout</div><div class="inst-desc">Existing users get the update automatically in 24–48 hours via Play Store auto-update.</div></div></div>
+      <div class="box-warn info-box"><div class="box-icon">⚠️</div><div class="box-text"><code>versionCode</code> must always increase. You can never upload an AAB with a version code equal to or lower than the previous one.</div></div>
+    </div>
+  </div>
+
+  <!-- FINAL CHECKLIST -->
+  <div style="background:linear-gradient(135deg,var(--primary-dim) 0%,#fff 100%);border:2px solid rgba(108,99,255,0.3);border-radius:16px;padding:24px;margin-top:24px;">
+    <div style="font-size:18px;font-weight:900;margin-bottom:6px;color:var(--primary)">🏆 Complete Launch Checklist</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Everything you need before going live</div>
+    <ul class="checklist">
+      <li><input type="checkbox" id="f1" onchange="checkItem(this)"><label for="f1">Node.js, JDK 17, Android Studio installed</label></li>
+      <li><input type="checkbox" id="f2" onchange="checkItem(this)"><label for="f2">Firebase project created with Android app registered</label></li>
+      <li><input type="checkbox" id="f3" onchange="checkItem(this)"><label for="f3">google-services.json in project root AND android/app/</label></li>
+      <li><input type="checkbox" id="f4" onchange="checkItem(this)"><label for="f4">Email/Password and Google auth enabled in Firebase</label></li>
+      <li><input type="checkbox" id="f5" onchange="checkItem(this)"><label for="f5">WEB_CLIENT_ID set in lib/googleAuth.ts</label></li>
+      <li><input type="checkbox" id="f6" onchange="checkItem(this)"><label for="f6">Firestore security rules deployed</label></li>
+      <li><input type="checkbox" id="f7" onchange="checkItem(this)"><label for="f7">Cloud Functions deployed (weekly reset + streak check)</label></li>
+      <li><input type="checkbox" id="f8" onchange="checkItem(this)"><label for="f8">Firestore indexes created</label></li>
+      <li><input type="checkbox" id="f9" onchange="checkItem(this)"><label for="f9">npx expo prebuild --platform android run successfully</label></li>
+      <li><input type="checkbox" id="f10" onchange="checkItem(this)"><label for="f10">App tested on real Android device — all features work</label></li>
+      <li><input type="checkbox" id="f11" onchange="checkItem(this)"><label for="f11">Google Sign-In tested and working</label></li>
+      <li><input type="checkbox" id="f12" onchange="checkItem(this)"><label for="f12">Keystore created and backed up safely</label></li>
+      <li><input type="checkbox" id="f13" onchange="checkItem(this)"><label for="f13">Release AAB built and signed</label></li>
+      <li><input type="checkbox" id="f14" onchange="checkItem(this)"><label for="f14">Google Play developer account created ($25)</label></li>
+      <li><input type="checkbox" id="f15" onchange="checkItem(this)"><label for="f15">App icon, screenshots, description, privacy policy ready</label></li>
+      <li><input type="checkbox" id="f16" onchange="checkItem(this)"><label for="f16">Tested via Internal Testing on Play Store</label></li>
+      <li><input type="checkbox" id="f17" onchange="checkItem(this)"><label for="f17">Submitted to Production — waiting for Google review</label></li>
+    </ul>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn-prev" onclick="goTo(5)">← Back</button>
+    <button class="nav-btn-next" style="background:#22C55E;box-shadow:0 4px 12px rgba(34,197,94,0.3)" onclick="alert('You\'re ready to ship! 🚀🏆')">🚀 I\'m Ready to Ship!</button>
+  </div>
+</div>
+
+</div><!-- end content -->
+</div><!-- end layout -->
+
+<script>
+const PHASES = 7;
+let currentPhase = 0;
+
+function goTo(idx) {
+  document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach((n,i) => {
+    n.classList.remove('active');
+    if(i < idx) n.classList.add('done');
+    else n.classList.remove('done');
+  });
+  document.getElementById('phase-' + idx).classList.add('active');
+  document.getElementById('nav-' + idx).classList.add('active');
+  currentPhase = idx;
+  updateProgress();
+  document.querySelector('.content').scrollTop = 0;
+  window.scrollTo(0,0);
+}
+
+function updateProgress() {
+  const pct = Math.round(((currentPhase + 1) / PHASES) * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `Step ${currentPhase+1} of ${PHASES}`;
+}
+
+function toggle(header) {
+  const body = header.nextElementSibling;
+  const arrow = header.querySelector('.step-toggle');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  arrow.classList.toggle('open', !isOpen);
+}
+
+function copy(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function checkItem(checkbox) {
+  const li = checkbox.parentElement;
+  li.classList.toggle('checked', checkbox.checked);
+}
+
+// Open first step of each phase by default
+document.querySelectorAll('.step-body:first-of-type').forEach(b => {});
+// Auto-open first card in each phase
+document.querySelectorAll('.phase').forEach(phase => {
+  const firstBody = phase.querySelector('.step-body');
+  const firstArrow = phase.querySelector('.step-toggle');
+  if(firstBody && firstArrow) {
+    firstBody.classList.add('open');
+    firstArrow.classList.add('open');
+  }
+});
+
+updateProgress();
+</script>
+</body>
+</html>

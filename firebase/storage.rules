@@ -1,0 +1,35 @@
+rules_version = '2';
+/**
+ * Firebase Storage Rules for FamilyWin
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Protects uploaded profile photos.
+ *
+ * Path structure:
+ *   member-photos/{familyId}/{memberId}.jpg
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Profile photos ────────────────────────────────────────────────────────
+    // Any authenticated user can read profile photos (they're not sensitive).
+    // Writes are restricted to authenticated users and capped at 5 MB.
+    match /member-photos/{familyId}/{fileName} {
+      allow read: if request.auth != null;
+
+      allow write: if request.auth != null
+        // Max 5 MB per photo
+        && request.resource.size <= 5 * 1024 * 1024
+        // Must be a JPEG, PNG, or WebP image
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+
+      allow delete: if request.auth != null;
+    }
+
+    // ── Deny everything else ──────────────────────────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,141 @@
+rules_version = '2';
+/**
+ * Firestore Security Rules for FamilyWin
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Equivalent to the Supabase Row-Level Security policies.
+ *
+ * Structure:
+ *   /users/{uid}                                  ← uid → { familyId, memberId }
+ *   /families/{familyId}                          ← family document
+ *   /families/{familyId}/members/{memberId}
+ *   /families/{familyId}/tasks/{taskId}
+ *   /families/{familyId}/completions/{id}
+ *   /families/{familyId}/transactions/{id}
+ *   /families/{familyId}/rewards/{rewardId}
+ *   /families/{familyId}/redemptions/{id}
+ *   /families/{familyId}/weeklyScores/{weekId}
+ *   /families/{familyId}/notificationConfigs/{memberId}
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ─────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** Get the user lookup doc — cached per rule evaluation */
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    /** The familyId linked to the current user */
+    function myFamilyId() {
+      return userDoc().familyId;
+    }
+
+    /** True if the current user belongs to the given family */
+    function isFamilyMember(familyId) {
+      return isSignedIn() && myFamilyId() == familyId;
+    }
+
+    /** True if the current user is a parent or admin_parent in the given family */
+    function isParent(familyId) {
+      let memberId = userDoc().memberId;
+      let memberData = get(
+        /databases/$(database)/documents/families/$(familyId)/members/$(memberId)
+      ).data;
+      return memberData.role == 'parent' || memberData.role == 'admin_parent';
+    }
+
+    /** True if the current user is the owner of this member doc */
+    function isOwnerMember(familyId, memberId) {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/families/$(familyId)/members/$(memberId))
+             .data.userId == request.auth.uid;
+    }
+
+    // ── /users/{uid} ─────────────────────────────────────────────────────────
+    // Each user can only read/write their own lookup doc.
+
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── /families/{familyId} ─────────────────────────────────────────────────
+
+    match /families/{familyId} {
+      // Any signed-in family member can read family doc
+      allow read: if isFamilyMember(familyId);
+      // Anyone signed in can create a family (for onboarding)
+      allow create: if isSignedIn();
+      // Only admin_parent can update family settings
+      allow update: if isFamilyMember(familyId) && isParent(familyId);
+      allow delete: if false;
+
+      // ── Members subcollection ─────────────────────────────────────────────
+      match /members/{memberId} {
+        allow read: if isFamilyMember(familyId);
+        // New members can join (create their own doc)
+        allow create: if isSignedIn();
+        // Members update their own doc; parents can update any member
+        allow update: if isOwnerMember(familyId, memberId) || isParent(familyId);
+        allow delete: if false;
+      }
+
+      // ── Tasks subcollection ───────────────────────────────────────────────
+      match /tasks/{taskId} {
+        allow read: if isFamilyMember(familyId);
+        allow create, update: if isFamilyMember(familyId) && isParent(familyId);
+        allow delete: if isFamilyMember(familyId) && isParent(familyId);
+      }
+
+      // ── Completions subcollection ─────────────────────────────────────────
+      match /completions/{completionId} {
+        allow read: if isFamilyMember(familyId);
+        // Any family member can create a completion (for their own tasks)
+        allow create: if isFamilyMember(familyId);
+        // No updates — completions are immutable
+        allow update, delete: if false;
+      }
+
+      // ── Transactions subcollection ────────────────────────────────────────
+      match /transactions/{transactionId} {
+        allow read: if isFamilyMember(familyId);
+        allow create: if isFamilyMember(familyId);
+        allow update, delete: if false; // Transactions are immutable audit logs
+      }
+
+      // ── Rewards subcollection ─────────────────────────────────────────────
+      match /rewards/{rewardId} {
+        allow read: if isFamilyMember(familyId);
+        allow create, update, delete: if isFamilyMember(familyId) && isParent(familyId);
+      }
+
+      // ── Redemptions subcollection ─────────────────────────────────────────
+      match /redemptions/{redemptionId} {
+        allow read: if isFamilyMember(familyId);
+        // Any family member can request a redemption
+        allow create: if isFamilyMember(familyId);
+        // Only parents can approve/reject
+        allow update: if isFamilyMember(familyId) && isParent(familyId);
+        allow delete: if false;
+      }
+
+      // ── Weekly Scores subcollection ───────────────────────────────────────
+      // Written only by Cloud Functions (admin SDK bypasses rules)
+      match /weeklyScores/{weekId} {
+        allow read: if isFamilyMember(familyId);
+        allow write: if false; // Cloud Function only
+      }
+
+      // ── Notification Configs ──────────────────────────────────────────────
+      match /notificationConfigs/{memberId} {
+        allow read, write: if isOwnerMember(familyId, memberId) || isParent(familyId);
+      }
+    }
+  }
+}
