@@ -98,8 +98,13 @@ service cloud.firestore {
         allow read: if isFamilyMember(familyId);
         // Any family member can create a completion (for their own tasks)
         allow create: if isFamilyMember(familyId);
-        // No updates — completions are immutable
-        allow update, delete: if false;
+        // No edits — completions are immutable once written
+        allow update: if false;
+        // A member can undo (delete) their own completion; parents can also
+        // undo on behalf of managed children. The app additionally enforces
+        // the "same calendar day" rule client-side.
+        allow delete: if isFamilyMember(familyId)
+          && (resource.data.memberId == userDoc().memberId || isParent(familyId));
       }
 
       // ── Transactions subcollection ────────────────────────────────────────

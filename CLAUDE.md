@@ -311,6 +311,16 @@ Access via `useTheme()` hook in any screen.
 3. **Google Sign-In** — Requires SHA-1 fingerprint registered in Firebase Console for each build variant (debug + release have different fingerprints).
 4. **First Gradle sync** — Takes 10–20 minutes and downloads ~1GB. Completely normal.
 5. **expo prebuild --clean** — Wipes the android/ folder entirely. Don't store custom files there — they'll be lost on next prebuild.
+6. **`expo-image-picker@15.0.7` syntax** — only the enum form works (`ImagePicker.MediaTypeOptions.Images`); the newer array form (`mediaTypes: ['images']`) silently breaks photo selection.
+7. **Android `Alert.alert` caps at ~3 buttons** — a 4th option gets dropped/misrouted. Chain multiple 2–3 button alerts instead.
+8. **Don't `setTimeout` an image-picker launch from inside an Alert callback** — repeat taps queue up multiple delayed launches that all fire later, stacked. Guard with an in-flight lock (ref/module boolean) instead so repeat taps are simply ignored.
+9. **Firestore security rules can silently block writes that look correct client-side** — e.g. `undoTaskCompletion()` was fully correct in the app code, but `firestore.rules` had `allow delete: if false` on completions, so every undo attempt failed with no useful client error. Always check the rules first when a write "does nothing."
+10. **Always use `<Avatar emoji={...} photoURL={...}>`** (`components/ui/index.tsx`) instead of rendering `member.avatarEmoji` as raw text — it already handles the photo/emoji fallback. Several screens were found rendering the raw emoji and missing uploaded photos.
+
+> For a deeper architectural walkthrough (data model, security rules, state
+> management, business rules, and a longer gotchas list with code references),
+> see **ARCHITECTURE.md**. For setup steps from a fresh clone, see
+> **ONBOARDING.md**. For the product pitch and screenshots, see **README.md**.
 
 ---
 
@@ -338,4 +348,7 @@ Good prompts that work well for this project:
 
 ---
 
-*Last updated: Phase 4 complete — Firebase migration done, UI finalised, ready for first build.*
+*Last updated: First device builds underway — photo upload, undo, and family
+management refinements landed; see git log for the latest. Companion docs
+(README.md, ARCHITECTURE.md, ONBOARDING.md) cover product, architecture, and
+setup in depth — this file stays focused on AI-assistant working context.*

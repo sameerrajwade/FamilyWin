@@ -303,7 +303,16 @@ function MemberRow({ member, isSelf, isAdmin, isLast, onRolePress, onRemove, onE
 }
 
 // ── Shared photo picker helper ────────────────────────────────────────────────
+// Module-level lock: guards against the picker being launched multiple times
+// concurrently. Repeated taps while the (sometimes slow-to-appear) picker is
+// opening used to queue up several launches that all surfaced later, stacked
+// on top of each other. Only one in-flight launch at a time.
+let pickerBusy = false;
+
 async function pickPhotoUri(source: 'library' | 'camera'): Promise<string | null> {
+  if (pickerBusy) return null;
+  pickerBusy = true;
+  try {
   const permission = source === 'camera'
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -324,17 +333,16 @@ async function pickPhotoUri(source: 'library' | 'camera'): Promise<string | null
   if (result.canceled) return null;
   const asset = result.assets?.[0];
   return asset?.uri ?? null;
+  } finally {
+    pickerBusy = false;
+  }
 }
 
 function choosePhotoSource(title: string, cb: (source: 'library' | 'camera') => void) {
-  // NOTE: Launching the image picker immediately inside an Alert's onPress can
-  // race with the Alert dialog's dismiss animation on Android — the picker
-  // Activity sometimes fails to open at all (especially on repeat attempts).
-  // A short delay lets the dialog fully close first.
   Alert.alert(title, 'Choose a source', [
     { text: 'Cancel', style: 'cancel' },
-    { text: 'Camera', onPress: () => setTimeout(() => cb('camera'), 350) },
-    { text: 'Photo Library', onPress: () => setTimeout(() => cb('library'), 350) },
+    { text: 'Camera', onPress: () => cb('camera') },
+    { text: 'Photo Library', onPress: () => cb('library') },
   ]);
 }
 

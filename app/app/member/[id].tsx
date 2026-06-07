@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Image, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -22,6 +22,11 @@ export default function MemberProfileScreen() {
   const [streak, setStreak] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  // Guards against the picker being launched multiple times concurrently —
+  // tapping repeatedly while the (slow-to-appear) picker is opening used to
+  // queue up several launches that all surfaced later, stacked on top of
+  // each other. One in-flight launch at a time, full stop.
+  const pickerBusyRef = useRef(false);
   const canEditPhoto = viewerMember?.role === 'admin_parent' || viewerMember?.role === 'parent';
 
   async function handleChangePhoto() {
@@ -30,21 +35,16 @@ export default function MemberProfileScreen() {
     // NOTE: Android's Alert.alert reliably renders at most 3 buttons — a 4th
     // (e.g. "Remove Photo") gets silently dropped or misrouted. Chain two
     // simple 2-button alerts instead so every action is reachable.
-    // NOTE: Launching the image picker immediately inside an Alert's onPress can
-    // race with the Alert dialog's dismiss animation on Android — the picker
-    // Activity sometimes silently fails to open (especially on repeat attempts
-    // a minute or more after the first). A short delay lets the dialog fully
-    // close before we launch the picker.
     const sourceButtons = [
       { text: 'Cancel', style: 'cancel' as const },
-      { text: 'Camera', onPress: () => setTimeout(() => pickAndUpload('camera'), 350) },
-      { text: 'Photo Library', onPress: () => setTimeout(() => pickAndUpload('library'), 350) },
+      { text: 'Camera', onPress: () => pickAndUpload('camera') },
+      { text: 'Photo Library', onPress: () => pickAndUpload('library') },
     ];
     if (member.photoURL) {
       Alert.alert('Profile Photo', `Update or remove the photo for ${member.displayName}?`, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Remove Photo', style: 'destructive', onPress: doRemovePhoto },
-        { text: 'Change Photo', onPress: () => setTimeout(() => Alert.alert('Change Photo', 'Choose a source', sourceButtons), 250) },
+        { text: 'Change Photo', onPress: () => Alert.alert('Change Photo', 'Choose a source', sourceButtons) },
       ]);
     } else {
       Alert.alert('Add Profile Photo', `Choose a source for ${member.displayName}'s photo`, sourceButtons);
@@ -52,6 +52,11 @@ export default function MemberProfileScreen() {
   }
 
   async function pickAndUpload(source: 'library' | 'camera') {
+    // Ignore taps while a picker launch is already in flight — repeated taps
+    // (e.g. because the picker takes a moment to appear) used to queue up
+    // multiple launches that all surfaced later, stacked on top of each other.
+    if (pickerBusyRef.current) return;
+    pickerBusyRef.current = true;
     try {
       let permission;
       if (source === 'camera') {
@@ -92,6 +97,7 @@ export default function MemberProfileScreen() {
       Alert.alert('Upload Failed', `Could not upload photo.\n\n(${detail})`);
     } finally {
       setIsUploadingPhoto(false);
+      pickerBusyRef.current = false;
     }
   }
 
