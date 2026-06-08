@@ -10,6 +10,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   RefreshControl, Alert, Modal, TextInput, Share, ActivityIndicator, Image, Linking,
+  InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -339,10 +340,18 @@ async function pickPhotoUri(source: 'library' | 'camera'): Promise<string | null
 }
 
 function choosePhotoSource(title: string, cb: (source: 'library' | 'camera') => void) {
+  // IMPORTANT: don't call cb() synchronously inside onPress. The native Alert
+  // dialog is still mid-dismiss-animation at that point, and launching the
+  // image-picker activity while Android is tearing down the dialog causes the
+  // launch to get silently queued — it only "wakes up" when the app regains
+  // foreground (e.g. after the user backgrounds and reopens the app). Defer
+  // with InteractionManager.runAfterInteractions(), which waits for the
+  // dismiss animation/interaction to actually finish (event-driven, not a
+  // fixed delay — so unlike setTimeout it can't queue up multiple launches).
   Alert.alert(title, 'Choose a source', [
     { text: 'Cancel', style: 'cancel' },
-    { text: 'Camera', onPress: () => cb('camera') },
-    { text: 'Photo Library', onPress: () => cb('library') },
+    { text: 'Camera', onPress: () => InteractionManager.runAfterInteractions(() => cb('camera')) },
+    { text: 'Photo Library', onPress: () => InteractionManager.runAfterInteractions(() => cb('library')) },
   ]);
 }
 

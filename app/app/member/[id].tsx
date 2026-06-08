@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Image, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Image, Alert, Linking, InteractionManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import firestore from '@react-native-firebase/firestore';
@@ -35,10 +35,18 @@ export default function MemberProfileScreen() {
     // NOTE: Android's Alert.alert reliably renders at most 3 buttons — a 4th
     // (e.g. "Remove Photo") gets silently dropped or misrouted. Chain two
     // simple 2-button alerts instead so every action is reachable.
+    // IMPORTANT: defer the actual picker launch with
+    // InteractionManager.runAfterInteractions(). Calling pickAndUpload()
+    // synchronously inside onPress launches the native image-picker activity
+    // while the Alert dialog is still mid-dismiss-animation — Android queues
+    // that launch and only "wakes it up" when the app regains foreground
+    // (matches the symptom: picker only appears after backgrounding/reopening
+    // the app). runAfterInteractions waits for the dismiss animation to
+    // actually finish — event-driven, not a fixed delay, so it can't stack.
     const sourceButtons = [
       { text: 'Cancel', style: 'cancel' as const },
-      { text: 'Camera', onPress: () => pickAndUpload('camera') },
-      { text: 'Photo Library', onPress: () => pickAndUpload('library') },
+      { text: 'Camera', onPress: () => InteractionManager.runAfterInteractions(() => pickAndUpload('camera')) },
+      { text: 'Photo Library', onPress: () => InteractionManager.runAfterInteractions(() => pickAndUpload('library')) },
     ];
     if (member.photoURL) {
       Alert.alert('Profile Photo', `Update or remove the photo for ${member.displayName}?`, [
