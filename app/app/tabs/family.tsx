@@ -373,11 +373,26 @@ function AddChildModal({ familyId, onClose, onAdded }: {
   const [emoji, setEmoji] = useState('🐼');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // FACT, confirmed via on-device logcat: this <Modal> is rendered as an
+  // Android Dialog window (ReactModalHost) that stays mounted/visible while
+  // choosePhotoSource/pickPhotoUri runs. The system image-picker Activity DOES
+  // launch and DOES get displayed (logcat: "Displayed ...photopicker...
+  // MainActivity +54ms") — but this Modal's window keeps redrawing ON TOP of
+  // it (logcat: "ReactModalHost: Updating existing dialog" ~2s later),
+  // hiding the picker until the app is backgrounded and the Modal's window
+  // disappears with it. Fix: hide this Modal (visible={false}) for the
+  // duration of the picker launch, then restore it when picking finishes.
+  const [modalVisible, setModalVisible] = useState(true);
 
   function handlePickPhoto() {
     choosePhotoSource("Child's Photo", async (source) => {
-      const uri = await pickPhotoUri(source);
-      if (uri) setPhotoUri(uri);
+      setModalVisible(false);
+      try {
+        const uri = await pickPhotoUri(source);
+        if (uri) setPhotoUri(uri);
+      } finally {
+        setModalVisible(true);
+      }
     });
   }
 
@@ -410,7 +425,7 @@ function AddChildModal({ familyId, onClose, onAdded }: {
   }
 
   return (
-    <Modal visible animationType="slide" transparent>
+    <Modal visible={modalVisible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <View style={[styles.modalSheet, { backgroundColor: Colors.surface }]}>
           <View style={styles.modalHandle} />
@@ -492,10 +507,20 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
   const [photoURL, setPhotoURL] = useState<string | null | undefined>(member.photoURL);
   const [isSaving, setIsSaving] = useState(false);
   const [isPhotoBusy, setIsPhotoBusy] = useState(false);
+  // See AddChildModal above for the full explanation (confirmed via on-device
+  // logcat): this <Modal>'s Android Dialog window stays on top of the system
+  // image picker, hiding it. Hide the Modal while the picker is open.
+  const [modalVisible, setModalVisible] = useState(true);
 
   function handlePickPhoto() {
     choosePhotoSource('Profile Photo', async (source) => {
-      const uri = await pickPhotoUri(source);
+      setModalVisible(false);
+      let uri: string | null = null;
+      try {
+        uri = await pickPhotoUri(source);
+      } finally {
+        setModalVisible(true);
+      }
       if (!uri) return;
       try {
         setIsPhotoBusy(true);
@@ -556,7 +581,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
   }
 
   return (
-    <Modal visible animationType="slide" transparent>
+    <Modal visible={modalVisible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <View style={[styles.modalSheet, { backgroundColor: Colors.surface }]}>
           <View style={styles.modalHandle} />
