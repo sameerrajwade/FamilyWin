@@ -154,24 +154,27 @@ function InnerLayout() {
     if (fontsLoaded && hasNavigated) SplashScreen.hideAsync();
   }, [fontsLoaded, hasNavigated]);
 
-  // While waiting, render a view matching the native splash background colour so
-  // there's no visual seam (no flash) between native splash and first screen.
-  if (!fontsLoaded || !hasNavigated) {
-    return <View style={{ flex: 1, backgroundColor: '#6C63FF' }} />;
-  }
+  if (!fontsLoaded) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-      <Stack.Screen name="index" options={{ animation: 'none' }} />
-      <Stack.Screen name="auth/splash" options={{ animation: 'fade' }} />
-      <Stack.Screen name="auth/login" />
-      <Stack.Screen name="auth/register" />
-      <Stack.Screen name="auth/onboarding" />
-      <Stack.Screen name="app/tabs" />
-      <Stack.Screen name="app/task/create" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="app/discipline/log" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="app/member/[id]" />
-    </Stack>
+    <View style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <Stack.Screen name="index" options={{ animation: 'none' }} />
+        <Stack.Screen name="auth/splash" options={{ animation: 'fade' }} />
+        <Stack.Screen name="auth/login" />
+        <Stack.Screen name="auth/register" />
+        <Stack.Screen name="auth/onboarding" />
+        <Stack.Screen name="app/tabs" />
+        <Stack.Screen name="app/task/create" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="app/discipline/log" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="app/member/[id]" />
+      </Stack>
+      {/* Overlay matching the native splash colour until the first real route has been
+          navigated to — covers the gap so nothing else flashes through underneath. */}
+      {!hasNavigated && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#6C63FF' }} />
+      )}
+    </View>
   );
 }
 
