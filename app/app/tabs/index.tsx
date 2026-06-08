@@ -159,6 +159,20 @@ export default function HomeScreen() {
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
+  // Live updates: subscribe to task + completion changes so new/edited tasks and
+  // completions (by this member or others in the family) appear instantly without
+  // a manual pull-to-refresh — mirrors the onSnapshot pattern used in leaderboard.tsx.
+  useEffect(() => {
+    if (!family?.id) return;
+    const unsubTasks = Col.tasks(family.id)
+      .where('isActive', '==', true)
+      .onSnapshot(() => { loadTasks(); }, (err) => { if (__DEV__) console.error(err); });
+    const unsubCompletions = Col.completions(family.id)
+      .where('weekId', '==', weekId)
+      .onSnapshot(() => { loadTasks(); }, (err) => { if (__DEV__) console.error(err); });
+    return () => { unsubTasks(); unsubCompletions(); };
+  }, [family?.id, weekId, loadTasks]);
+
   // Always reload members when home screen is focused — ensures profile tabs appear immediately
   useFocusEffect(useCallback(() => {
     if (family?.id) {

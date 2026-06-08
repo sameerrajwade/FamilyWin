@@ -137,18 +137,28 @@ function InnerLayout() {
   // Navigate only when BOTH fonts are loaded AND the navigation container is mounted.
   // useRootNavigationState().key is undefined until Expo Router's Stack is registered —
   // checking it guarantees we never call router.replace() on an unready navigator.
+  const [hasNavigated, setHasNavigated] = useState(false);
+
   useEffect(() => {
     if (fontsLoaded && pendingRoute && navigationState?.key) {
       router.replace(pendingRoute as any);
       setPendingRoute(null);
+      setHasNavigated(true);
     }
   }, [fontsLoaded, pendingRoute, navigationState?.key]);
 
+  // Keep the native splash up until fonts are ready AND the first real route has
+  // been navigated to — hiding it earlier (e.g. on fontsLoaded alone) leaves a gap
+  // where a blank/default-background screen flashes before navigation completes.
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    if (fontsLoaded && hasNavigated) SplashScreen.hideAsync();
+  }, [fontsLoaded, hasNavigated]);
 
-  if (!fontsLoaded) return null;
+  // While waiting, render a view matching the native splash background colour so
+  // there's no visual seam (no flash) between native splash and first screen.
+  if (!fontsLoaded || !hasNavigated) {
+    return <View style={{ flex: 1, backgroundColor: '#6C63FF' }} />;
+  }
 
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
