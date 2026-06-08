@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FamilyWin — Updated Screen Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a2e; font-family: 'Segoe UI', sans-serif; padding: 32px 16px; }
+  h1 { color: #fff; text-align: center; font-size: 28px; font-weight: 900; margin-bottom: 6px; }
+  .subtitle { color: #aaa; text-align: center; margin-bottom: 8px; font-size: 14px; }
+  .badge-row { display:flex; gap:10px; justify-content:center; margin-bottom:40px; flex-wrap:wrap; }
+  .badge { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:800; }
+  .badge.new { background:#43D98F22; color:#43D98F; border:1px solid #43D98F44; }
+  .badge.updated { background:#FFB34722; color:#FFB347; border:1px solid #FFB34744; }
+  .badge.unchanged { background:#ffffff15; color:#aaa; border:1px solid #ffffff22; }
+  .section-label { color:#6C63FF; font-size:11px; font-weight:800; letter-spacing:2px; text-transform:uppercase; margin:40px 0 16px; text-align:center; display:flex; align-items:center; gap:12px; justify-content:center; }
+  .section-label::before,.section-label::after { content:''; flex:1; max-width:120px; height:1px; background:#6C63FF44; }
+  .screens-row { display:flex; flex-wrap:wrap; gap:28px; justify-content:center; margin-bottom:8px; }
+  .phone-wrap { display:flex; flex-direction:column; align-items:center; }
+  .phone { width:320px; background:#fff; border-radius:36px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.5); flex-shrink:0; position:relative; }
+  .phone-label { color:#ccc; font-size:11px; font-weight:700; text-align:center; margin-top:10px; letter-spacing:1px; }
+  .tag { display:inline-block; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-top:4px; }
+  .tag.new { background:#43D98F22; color:#43D98F; }
+  .tag.updated { background:#FFB34722; color:#FFB347; }
+
+  :root {
+    --primary:#6C63FF; --accent:#FF6584; --success:#43D98F;
+    --warning:#FFB347; --danger:#FF5C5C; --bg:#F8F9FF;
+    --surface:#FFFFFF; --text:#1A1A2E; --text-sec:#666;
+    --text-muted:#aaa; --border:#E8E8F0; --gold:#FFD700;
+    --silver:#C0C0C0; --bronze:#CD7F32;
+  }
+
+  /* ── SHARED ── */
+  .screen { padding:16px; background:var(--bg); min-height:680px; }
+  .btn-primary { background:var(--primary); color:#fff; border:none; border-radius:12px; padding:16px; width:100%; font-size:15px; font-weight:800; cursor:pointer; margin-top:8px; }
+  .btn-google { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:14px; width:100%; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; color:var(--text); }
+  .btn-google .g { color:#4285F4; font-size:16px; font-weight:900; }
+  .divider { display:flex; align-items:center; gap:8px; margin:14px 0; }
+  .divider-line { flex:1; height:1px; background:var(--border); }
+  .divider-text { font-size:12px; color:var(--text-muted); }
+  .input-field { border:1.5px solid var(--border); border-radius:10px; padding:13px 14px; width:100%; font-size:14px; color:var(--text); background:var(--bg); margin-top:4px; }
+  .label { font-size:13px; font-weight:700; color:var(--text); margin-top:12px; display:block; }
+  .card { background:#fff; border-radius:16px; padding:16px; box-shadow:0 2px 12px rgba(108,99,255,0.08); margin-bottom:10px; }
+  .tab-bar { display:flex; background:#fff; border-top:1px solid var(--border); padding:8px 0 4px; }
+  .tab { flex:1; text-align:center; display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .tab .t-icon { font-size:20px; }
+  .tab .t-label { font-size:10px; font-weight:700; color:var(--text-muted); }
+  .tab.active .t-label { color:var(--primary); }
+
+  /* ── SPLASH ── */
+  .splash { background:var(--primary); min-height:680px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:48px 24px 32px; position:relative; }
+  .splash-emoji { font-size:90px; }
+  .splash-title { font-size:34px; font-weight:900; color:#fff; text-align:center; line-height:1.2; margin-top:16px; }
+  .splash-sub { font-size:15px; color:rgba(255,255,255,0.85); text-align:center; line-height:1.6; margin-top:8px; }
+  .chip { background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.3); border-radius:50px; padding:10px 18px; color:#fff; font-size:14px; font-weight:700; text-align:center; margin-top:8px; }
+  .dots { display:flex; gap:6px; margin-top:16px; }
+  .dot { width:8px; height:8px; border-radius:4px; background:rgba(255,255,255,0.4); }
+  .dot.active { width:24px; background:#fff; }
+  .btn-next { background:#fff; color:var(--primary); border:none; border-radius:16px; padding:18px; width:100%; font-size:16px; font-weight:900; cursor:pointer; margin-top:16px; }
+  .skip-btn { position:absolute; top:52px; right:20px; color:rgba(255,255,255,0.8); font-size:13px; font-weight:700; }
+
+  /* ── AUTH ── */
+  .auth-header { text-align:center; padding:24px 0 16px; }
+  .auth-logo { font-size:56px; }
+  .auth-app-name { font-size:28px; font-weight:900; color:var(--primary); }
+  .form-card { background:#fff; border-radius:20px; padding:20px; box-shadow:0 4px 20px rgba(108,99,255,0.1); }
+  .form-title { font-size:20px; font-weight:800; color:var(--text); margin-bottom:14px; }
+  .forgot { text-align:right; font-size:12px; font-weight:700; color:var(--primary); margin:6px 0 12px; }
+  .bottom-link { text-align:center; padding:12px 0 0; font-size:13px; color:var(--text-sec); }
+  .bottom-link span { color:var(--primary); font-weight:800; }
+
+  /* ── ONBOARDING ── */
+  .choice-card { background:#fff; border-radius:16px; padding:16px; display:flex; align-items:center; gap:14px; border:1.5px solid var(--border); margin-bottom:12px; box-shadow:0 2px 12px rgba(0,0,0,0.06); }
+  .choice-card.secondary { border-color:rgba(255,101,132,0.4); }
+  .choice-emoji { font-size:34px; }
+  .choice-info h3 { font-size:15px; font-weight:800; color:var(--text); }
+  .choice-info p { font-size:12px; color:var(--text-sec); margin-top:2px; }
+  .invite-code { font-size:42px; font-weight:900; color:var(--primary); letter-spacing:8px; margin:8px 0; }
+
+  /* ── HOME ── */
+  .points-banner { background:linear-gradient(135deg,var(--primary),#9B6DFF); border-radius:16px; padding:16px; margin-bottom:14px; color:#fff; display:flex; justify-content:space-between; align-items:center; }
+  .task-card { background:#fff; border-radius:14px; padding:14px; display:flex; align-items:center; gap:12px; margin-bottom:8px; border-left:4px solid; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+  .task-pts { font-size:13px; font-weight:800; color:var(--primary); background:rgba(108,99,255,0.1); padding:4px 10px; border-radius:20px; }
+  .section-hdr { font-size:12px; font-weight:800; color:var(--text-sec); letter-spacing:0.5px; text-transform:uppercase; margin:14px 0 8px; }
+
+  /* ── PROFILE SWITCHER BANNER (NEW) ── */
+  .switcher-banner { background:var(--primary); border-radius:12px; padding:10px 14px; margin:0 16px 12px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 8px rgba(108,99,255,0.3); }
+  .switcher-left { display:flex; align-items:center; gap:10px; }
+  .switcher-avatar { font-size:26px; }
+  .switcher-label { font-size:11px; color:rgba(255,255,255,0.75); font-weight:600; }
+  .switcher-name { font-size:15px; font-weight:800; color:#fff; }
+  .switcher-btn { font-size:13px; font-weight:700; color:rgba(255,255,255,0.9); }
+
+  /* ── PROFILE PICKER MODAL (NEW) ── */
+  .modal-overlay { background:rgba(0,0,0,0.45); min-height:680px; display:flex; flex-direction:column; justify-content:flex-end; }
+  .modal-sheet { background:var(--bg); border-radius:28px 28px 0 0; padding:16px 16px 32px; }
+  .modal-handle { width:40px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 16px; }
+  .modal-title { font-size:20px; font-weight:900; color:var(--text); margin-bottom:4px; }
+  .modal-sub { font-size:13px; color:var(--text-sec); margin-bottom:16px; }
+  .profile-row { display:flex; align-items:center; gap:14px; padding:12px 14px; border-radius:14px; margin-bottom:4px; }
+  .profile-row.active { background:rgba(108,99,255,0.08); border:1.5px solid rgba(108,99,255,0.3); }
+  .pr-avatar { font-size:36px; }
+  .pr-info { flex:1; }
+  .pr-name { font-size:15px; font-weight:800; color:var(--text); }
+  .pr-name.active { color:var(--primary); }
+  .pr-role { font-size:12px; color:var(--text-sec); margin-top:2px; }
+  .pr-check { font-size:18px; color:var(--primary); font-weight:900; }
+
+  /* ── ADD CHILD SCREEN (NEW) ── */
+  .info-box { background:rgba(108,99,255,0.06); border-radius:12px; padding:14px; border:1px solid rgba(108,99,255,0.2); margin-top:16px; }
+  .info-title { font-size:13px; font-weight:800; color:var(--primary); margin-bottom:6px; }
+  .info-text { font-size:12px; color:var(--text); line-height:20px; }
+  .avatar-row { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px; }
+  .avatar-opt { width:48px; height:48px; border-radius:24px; background:#fff; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:26px; }
+  .avatar-opt.selected { border-color:var(--primary); background:rgba(108,99,255,0.08); }
+  .preview-card { display:flex; align-items:center; gap:14px; background:#fff; border-radius:14px; padding:14px; border:2px solid rgba(108,99,255,0.3); margin-top:14px; }
+
+  /* ── LEADERBOARD ── */
+  .podium { display:flex; align-items:flex-end; justify-content:center; gap:8px; margin:16px 0 20px; }
+  .podium-slot { text-align:center; display:flex; flex-direction:column; align-items:center; }
+  .podium-bar { width:72px; border-radius:8px 8px 0 0; display:flex; align-items:center; justify-content:center; font-size:20px; margin-top:6px; }
+  .lb-row { background:#fff; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:12px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+  .lb-row.me { border:2px solid var(--primary); background:rgba(108,99,255,0.04); }
+  .lb-managed { background:rgba(67,217,143,0.06); border:1.5px solid rgba(67,217,143,0.3); }
+
+  /* ── REWARDS ── */
+  .reward-card { background:#fff; border-radius:14px; padding:14px; margin-bottom:8px; display:flex; align-items:center; gap:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+  .btn-redeem { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
+  .btn-redeem.disabled { background:var(--border); color:var(--text-muted); }
+
+  /* ── HISTORY ── */
+  .toggle-row { display:flex; background:#fff; border-radius:12px; padding:4px; margin-bottom:14px; }
+  .toggle-btn { flex:1; padding:8px; text-align:center; border-radius:10px; font-size:13px; font-weight:800; color:var(--text-sec); }
+  .toggle-btn.active { background:var(--primary); color:#fff; }
+  .bar-chart { background:#fff; border-radius:14px; padding:16px; margin-bottom:14px; }
+  .bar-row { display:flex; align-items:flex-end; gap:6px; height:100px; margin-bottom:8px; }
+  .bar { flex:1; border-radius:6px 6px 0 0; background:var(--primary); opacity:0.7; }
+  .bar.current { opacity:1; }
+  .tx-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .tx-delta.pos { font-size:15px; font-weight:900; color:var(--success); }
+  .tx-delta.neg { font-size:15px; font-weight:900; color:var(--danger); }
+
+  /* ── SETTINGS ── */
+  .profile-hdr { text-align:center; padding:20px 0 16px; }
+  .settings-section { background:#fff; border-radius:16px; margin:0 0 12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+  .settings-row { display:flex; align-items:center; padding:13px 16px; border-bottom:1px solid var(--border); gap:12px; }
+  .settings-row:last-child { border-bottom:none; }
+  .settings-label { flex:1; font-size:14px; font-weight:700; color:var(--text); }
+  .settings-value { font-size:13px; color:var(--text-muted); }
+  .toggle { width:42px; height:24px; background:var(--primary); border-radius:12px; position:relative; flex-shrink:0; }
+  .toggle::after { content:''; width:18px; height:18px; background:#fff; border-radius:9px; position:absolute; top:3px; right:3px; }
+  .managed-hint-box { background:rgba(108,99,255,0.06); margin:12px 16px 0; border-radius:10px; padding:10px 12px; border:1px solid rgba(108,99,255,0.2); }
+  .managed-hint-text { font-size:11px; color:var(--text); line-height:17px; }
+  .child-row { display:flex; align-items:center; padding:10px 16px; border-top:1px solid var(--border); gap:10px; }
+  .remove-tag { background:rgba(255,92,92,0.1); border-radius:6px; padding:3px 8px; font-size:11px; font-weight:800; color:var(--danger); }
+  .add-child-row { display:flex; align-items:center; gap:10px; padding:12px 16px; border-top:1px solid var(--border); }
+  .add-child-label { flex:1; font-size:14px; font-weight:700; color:var(--primary); }
+
+  /* ── TASK CREATE ── */
+  .diff-chip { flex:1; padding:10px; text-align:center; border-radius:10px; border:2px solid var(--border); font-size:13px; font-weight:800; }
+  .diff-chip.medium { border-color:var(--warning); background:rgba(255,179,71,0.1); color:var(--warning); }
+  .cat-chip { padding:8px 14px; border-radius:20px; border:1.5px solid var(--border); font-size:12px; font-weight:700; color:var(--text-sec); }
+  .cat-chip.selected { border-color:var(--primary); background:rgba(108,99,255,0.08); color:var(--primary); }
+
+  /* ── MEMBER PROFILE ── */
+  .member-hero { background:linear-gradient(135deg,var(--primary),#9B6DFF); padding:24px 20px 32px; text-align:center; color:#fff; }
+  .stat-row { display:flex; gap:10px; margin:-20px 16px 16px; }
+  .stat-card { flex:1; background:#fff; border-radius:14px; padding:14px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.1); }
+</style>
+</head>
+<body>
+
+<div style="max-width:900px;margin:0 auto 8px;padding:14px 20px;background:#fff;border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,0.08);display:flex;gap:18px;flex-wrap:wrap;font-weight:800;">
+  <a href="index.html" style="color:#6C63FF;text-decoration:none;">← FamilyWin Home</a>
+  <a href="onboarding.html" style="color:#6C63FF;text-decoration:none;">App Handbook</a>
+  <a href="benefits.html" style="color:#6C63FF;text-decoration:none;">Why Families Love It</a>
+</div>
+
+<h1>🏆 FamilyWin — Updated Screens</h1>
+<p class="subtitle">v2 — Managed Child Profiles + iOS/Android ready</p>
+<div class="badge-row">
+  <span class="badge new">🟢 NEW screens</span>
+  <span class="badge updated">🟡 UPDATED screens</span>
+  <span class="badge unchanged">⚪ Unchanged</span>
+</div>
+
+<!-- ═══════════════════════════════════ AUTH FLOW ═══════════════════════════════════ -->
+<div class="section-label">Auth Flow (unchanged)</div>
+<div class="screens-row">
+
+  <!-- SPLASH -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="splash">
+        <div class="skip-btn">Skip</div>
+        <div style="text-align:center;">
+          <div class="splash-emoji">🏆</div>
+          <div class="splash-title">Welcome to<br>FamilyWin!</div>
+          <div class="splash-sub">Turn everyday chores into an exciting family competition</div>
+          <div class="chip">📋 Assign tasks</div>
+          <div class="chip">⭐ Earn points</div>
+          <div class="chip">🏅 Win the week</div>
+        </div>
+        <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <button class="btn-next" style="color:#6C63FF;">Next →</button>
+      </div>
+    </div>
+    <div class="phone-label">1. SPLASH</div><span class="tag">⚪ unchanged</span>
+  </div>
+
+  <!-- REGISTER -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="padding:16px;">
+        <span style="font-size:14px;font-weight:700;color:var(--primary);display:block;margin-bottom:12px;">← Back</span>
+        <div class="auth-header" style="padding:8px 0 14px;">
+          <div class="auth-logo">🏆</div>
+          <div class="auth-app-name">FamilyWin</div>
+          <div style="font-size:12px;color:var(--text-sec);margin-top:4px;text-align:center;">Join FamilyWin and start your journey</div>
+        </div>
+        <button class="btn-google"><span class="g">G</span> Continue with Google</button>
+        <div class="divider"><div class="divider-line"></div><span class="divider-text">or sign up with email</span><div class="divider-line"></div></div>
+        <div class="form-card">
+          <span class="label">Email Address</span>
+          <input class="input-field" placeholder="you@example.com" readonly>
+          <span class="label">Password</span>
+          <input class="input-field" placeholder="Min. 6 characters" type="password" readonly>
+          <span class="label">Confirm Password</span>
+          <input class="input-field" placeholder="Repeat your password" type="password" readonly>
+          <button class="btn-primary" style="margin-top:14px;">Create Account →</button>
+          <div class="bottom-link">Already have an account? <span>Sign In</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">2. REGISTER</div><span class="tag">⚪ unchanged</span>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen">
+        <div class="auth-header">
+          <div class="auth-logo">🏆</div>
+          <div class="auth-app-name">FamilyWin</div>
+          <div style="font-size:11px;color:var(--text-sec);letter-spacing:2px;text-transform:uppercase;margin-top:2px;">Family Chore Champion</div>
+        </div>
+        <div class="form-card">
+          <div class="form-title">Welcome back!</div>
+          <span class="label">Email</span>
+          <input class="input-field" placeholder="you@example.com" readonly>
+          <span class="label">Password</span>
+          <input class="input-field" placeholder="••••••••" type="password" readonly>
+          <div class="forgot">Forgot password?</div>
+          <button class="btn-primary">Sign In</button>
+          <div class="divider"><div class="divider-line"></div><span class="divider-text">or</span><div class="divider-line"></div></div>
+          <button class="btn-google"><span class="g">G</span> Continue with Google</button>
+          <div class="bottom-link">Don't have an account? <span>Sign Up</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">3. LOGIN</div><span class="tag">⚪ unchanged</span>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════ ONBOARDING ═══════════════════════════════════ -->
+<div class="section-label">Onboarding (unchanged)</div>
+<div class="screens-row">
+
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="display:flex;flex-direction:column;justify-content:center;min-height:680px;">
+        <div style="text-align:center;margin-bottom:28px;">
+          <div style="font-size:56px;">👨‍👩‍👧‍👦</div>
+          <div style="font-size:22px;font-weight:900;color:var(--text);margin-top:8px;">Welcome to FamilyWin!</div>
+          <div style="font-size:13px;color:var(--text-sec);margin-top:4px;">Set up your family to get started</div>
+        </div>
+        <div class="choice-card"><div class="choice-emoji">🏠</div><div class="choice-info"><h3>Create a New Family</h3><p>Start fresh — you'll get an invite code to share</p></div><span style="font-size:20px;color:var(--primary);margin-left:auto;">→</span></div>
+        <div class="choice-card secondary"><div class="choice-emoji">🔗</div><div class="choice-info"><h3>Join Existing Family</h3><p>Enter an invite code from your family admin</p></div><span style="font-size:20px;color:var(--primary);margin-left:auto;">→</span></div>
+      </div>
+    </div>
+    <div class="phone-label">4a. CHOOSE</div><span class="tag">⚪ unchanged</span>
+  </div>
+
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:680px;">
+        <div style="font-size:72px;text-align:center;">🎉</div>
+        <div style="font-size:24px;font-weight:900;color:var(--text);text-align:center;margin-top:12px;">Family Created!</div>
+        <div style="font-size:13px;color:var(--text-sec);text-align:center;margin-top:4px;margin-bottom:24px;">Share this code with your family</div>
+        <div style="background:#fff;border-radius:20px;padding:28px;text-align:center;border:2px solid rgba(108,99,255,0.3);width:100%;margin-bottom:20px;">
+          <div style="font-size:13px;color:var(--text-sec);font-weight:700;">Your Invite Code</div>
+          <div class="invite-code">XK7P2Q</div>
+          <div style="font-size:12px;color:var(--text-muted);">Share so others can join</div>
+        </div>
+        <button class="btn-primary">Let's Go! 🏆</button>
+      </div>
+    </div>
+    <div class="phone-label">4b. DONE</div><span class="tag">⚪ unchanged</span>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════ NEW MANAGED CHILD SCREENS ════════════════════════════ -->
+<div id="managed" class="section-label">🆕 New — Managed Child Feature</div>
+<div class="screens-row">
+
+  <!-- ADD CHILD SCREEN -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="padding:16px;">
+        <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;"></div>
+        <div style="text-align:center;margin-bottom:16px;">
+          <div style="font-size:52px;">👶</div>
+          <div style="font-size:22px;font-weight:900;color:var(--text);margin-top:8px;">Add a Child Profile</div>
+          <div style="font-size:13px;color:var(--text-sec);margin-top:6px;line-height:1.5;">No phone needed — complete tasks on their behalf from your Home screen.</div>
+        </div>
+        <span class="label">Pick an Avatar</span>
+        <div class="avatar-row">
+          <div class="avatar-opt">🦁</div>
+          <div class="avatar-opt selected">🦊</div>
+          <div class="avatar-opt">🐼</div>
+          <div class="avatar-opt">🐸</div>
+          <div class="avatar-opt">🦋</div>
+          <div class="avatar-opt">🐯</div>
+        </div>
+        <span class="label">Child's Name</span>
+        <input class="input-field" value="Tommy" readonly>
+        <span class="label">Age (optional)</span>
+        <input class="input-field" value="8" readonly>
+        <div class="preview-card" style="margin-top:14px;">
+          <span style="font-size:40px;">🦊</span>
+          <div><div style="font-size:16px;font-weight:800;color:var(--text);">Tommy</div><div style="font-size:12px;color:var(--text-sec);margin-top:2px;">👶 Managed child · Age 8</div></div>
+        </div>
+        <div class="info-box">
+          <div class="info-title">How this works</div>
+          <div class="info-text">• Tommy appears on the leaderboard and can be assigned tasks.<br>• Switch to their profile from Home to mark tasks done.<br>• Points go directly to Tommy.<br>• They can claim this profile later if they get a phone.</div>
+        </div>
+        <button class="btn-primary" style="margin-top:16px;">Add Tommy to Family 🎉</button>
+        <div style="text-align:center;padding:12px 0;font-size:13px;color:var(--text-sec);">Cancel</div>
+      </div>
+    </div>
+    <div class="phone-label">ADD CHILD MODAL</div><span class="tag new">🟢 NEW</span>
+  </div>
+
+  <!-- PROFILE SWITCHER MODAL -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="modal-overlay">
+        <!-- Dimmed background shows home screen peeking through -->
+        <div style="flex:1;padding:16px;opacity:0.3;">
+          <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:8px;">Hey, Dad 🦁</div>
+          <div style="background:rgba(255,255,255,0.3);border-radius:14px;height:70px;margin-bottom:10px;"></div>
+          <div style="background:rgba(255,255,255,0.3);border-radius:14px;height:60px;margin-bottom:8px;"></div>
+          <div style="background:rgba(255,255,255,0.3);border-radius:14px;height:60px;"></div>
+        </div>
+        <div class="modal-sheet">
+          <div class="modal-handle"></div>
+          <div class="modal-title">Whose tasks are you doing?</div>
+          <div class="modal-sub">Switch to complete tasks on behalf of a family member</div>
+          <!-- Self -->
+          <div class="profile-row active">
+            <div class="pr-avatar">🦁</div>
+            <div class="pr-info">
+              <div class="pr-name active">Myself (Dad)</div>
+              <div class="pr-role">admin parent</div>
+            </div>
+            <div class="pr-check">✓</div>
+          </div>
+          <!-- Managed child 1 -->
+          <div class="profile-row">
+            <div class="pr-avatar">🦊</div>
+            <div class="pr-info">
+              <div class="pr-name">Tommy</div>
+              <div class="pr-role">👶 Managed profile</div>
+            </div>
+          </div>
+          <!-- Managed child 2 -->
+          <div class="profile-row">
+            <div class="pr-avatar">🐼</div>
+            <div class="pr-info">
+              <div class="pr-name">Emma</div>
+              <div class="pr-role">👶 Managed profile</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">PROFILE PICKER</div><span class="tag new">🟢 NEW</span>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════ UPDATED HOME SCREEN ════════════════════════════════ -->
+<div id="home" class="section-label">🟡 Updated — Home Screen (two states)</div>
+<div class="screens-row">
+
+  <!-- HOME — Normal (acting as self) -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="padding:14px;padding-bottom:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>
+            <div style="font-size:22px;font-weight:900;color:var(--text);">Hey, Dad 🦁</div>
+            <div style="font-size:13px;color:var(--text-sec);">Tuesday, June 3</div>
+          </div>
+          <button style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:800;">＋</button>
+        </div>
+        <!-- No switcher banner — acting as self -->
+        <div style="background:rgba(108,99,255,0.08);border:1px dashed rgba(108,99,255,0.3);border-radius:10px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:var(--primary);font-weight:700;">💡 Tap profile banner to switch to a child's view</div>
+        <div class="points-banner">
+          <div><div style="font-size:12px;opacity:0.85;">Your Points This Week</div><div style="font-size:36px;font-weight:900;">410</div></div>
+          <div style="text-align:right;">🔥 <span style="font-size:18px;font-weight:900;">7</span><div style="font-size:11px;opacity:0.8;">day streak</div></div>
+        </div>
+        <div class="section-hdr">Today's Tasks</div>
+        <div class="task-card" style="border-left-color:var(--success);opacity:0.6;">
+          <div style="font-size:28px;">🧹</div>
+          <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);text-decoration:line-through;">Clean the House</div><div style="font-size:12px;color:var(--text-sec);">🏠 Chores • Hard</div></div>
+          <div style="background:rgba(67,217,143,0.15);color:var(--success);font-size:13px;font-weight:800;padding:4px 10px;border-radius:20px;">✅ +50</div>
+        </div>
+        <div class="task-card" style="border-left-color:var(--warning);">
+          <div style="font-size:28px;">📦</div>
+          <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">Take Out Bins</div><div style="font-size:12px;color:var(--text-sec);">🏠 Chores • Medium</div></div>
+          <div class="task-pts">+25</div>
+        </div>
+        <div class="task-card" style="border-left-color:var(--primary);">
+          <div style="font-size:28px;">🌿</div>
+          <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">Water the Plants</div><div style="font-size:12px;color:var(--text-sec);">🌱 Garden • Easy</div></div>
+          <div class="task-pts">+10</div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab active"><div class="t-icon">🏠</div><div class="t-label">Home</div></div>
+        <div class="tab"><div class="t-icon">🏆</div><div class="t-label">Scores</div></div>
+        <div class="tab"><div class="t-icon">🎁</div><div class="t-label">Rewards</div></div>
+        <div class="tab"><div class="t-icon">📊</div><div class="t-label">History</div></div>
+        <div class="tab"><div class="t-icon">⚙️</div><div class="t-label">Settings</div></div>
+      </div>
+    </div>
+    <div class="phone-label">5a. HOME — As Myself (Dad)</div><span class="tag updated">🟡 UPDATED</span>
+  </div>
+
+  <!-- HOME — Acting as Tommy -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="padding:14px;padding-bottom:0;">
+        <!-- Purple switcher banner visible -->
+        <div class="switcher-banner">
+          <div class="switcher-left">
+            <div class="switcher-avatar">🦊</div>
+            <div>
+              <div class="switcher-label">Acting as</div>
+              <div class="switcher-name">Tommy</div>
+            </div>
+          </div>
+          <div class="switcher-btn">Switch 🔄</div>
+        </div>
+        <!-- Greeting changes to child's name -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>
+            <div style="font-size:20px;font-weight:900;color:var(--text);">🦊 Tommy's tasks</div>
+            <div style="font-size:13px;color:var(--text-sec);">Tuesday, June 3</div>
+          </div>
+          <button style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:800;">＋</button>
+        </div>
+        <div class="points-banner" style="background:linear-gradient(135deg,#FF6584,#FFB347);">
+          <div><div style="font-size:12px;opacity:0.85;">Tommy's Points This Week</div><div style="font-size:36px;font-weight:900;">320</div></div>
+          <div style="text-align:right;">🔥 <span style="font-size:18px;font-weight:900;">5</span><div style="font-size:11px;opacity:0.8;">day streak</div></div>
+        </div>
+        <div class="section-hdr">Tommy's Tasks Today</div>
+        <div class="task-card" style="border-left-color:var(--success);opacity:0.6;">
+          <div style="font-size:28px;">🧹</div>
+          <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);text-decoration:line-through;">Clean Your Room</div><div style="font-size:12px;color:var(--text-sec);">🏠 Chores • Easy</div></div>
+          <div style="background:rgba(67,217,143,0.15);color:var(--success);font-size:13px;font-weight:800;padding:4px 10px;border-radius:20px;">✅ +10</div>
+        </div>
+        <div class="task-card" style="border-left-color:var(--warning);">
+          <div style="font-size:28px;">📚</div>
+          <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">Do Homework</div><div style="font-size:12px;color:var(--text-sec);">📖 School • Medium</div></div>
+          <div class="task-pts">+25</div>
+        </div>
+        <div class="task-card" style="border-left-color:var(--danger);">
+          <div style="font-size:28px;">🍽️</div>
+          <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">Wash the Dishes</div><div style="font-size:12px;color:var(--text-sec);">🏠 Chores • Hard ⚠️ 8pm</div></div>
+          <div class="task-pts">+50</div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab active"><div class="t-icon">🏠</div><div class="t-label">Home</div></div>
+        <div class="tab"><div class="t-icon">🏆</div><div class="t-label">Scores</div></div>
+        <div class="tab"><div class="t-icon">🎁</div><div class="t-label">Rewards</div></div>
+        <div class="tab"><div class="t-icon">📊</div><div class="t-label">History</div></div>
+        <div class="tab"><div class="t-icon">⚙️</div><div class="t-label">Settings</div></div>
+      </div>
+    </div>
+    <div class="phone-label">5b. HOME — Acting as Tommy</div><span class="tag new">🟢 NEW STATE</span>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════ LEADERBOARD (updated) ═══════════════════════════════ -->
+<div id="leaderboard" class="section-label">🟡 Updated — Leaderboard (managed children appear)</div>
+<div class="screens-row">
+
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="padding:14px;padding-bottom:0;">
+        <div style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:2px;">Leaderboard 🏆</div>
+        <div style="font-size:13px;color:var(--text-sec);margin-bottom:4px;">Week 23 · Jun 2–8</div>
+        <div class="podium">
+          <div class="podium-slot">
+            <div style="font-size:32px;">🦊</div>
+            <div style="font-size:11px;font-weight:800;color:var(--text);margin-top:4px;">Tommy</div>
+            <div style="font-size:11px;color:var(--text-sec);">320 pts</div>
+            <div class="podium-bar" style="height:64px;background:var(--silver);">🥈</div>
+          </div>
+          <div class="podium-slot">
+            <div style="font-size:32px;">🦁</div>
+            <div style="font-size:11px;font-weight:800;color:var(--text);margin-top:4px;">Dad</div>
+            <div style="font-size:11px;color:var(--text-sec);">410 pts</div>
+            <div class="podium-bar" style="height:90px;background:var(--gold);">🥇</div>
+          </div>
+          <div class="podium-slot">
+            <div style="font-size:32px;">🐸</div>
+            <div style="font-size:11px;font-weight:800;color:var(--text);margin-top:4px;">Mom</div>
+            <div style="font-size:11px;color:var(--text-sec);">280 pts</div>
+            <div class="podium-bar" style="height:52px;background:var(--bronze);">🥉</div>
+          </div>
+        </div>
+        <div class="lb-row" style="border:1.5px solid var(--gold);">
+          <div style="font-size:18px;font-weight:900;width:28px;text-align:center;">🥇</div><div style="font-size:28px;">🦁</div><div style="flex:1;font-size:14px;font-weight:800;color:var(--text);">Dad</div><div style="font-size:15px;font-weight:900;color:var(--primary);">410</div>
+        </div>
+        <div class="lb-row lb-managed">
+          <div style="font-size:18px;font-weight:900;width:28px;text-align:center;">🥈</div><div style="font-size:28px;">🦊</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:800;color:var(--text);">Tommy</div>
+            <div style="font-size:11px;color:var(--success);font-weight:700;">👶 Managed</div>
+          </div>
+          <div style="font-size:15px;font-weight:900;color:var(--primary);">320</div>
+        </div>
+        <div class="lb-row">
+          <div style="font-size:18px;font-weight:900;width:28px;text-align:center;">🥉</div><div style="font-size:28px;">🐸</div><div style="flex:1;font-size:14px;font-weight:800;color:var(--text);">Mom</div><div style="font-size:15px;font-weight:900;color:var(--primary);">280</div>
+        </div>
+        <div class="lb-row lb-managed">
+          <div style="font-size:18px;font-weight:900;width:28px;text-align:center;color:var(--text-muted);">4</div><div style="font-size:28px;">🐼</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:800;color:var(--text);">Emma</div>
+            <div style="font-size:11px;color:var(--success);font-weight:700;">👶 Managed</div>
+          </div>
+          <div style="font-size:15px;font-weight:900;color:var(--primary);">195</div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab"><div class="t-icon">🏠</div><div class="t-label">Home</div></div>
+        <div class="tab active"><div class="t-icon">🏆</div><div class="t-label">Scores</div></div>
+        <div class="tab"><div class="t-icon">🎁</div><div class="t-label">Rewards</div></div>
+        <div class="tab"><div class="t-icon">📊</div><div class="t-label">History</div></div>
+        <div class="tab"><div class="t-icon">⚙️</div><div class="t-label">Settings</div></div>
+      </div>
+    </div>
+    <div class="phone-label">6. LEADERBOARD</div><span class="tag updated">🟡 Managed children show with 👶 badge</span>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════ SETTINGS (updated) ═══════════════════════════════ -->
+<div class="section-label">🟡 Updated — Settings (Manage Children section)</div>
+<div class="screens-row">
+
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="padding:0;padding-bottom:0;overflow:hidden;">
+        <div style="padding:16px 16px 8px;font-size:22px;font-weight:900;color:var(--text);">⚙️ Settings</div>
+
+        <!-- Profile -->
+        <div style="padding:0 16px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:800;color:var(--text-sec);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">My Profile</div>
+          <div class="settings-section" style="padding:12px 16px;display:flex;align-items:center;gap:14px;">
+            <div style="position:relative;"><div style="font-size:52px;">🦁</div><div style="position:absolute;bottom:0;right:0;background:var(--primary);width:22px;height:22px;border-radius:11px;text-align:center;font-size:11px;line-height:22px;">✏️</div></div>
+            <div><div style="font-size:18px;font-weight:900;color:var(--text);">Dad</div><div style="font-size:12px;color:var(--text-sec);">Admin Parent</div><div style="font-size:12px;font-weight:700;color:var(--primary);">The Smith Family</div></div>
+          </div>
+        </div>
+
+        <!-- Managed Children — NEW SECTION -->
+        <div style="padding:0 16px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:800;color:var(--text-sec);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Managed Children <span style="background:#43D98F22;color:#43D98F;border-radius:6px;padding:1px 6px;font-size:10px;">NEW</span></div>
+          <div class="settings-section">
+            <div class="managed-hint-box">
+              <div class="managed-hint-text">👶 Children added here don't need their own phone. Switch to their profile from Home to do tasks on their behalf.</div>
+            </div>
+            <!-- Child 1 -->
+            <div class="child-row">
+              <div style="font-size:32px;">🦊</div>
+              <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">Tommy</div><div style="font-size:12px;color:var(--text-sec);">👶 Managed · Age 8</div></div>
+              <span class="remove-tag">Remove</span>
+            </div>
+            <!-- Child 2 -->
+            <div class="child-row">
+              <div style="font-size:32px;">🐼</div>
+              <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">Emma</div><div style="font-size:12px;color:var(--text-sec);">👶 Managed · Age 6</div></div>
+              <span class="remove-tag">Remove</span>
+            </div>
+            <!-- Add button -->
+            <div class="add-child-row">
+              <span style="font-size:20px;">➕</span>
+              <span class="add-child-label">Add a Child Profile</span>
+              <span style="font-size:18px;color:var(--text-muted);">→</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div style="padding:0 16px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:800;color:var(--text-sec);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Notifications</div>
+          <div class="settings-section">
+            <div class="settings-row"><span class="settings-label">Enable Notifications</span><div class="toggle"></div></div>
+            <div class="settings-row"><span class="settings-label">Reminder Time</span><span class="settings-value">8:00 PM →</span></div>
+          </div>
+        </div>
+
+        <!-- Parental Controls -->
+        <div style="padding:0 16px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:800;color:var(--text-sec);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Parental Controls</div>
+          <div class="settings-section">
+            <div class="settings-row"><span style="font-size:20px;">⚠️</span><div style="flex:1;"><div style="font-size:14px;font-weight:700;color:var(--text);">Log Discipline Event</div><div style="font-size:12px;color:var(--text-sec);">Bonuses or penalties</div></div><span style="font-size:18px;color:var(--text-muted);">→</span></div>
+          </div>
+        </div>
+
+        <!-- Sign out -->
+        <div style="padding:0 16px;">
+          <div class="settings-section">
+            <div class="settings-row"><span style="font-size:20px;">🚪</span><span style="font-size:14px;font-weight:700;color:var(--danger);">Log Out</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab"><div class="t-icon">🏠</div><div class="t-label">Home</div></div>
+        <div class="tab"><div class="t-icon">🏆</div><div class="t-label">Scores</div></div>
+        <div class="tab"><div class="t-icon">🎁</div><div class="t-label">Rewards</div></div>
+        <div class="tab"><div class="t-icon">📊</div><div class="t-label">History</div></div>
+        <div class="tab active"><div class="t-icon">⚙️</div><div class="t-label">Settings</div></div>
+      </div>
+    </div>
+    <div class="phone-label">9. SETTINGS</div><span class="tag updated">🟡 Manage Children section added</span>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════ UNCHANGED SCREENS ═══════════════════════════════════ -->
+<div class="section-label">Unchanged screens</div>
+<div class="screens-row">
+
+  <!-- REWARDS -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="padding:14px;padding-bottom:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-size:22px;font-weight:900;color:var(--text);">Rewards Store 🎁</div>
+        </div>
+        <div style="background:linear-gradient(135deg,var(--accent),#FF9A8B);border-radius:14px;padding:14px 16px;color:#fff;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+          <div><div style="font-size:12px;opacity:0.9;">Your Balance</div><div style="font-size:28px;font-weight:900;">320 pts</div></div>
+          <div style="font-size:36px;">💰</div>
+        </div>
+        <div class="section-hdr">Available Rewards</div>
+        <div class="reward-card"><div style="font-size:32px;">📱</div><div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">30 min Screen Time</div><div style="font-size:12px;color:var(--text-sec);">💰 100 points</div></div><button class="btn-redeem">Redeem</button></div>
+        <div class="reward-card"><div style="font-size:32px;">🍦</div><div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">Ice Cream Treat</div><div style="font-size:12px;color:var(--text-sec);">💰 150 points</div></div><button class="btn-redeem">Redeem</button></div>
+        <div class="reward-card"><div style="font-size:32px;">🎮</div><div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">Game Night Pick</div><div style="font-size:12px;color:var(--text-sec);">💰 400 points</div></div><button class="btn-redeem disabled">Need more pts</button></div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab"><div class="t-icon">🏠</div><div class="t-label">Home</div></div>
+        <div class="tab"><div class="t-icon">🏆</div><div class="t-label">Scores</div></div>
+        <div class="tab active"><div class="t-icon">🎁</div><div class="t-label">Rewards</div></div>
+        <div class="tab"><div class="t-icon">📊</div><div class="t-label">History</div></div>
+        <div class="tab"><div class="t-icon">⚙️</div><div class="t-label">Settings</div></div>
+      </div>
+    </div>
+    <div class="phone-label">7. REWARDS</div><span class="tag">⚪ unchanged</span>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="padding:14px;padding-bottom:0;">
+        <div style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:12px;">History 📊</div>
+        <div class="toggle-row"><div class="toggle-btn active">My Points</div><div class="toggle-btn">Family</div></div>
+        <div class="bar-chart">
+          <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px;">Last 6 Weeks</div>
+          <div class="bar-row">
+            <div class="bar" style="height:45px;"></div><div class="bar" style="height:68px;"></div><div class="bar" style="height:55px;"></div><div class="bar" style="height:80px;"></div><div class="bar" style="height:38px;"></div><div class="bar current" style="height:95px;"></div>
+          </div>
+          <div style="display:flex;gap:6px;"><div style="flex:1;text-align:center;font-size:10px;color:var(--text-muted);font-weight:700;">W18</div><div style="flex:1;text-align:center;font-size:10px;color:var(--text-muted);font-weight:700;">W19</div><div style="flex:1;text-align:center;font-size:10px;color:var(--text-muted);font-weight:700;">W20</div><div style="flex:1;text-align:center;font-size:10px;color:var(--text-muted);font-weight:700;">W21</div><div style="flex:1;text-align:center;font-size:10px;color:var(--text-muted);font-weight:700;">W22</div><div style="flex:1;text-align:center;font-size:10px;color:var(--primary);font-weight:700;">W23</div></div>
+        </div>
+        <div style="display:flex;gap:14px;margin-bottom:12px;">
+          <div class="card" style="flex:1;text-align:center;padding:12px;"><div style="font-size:22px;font-weight:900;color:var(--primary);">410</div><div style="font-size:11px;color:var(--text-sec);font-weight:700;">This Week</div></div>
+          <div class="card" style="flex:1;text-align:center;padding:12px;"><div style="font-size:22px;font-weight:900;color:var(--success);">2,140</div><div style="font-size:11px;color:var(--text-sec);font-weight:700;">All Time</div></div>
+        </div>
+        <div class="tx-row"><div style="font-size:22px;">✅</div><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:var(--text);">Cleaned the House</div><div style="font-size:11px;color:var(--text-muted);">Today, 2:15 PM</div></div><div class="tx-delta pos">+50</div></div>
+        <div class="tx-row"><div style="font-size:22px;">✅</div><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:var(--text);">Take Out Bins</div><div style="font-size:11px;color:var(--text-muted);">Yesterday</div></div><div class="tx-delta pos">+25</div></div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab"><div class="t-icon">🏠</div><div class="t-label">Home</div></div>
+        <div class="tab"><div class="t-icon">🏆</div><div class="t-label">Scores</div></div>
+        <div class="tab"><div class="t-icon">🎁</div><div class="t-label">Rewards</div></div>
+        <div class="tab active"><div class="t-icon">📊</div><div class="t-label">History</div></div>
+        <div class="tab"><div class="t-icon">⚙️</div><div class="t-label">Settings</div></div>
+      </div>
+    </div>
+    <div class="phone-label">8. HISTORY</div><span class="tag">⚪ unchanged</span>
+  </div>
+
+  <!-- DISCIPLINE -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen" style="padding:16px;">
+        <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;"></div>
+        <div style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:16px;">Log Discipline Event 📋</div>
+        <span class="label">Member</span>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          <div class="cat-chip selected">🦊 Tommy</div>
+          <div class="cat-chip">🐼 Emma</div>
+          <div class="cat-chip">🐸 Mom</div>
+        </div>
+        <span class="label">Event Type</span>
+        <div style="display:flex;gap:10px;margin:8px 0;">
+          <div style="flex:1;text-align:center;padding:14px;border-radius:12px;border:2px solid var(--danger);background:rgba(255,92,92,0.08);"><div style="font-size:28px;">⚠️</div><div style="font-size:12px;font-weight:800;color:var(--text);margin-top:4px;">Penalty</div></div>
+          <div style="flex:1;text-align:center;padding:14px;border-radius:12px;border:2px solid var(--border);"><div style="font-size:28px;">⭐</div><div style="font-size:12px;font-weight:800;color:var(--text);margin-top:4px;">Bonus</div></div>
+        </div>
+        <span class="label">Points</span>
+        <input class="input-field" value="-25" readonly>
+        <span class="label">Reason</span>
+        <input class="input-field" value="Argued at dinner" readonly>
+        <div class="card" style="margin-top:14px;background:rgba(255,92,92,0.06);border:1.5px solid rgba(255,92,92,0.2);">
+          <div style="font-size:13px;font-weight:700;color:var(--text);">Preview</div>
+          <div style="font-size:13px;color:var(--text-sec);margin-top:4px;">🦊 Tommy will lose <span style="color:var(--danger);font-weight:900;">25 pts</span> for "Argued at dinner"</div>
+        </div>
+        <button class="btn-primary" style="background:var(--danger);margin-top:14px;">Log Event</button>
+      </div>
+    </div>
+    <div class="phone-label">10. DISCIPLINE LOG</div><span class="tag">⚪ unchanged</span>
+  </div>
+
+  <!-- MEMBER PROFILE -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div style="background:var(--bg);min-height:680px;">
+        <div class="member-hero">
+          <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,0.8);text-align:left;margin-bottom:8px;">← Back</div>
+          <div style="font-size:64px;text-align:center;">🦊</div>
+          <div style="font-size:24px;font-weight:900;text-align:center;margin-top:8px;">Tommy</div>
+          <div style="background:rgba(255,255,255,0.2);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:800;display:inline-block;margin-top:6px;">👶 Managed Child</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-card"><div style="font-size:24px;font-weight:900;color:var(--primary);">320</div><div style="font-size:11px;color:var(--text-sec);font-weight:700;">This Week</div></div>
+          <div class="stat-card"><div style="font-size:24px;font-weight:900;color:var(--primary);">1,840</div><div style="font-size:11px;color:var(--text-sec);font-weight:700;">All Time</div></div>
+          <div class="stat-card"><div style="font-size:24px;font-weight:900;color:var(--primary);">#2</div><div style="font-size:11px;color:var(--text-sec);font-weight:700;">Rank</div></div>
+        </div>
+        <div style="background:linear-gradient(135deg,#FF6584,#FFB347);border-radius:14px;padding:16px;margin:0 16px 14px;display:flex;align-items:center;gap:12px;color:#fff;">
+          <div style="font-size:36px;">🔥</div>
+          <div><div style="font-size:28px;font-weight:900;">5</div><div style="font-size:12px;opacity:0.9;">Day Streak</div></div>
+          <div style="margin-left:auto;text-align:right;"><div style="font-size:12px;opacity:0.9;">Next bonus at 7 days</div><div style="font-size:18px;font-weight:900;">+50 pts</div></div>
+        </div>
+        <div style="padding:0 16px;">
+          <div class="section-hdr">Recent Activity</div>
+          <div class="tx-row"><div style="font-size:22px;">✅</div><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:var(--text);">Clean Your Room</div><div style="font-size:11px;color:var(--text-muted);">Today</div></div><div class="tx-delta pos">+10</div></div>
+          <div class="tx-row"><div style="font-size:22px;">✅</div><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:var(--text);">Homework</div><div style="font-size:11px;color:var(--text-muted);">Yesterday</div></div><div class="tx-delta pos">+25</div></div>
+          <div class="tx-row"><div style="font-size:22px;">⚠️</div><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:var(--text);">Dishes — Auto Failed</div><div style="font-size:11px;color:var(--text-muted);">Monday</div></div><div class="tx-delta neg">-25</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">11. MEMBER PROFILE</div><span class="tag updated">🟡 Shows Managed badge</span>
+  </div>
+
+</div>
+
+<div style="text-align:center;color:#555;font-size:13px;margin-top:48px;padding-bottom:32px;">
+  FamilyWin v2 · 13 screens · Managed Child Profiles · iOS + Android · React Native + Expo + Firebase
+</div>
+
+</body>
+</html>
