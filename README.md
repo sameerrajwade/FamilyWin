@@ -11,6 +11,22 @@ logging good/bad behavior.
 
 ---
 
+## Contents
+
+- [✨ What it does](#-what-it-does)
+- [📱 Screenshots & Flow](#-screenshots--flow)
+- [🧱 Tech Stack](#-tech-stack)
+- [🏗️ Architecture at a Glance](#️-architecture-at-a-glance)
+- [🔄 Core Data Flow](#-core-data-flow-example-completing-a-task)
+- [🚀 Getting Started](#-getting-started)
+- [📚 More Documentation](#-more-documentation)
+- [🎨 Design System](#-design-system)
+- [🔐 Roles & Permissions](#-roles--permissions)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+
+---
+
 ## ✨ What it does
 
 | For Kids | For Parents |
@@ -41,8 +57,9 @@ Splash/Onboarding → Login/Register → Create or Join Family
   Earn points       Podium + streaks  Parent approves
 ```
 
-*(Add real screenshots here before publishing — see `/preview` for a local
-HTML preview harness.)*
+A full visual tour of every screen — Home, Leaderboard, Rewards, Family,
+History, Settings, and more — lives in the **[Screen Gallery](./docs/screens.html)**
+(part of the consumer-facing docs site in `/docs`).
 
 ---
 
