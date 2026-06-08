@@ -136,8 +136,6 @@ export default function SettingsScreen() {
               return;
             }
             const result = await ImagePicker.launchCameraAsync({
-              allowsEditing: true,
-              aspect: [1, 1],
               quality: 0.7,
               mediaTypes: ImagePicker.MediaTypeOptions.Images,
             });
@@ -167,8 +165,6 @@ export default function SettingsScreen() {
               return;
             }
             const result = await ImagePicker.launchImageLibraryAsync({
-              allowsEditing: true,
-              aspect: [1, 1],
               quality: 0.7,
               mediaTypes: ImagePicker.MediaTypeOptions.Images,
             });
@@ -717,8 +713,6 @@ export default function SettingsScreen() {
                         return;
                       }
                       const result = await ImagePicker.launchImageLibraryAsync({
-                        allowsEditing: true,
-                        aspect: [1, 1],
                         quality: 0.7,
                         mediaTypes: ImagePicker.MediaTypeOptions.Images,
                       });
