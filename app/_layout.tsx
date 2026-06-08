@@ -2,7 +2,7 @@ import { useEffect, useState, Component } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring,
-  withSequence, withDelay, Easing,
+  withSequence, withDelay, withRepeat, Easing,
 } from 'react-native-reanimated';
 import { Stack, router, useRootNavigationState } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -58,68 +58,234 @@ const ebStyles = StyleSheet.create({
 
 SplashScreen.preventAutoHideAsync();
 
-// ── Branded animated splash overlay ──────────────────────────────────────────
-function AnimatedSplash() {
-  const logoScale   = useSharedValue(0.3);
-  const logoOpacity = useSharedValue(0);
-  const textOpacity = useSharedValue(0);
-  const textY       = useSharedValue(20);
-  const tagOpacity  = useSharedValue(0);
-  const shimmer     = useSharedValue(0);
+// ─────────────────────────────────────────────────────────────────────────────
+// Branded animated splash — sub-components avoid hooks-in-loops rule
+// ─────────────────────────────────────────────────────────────────────────────
 
+/** One floating background orb */
+function FloatingOrb({ size, color, top, left, delay }: {
+  size: number; color: string; top: number | string; left: number | string; delay: number;
+}) {
+  const y = useSharedValue(0);
+  const opacity = useSharedValue(0);
   useEffect(() => {
-    // Trophy bounces in
-    logoScale.value   = withSpring(1, { damping: 10, stiffness: 120 });
-    logoOpacity.value = withTiming(1, { duration: 350 });
-    // Title fades + slides up after trophy lands
-    textOpacity.value = withDelay(300, withTiming(1, { duration: 400 }));
-    textY.value       = withDelay(300, withSpring(0, { damping: 14 }));
-    // Tagline fades in last
-    tagOpacity.value  = withDelay(600, withTiming(1, { duration: 400 }));
-    // Subtle shimmer pulse on trophy
-    shimmer.value     = withDelay(500, withSequence(
-      withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-      withTiming(0, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+    opacity.value = withDelay(delay, withTiming(1, { duration: 800 }));
+    y.value = withDelay(delay, withRepeat(
+      withSequence(
+        withTiming(-18, { duration: 2400 + delay % 600, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0,   { duration: 2400 + delay % 600, easing: Easing.inOut(Easing.ease) }),
+      ), -1,
     ));
   }, []);
+  const style = useAnimatedStyle(() => ({
+    position: 'absolute', top: top as any, left: left as any,
+    width: size, height: size, borderRadius: size / 2,
+    backgroundColor: color,
+    opacity: opacity.value,
+    transform: [{ translateY: y.value }],
+  }));
+  return <Animated.View style={style} />;
+}
 
-  const logoStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }],
-    opacity: logoOpacity.value,
+/** One sparkle particle bursting outward from the trophy */
+function SparkleParticle({ angle, dist, delay, emoji }: {
+  angle: number; dist: number; delay: number; emoji: string;
+}) {
+  const tx = useSharedValue(0);
+  const ty = useSharedValue(0);
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.2);
+  useEffect(() => {
+    opacity.value = withDelay(delay, withSequence(
+      withTiming(1, { duration: 180 }),
+      withDelay(200, withTiming(0, { duration: 450 })),
+    ));
+    scale.value = withDelay(delay, withSequence(
+      withSpring(1.1, { damping: 7, stiffness: 220 }),
+      withDelay(200, withTiming(0, { duration: 350 })),
+    ));
+    tx.value = withDelay(delay, withTiming(Math.cos(angle) * dist, { duration: 700, easing: Easing.out(Easing.quad) }));
+    ty.value = withDelay(delay, withTiming(Math.sin(angle) * dist, { duration: 700, easing: Easing.out(Easing.quad) }));
+  }, []);
+  const style = useAnimatedStyle(() => ({
+    position: 'absolute',
+    opacity: opacity.value,
+    transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
   }));
-  const textStyle = useAnimatedStyle(() => ({
-    opacity: textOpacity.value,
-    transform: [{ translateY: textY.value }],
+  return <Animated.Text style={[style, { fontSize: 22 }]}>{emoji}</Animated.Text>;
+}
+
+/** One star in the staggered bottom row */
+function StarItem({ emoji, delay }: { emoji: string; delay: number }) {
+  const scale = useSharedValue(0);
+  const opacity = useSharedValue(0);
+  useEffect(() => {
+    opacity.value = withDelay(delay, withTiming(1, { duration: 300 }));
+    scale.value   = withDelay(delay, withSpring(1, { damping: 8, stiffness: 200 }));
+  }, []);
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value, transform: [{ scale: scale.value }],
   }));
-  const tagStyle = useAnimatedStyle(() => ({ opacity: tagOpacity.value }));
-  const shimmerStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + shimmer.value * 0.12 }],
+  return <Animated.Text style={[style, { fontSize: 22, marginHorizontal: 5 }]}>{emoji}</Animated.Text>;
+}
+
+const SPARKLES = [
+  { emoji: '✨', angle: 0 },
+  { emoji: '⭐', angle: Math.PI / 3 },
+  { emoji: '✨', angle: (2 * Math.PI) / 3 },
+  { emoji: '🌟', angle: Math.PI },
+  { emoji: '✨', angle: (4 * Math.PI) / 3 },
+  { emoji: '⭐', angle: (5 * Math.PI) / 3 },
+  { emoji: '💫', angle: Math.PI / 6 },
+  { emoji: '✨', angle: (7 * Math.PI) / 6 },
+];
+
+const BOTTOM_STARS = ['🏅','⭐','🏆','⭐','🏅'];
+
+function AnimatedSplash({ isExiting }: { isExiting: boolean }) {
+  // ── Container exit: zoom-fade out ─────────────────────────────────────────
+  const containerOpacity = useSharedValue(1);
+  const containerScale   = useSharedValue(1);
+
+  useEffect(() => {
+    if (isExiting) {
+      containerOpacity.value = withTiming(0, { duration: 500, easing: Easing.in(Easing.ease) });
+      containerScale.value   = withTiming(1.1, { duration: 500, easing: Easing.in(Easing.ease) });
+    }
+  }, [isExiting]);
+
+  const containerStyle = useAnimatedStyle(() => ({
+    opacity: containerOpacity.value,
+    transform: [{ scale: containerScale.value }],
+  }));
+
+  // ── Glow pulse behind trophy ───────────────────────────────────────────────
+  const glowScale   = useSharedValue(1);
+  const glowOpacity = useSharedValue(0);
+  useEffect(() => {
+    glowOpacity.value = withDelay(350, withTiming(0.18, { duration: 400 }));
+    glowScale.value   = withDelay(350, withRepeat(withSequence(
+      withTiming(1.35, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
+      withTiming(1.0,  { duration: 1100, easing: Easing.inOut(Easing.ease) }),
+    ), -1));
+  }, []);
+  const glowStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    width: 220, height: 220, borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    opacity: glowOpacity.value,
+    transform: [{ scale: glowScale.value }],
+  }));
+
+  // ── Trophy: drop from above + wobble rotation ──────────────────────────────
+  const trophyY      = useSharedValue(-180);
+  const trophyScale  = useSharedValue(0.4);
+  const trophyRot    = useSharedValue(-20);
+  const trophyShine  = useSharedValue(1);
+  useEffect(() => {
+    trophyY.value     = withSpring(0,  { damping: 9, stiffness: 90, mass: 1.1 });
+    trophyScale.value = withSpring(1,  { damping: 9, stiffness: 110 });
+    trophyRot.value   = withSequence(
+      withSpring(12,  { damping: 5, stiffness: 250 }),
+      withSpring(-8,  { damping: 6, stiffness: 250 }),
+      withSpring(4,   { damping: 8, stiffness: 250 }),
+      withSpring(0,   { damping: 10, stiffness: 200 }),
+    );
+    // Subtle continuous shimmer bounce after landing
+    trophyShine.value = withDelay(700, withRepeat(withSequence(
+      withTiming(1.06, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+      withTiming(1.0,  { duration: 900, easing: Easing.inOut(Easing.ease) }),
+    ), -1));
+  }, []);
+  const trophyStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: trophyY.value },
+      { scale: trophyScale.value * trophyShine.value },
+      { rotate: `${trophyRot.value}deg` },
+    ],
+  }));
+
+  // ── Title: slides up + scales in ──────────────────────────────────────────
+  const titleOpacity = useSharedValue(0);
+  const titleY       = useSharedValue(28);
+  const titleScale   = useSharedValue(0.82);
+  useEffect(() => {
+    titleOpacity.value = withDelay(480, withTiming(1, { duration: 420 }));
+    titleY.value       = withDelay(480, withSpring(0, { damping: 13, stiffness: 100 }));
+    titleScale.value   = withDelay(480, withSpring(1, { damping: 13, stiffness: 100 }));
+  }, []);
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [{ translateY: titleY.value }, { scale: titleScale.value }],
+  }));
+
+  // ── Tagline typewriter-style fade ─────────────────────────────────────────
+  const tagOpacity = useSharedValue(0);
+  const tagY       = useSharedValue(12);
+  useEffect(() => {
+    tagOpacity.value = withDelay(750, withTiming(1, { duration: 450 }));
+    tagY.value       = withDelay(750, withSpring(0, { damping: 14 }));
+  }, []);
+  const tagStyle = useAnimatedStyle(() => ({
+    opacity: tagOpacity.value, transform: [{ translateY: tagY.value }],
+  }));
+
+  // ── Thin accent line under tagline ────────────────────────────────────────
+  const lineWidth   = useSharedValue(0);
+  const lineOpacity = useSharedValue(0);
+  useEffect(() => {
+    lineOpacity.value = withDelay(900, withTiming(1, { duration: 300 }));
+    lineWidth.value   = withDelay(900, withTiming(120, { duration: 500, easing: Easing.out(Easing.ease) }));
+  }, []);
+  const lineStyle = useAnimatedStyle(() => ({
+    width: lineWidth.value, opacity: lineOpacity.value,
   }));
 
   return (
-    <View style={splashStyles.container}>
-      {/* Subtle radial glow behind trophy */}
-      <View style={splashStyles.glow} />
+    <Animated.View style={[splashStyles.container, containerStyle]}>
+      {/* Background floating orbs */}
+      <FloatingOrb size={180} color="rgba(255,255,255,0.06)" top="5%"  left="-8%"  delay={0}   />
+      <FloatingOrb size={130} color="rgba(255,101,132,0.18)" top="12%" left="65%"  delay={200} />
+      <FloatingOrb size={220} color="rgba(255,255,255,0.04)" top="60%" left="-12%" delay={100} />
+      <FloatingOrb size={100} color="rgba(255,179,71,0.14)"  top="70%" left="72%"  delay={400} />
 
-      <Animated.View style={[logoStyle, shimmerStyle]}>
-        <Text style={splashStyles.trophy}>🏆</Text>
-      </Animated.View>
+      {/* Pulsing glow behind trophy */}
+      <Animated.View style={glowStyle} />
 
-      <Animated.View style={textStyle}>
+      {/* Trophy + sparkle burst */}
+      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+        {SPARKLES.map((s, i) => (
+          <SparkleParticle
+            key={i}
+            emoji={s.emoji}
+            angle={s.angle}
+            dist={72 + (i % 3) * 18}
+            delay={420 + i * 30}
+          />
+        ))}
+        <Animated.Text style={[splashStyles.trophy, trophyStyle]}>🏆</Animated.Text>
+      </View>
+
+      {/* FamilyWin title */}
+      <Animated.View style={titleStyle}>
         <Text style={splashStyles.title}>FamilyWin</Text>
       </Animated.View>
 
+      {/* Accent line */}
+      <Animated.View style={[splashStyles.accentLine, lineStyle]} />
+
+      {/* Tagline */}
       <Animated.View style={tagStyle}>
-        <Text style={splashStyles.tagline}>Who wins this week?</Text>
+        <Text style={splashStyles.tagline}>Who wins this week? 🎯</Text>
       </Animated.View>
 
-      {/* Bottom star row */}
-      <Animated.View style={[tagStyle, splashStyles.stars]}>
-        {['⭐','✨','⭐','✨','⭐'].map((s, i) => (
-          <Text key={i} style={splashStyles.star}>{s}</Text>
+      {/* Staggered bottom star row */}
+      <View style={splashStyles.starsRow}>
+        {BOTTOM_STARS.map((s, i) => (
+          <StarItem key={i} emoji={s} delay={1000 + i * 90} />
         ))}
-      </Animated.View>
-    </View>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -128,24 +294,27 @@ const splashStyles = StyleSheet.create({
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: '#6C63FF',
     alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
   },
-  glow: {
-    position: 'absolute',
-    width: 260, height: 260, borderRadius: 130,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  trophy:  { fontSize: 90, textAlign: 'center' },
+  trophy: { fontSize: 96, textAlign: 'center' },
   title: {
-    fontSize: 42, color: '#FFFFFF', textAlign: 'center',
-    marginTop: 16, letterSpacing: 1,
+    fontSize: 44, color: '#FFFFFF', textAlign: 'center',
+    marginTop: 20, letterSpacing: 1.5,
     fontFamily: 'Nunito-Black',
+    textShadowColor: 'rgba(0,0,0,0.20)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  accentLine: {
+    height: 2, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+    marginTop: 10,
   },
   tagline: {
-    fontSize: 16, color: 'rgba(255,255,255,0.80)', textAlign: 'center',
-    marginTop: 10, fontFamily: 'Nunito-SemiBold', letterSpacing: 0.5,
+    fontSize: 16, color: 'rgba(255,255,255,0.85)', textAlign: 'center',
+    marginTop: 12, fontFamily: 'Nunito-SemiBold', letterSpacing: 0.4,
   },
-  stars: { flexDirection: 'row', marginTop: 32, gap: 8 },
-  star:  { fontSize: 20 },
+  starsRow: { flexDirection: 'row', marginTop: 36, alignItems: 'center' },
 });
 
 function InnerLayout() {
@@ -232,12 +401,16 @@ function InnerLayout() {
   // useRootNavigationState().key is undefined until Expo Router's Stack is registered —
   // checking it guarantees we never call router.replace() on an unready navigator.
   const [hasNavigated, setHasNavigated] = useState(false);
+  // Keep splash mounted a little longer so the exit animation can play out
+  const [showSplash, setShowSplash]     = useState(true);
 
   useEffect(() => {
     if (fontsLoaded && pendingRoute && navigationState?.key) {
       router.replace(pendingRoute as any);
       setPendingRoute(null);
       setHasNavigated(true);
+      // Unmount splash overlay after exit animation (500ms) completes
+      setTimeout(() => setShowSplash(false), 520);
     }
   }, [fontsLoaded, pendingRoute, navigationState?.key]);
 
@@ -263,8 +436,8 @@ function InnerLayout() {
         <Stack.Screen name="app/discipline/log" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="app/member/[id]" />
       </Stack>
-      {/* Branded animated splash overlay — shown until first route is navigated to */}
-      {!hasNavigated && <AnimatedSplash />}
+      {/* Branded animated splash overlay — shown until exit animation completes */}
+      {showSplash && <AnimatedSplash isExiting={hasNavigated} />}
     </View>
   );
 }
