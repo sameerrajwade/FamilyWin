@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Image, Alert, Linking, InteractionManager } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Image, Alert, Linking, InteractionManager, Platform } from 'react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import firestore from '@react-native-firebase/firestore';
@@ -66,50 +67,75 @@ export default function MemberProfileScreen() {
     if (pickerBusyRef.current) return;
     pickerBusyRef.current = true;
     try {
-      let permission;
-      if (source === 'camera') {
-        permission = await ImagePicker.requestCameraPermissionsAsync();
+      let uri: string | null | undefined;
+
+      // FACT, confirmed via on-device adb logcat: Android's new system Photo
+      // Picker (com.google.android.photopicker) launches as a TRANSLUCENT
+      // overlay activity that — on this device's OS build — fails to
+      // composite its own content. ActivityTaskManager logs it as genuinely
+      // "Displayed", yet nothing renders until the app is backgrounded and
+      // foregrounded (forcing Android to redraw the stack). This is an
+      // OS-level compositor bug outside our control, and expo-image-picker
+      // always prefers this Photo Picker on Android 13+ with no opt-out.
+      // Fix: bypass it on Android by firing a classic ACTION_GET_CONTENT
+      // intent — the pre-2023 Storage Access Framework chooser, an opaque
+      // full-screen activity that never touches the buggy code path. SAF
+      // manages its own per-URI access grants, so no READ_MEDIA_IMAGES
+      // permission dance is needed for this path.
+      if (source === 'library' && Platform.OS === 'android') {
+        const safResult = await IntentLauncher.startActivityAsync('android.intent.action.GET_CONTENT', {
+          type: 'image/*',
+          category: 'android.intent.category.OPENABLE',
+        });
+        if (safResult.resultCode !== -1 /* Activity.RESULT_OK */ || !safResult.data) return;
+        uri = safResult.data;
       } else {
-        permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      }
-      if (!permission.granted) {
-        if (permission.canAskAgain === false) {
-          Alert.alert('Permission Needed', 'Please enable access in Settings to change the photo.', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() },
-          ]);
+        let permission;
+        if (source === 'camera') {
+          permission = await ImagePicker.requestCameraPermissionsAsync();
         } else {
-          Alert.alert('Permission Needed', 'Permission is required to select a photo.');
+          permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         }
-        return;
+        if (!permission.granted) {
+          if (permission.canAskAgain === false) {
+            Alert.alert('Permission Needed', 'Please enable access in Settings to change the photo.', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ]);
+          } else {
+            Alert.alert('Permission Needed', 'Permission is required to select a photo.');
+          }
+          return;
+        }
+
+        // IMPORTANT — second transition gotcha: requestCameraPermissionsAsync /
+        // requestMediaLibraryPermissionsAsync ALSO opens a system dialog/activity.
+        // Once permission has already been granted (exactly the "it remembers"
+        // symptom — repeat taps skip the prompt), that await resolves almost
+        // immediately, and launching the picker Activity right after means
+        // Android is still mid-transition from the *previous* screen change
+        // (the Alert dismiss). InteractionManager.runAfterInteractions's
+        // "interaction complete" signal is known to be unreliable for this
+        // exact native transition timing on Android — a small fixed delay is
+        // the documented workaround for this specific expo-image-picker +
+        // Alert combination, so we wait briefly before actually launching.
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const result = source === 'camera'
+          ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 })
+          : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+
+        if (result.canceled) return;
+        uri = result.assets?.[0]?.uri;
       }
 
-      // IMPORTANT — second transition gotcha: requestCameraPermissionsAsync /
-      // requestMediaLibraryPermissionsAsync ALSO opens a system dialog/activity.
-      // Once permission has already been granted (exactly the "it remembers"
-      // symptom — repeat taps skip the prompt), that await resolves almost
-      // immediately, and launching the picker Activity right after means
-      // Android is still mid-transition from the *previous* screen change
-      // (the Alert dismiss). InteractionManager.runAfterInteractions's
-      // "interaction complete" signal is known to be unreliable for this
-      // exact native transition timing on Android — a small fixed delay is
-      // the documented workaround for this specific expo-image-picker +
-      // Alert combination, so we wait briefly before actually launching.
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      const result = source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-
-      if (result.canceled) return;
-      const asset = result.assets?.[0];
-      if (!asset?.uri) {
+      if (!uri) {
         Alert.alert('No Photo', 'No photo was selected.');
         return;
       }
 
       setIsUploadingPhoto(true);
-      const url = await uploadMemberPhoto(asset.uri, family!.id, member!.id);
+      const url = await uploadMemberPhoto(uri, family!.id, member!.id);
       setMember((prev) => (prev ? { ...prev, photoURL: url } : prev));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {

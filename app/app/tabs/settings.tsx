@@ -17,6 +17,23 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
+import * as IntentLauncher from 'expo-intent-launcher';
+
+// FACT, confirmed via on-device adb logcat (see family.tsx pickImageFromGallerySAF
+// for the full evidence trail): Android's new system Photo Picker renders as a
+// translucent overlay activity that fails to composite on this device's OS
+// build — "Displayed" per ActivityTaskManager, yet blank until app-switch forces
+// a redraw. expo-image-picker always prefers it on Android 13+ with no opt-out.
+// Bypass it on Android via the classic opaque ACTION_GET_CONTENT/SAF chooser,
+// which manages its own access grants (no READ_MEDIA_IMAGES permission needed).
+async function pickImageFromGallerySAF(): Promise<string | null> {
+  const result = await IntentLauncher.startActivityAsync('android.intent.action.GET_CONTENT', {
+    type: 'image/*',
+    category: 'android.intent.category.OPENABLE',
+  });
+  if (result.resultCode !== -1 /* Activity.RESULT_OK */ || !result.data) return null;
+  return result.data;
+}
 import { Share } from 'react-native';
 import {
   signOut, getFamilyMembers, updateMemberProfile,
@@ -154,6 +171,11 @@ export default function SettingsScreen() {
         text: '🖼️ Photo Library',
         onPress: async () => {
           try {
+            if (Platform.OS === 'android') {
+              const uri = await pickImageFromGallerySAF();
+              if (uri) await doUploadPhoto(uri);
+              return;
+            }
             const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
               Alert.alert('Permission Required', 'Photo library access is needed.', [
@@ -704,6 +726,11 @@ export default function SettingsScreen() {
                   style={[styles.childPhotoBox, { backgroundColor: colors.background, borderColor: colors.border }]}
                   onPress={async () => {
                     try {
+                      if (Platform.OS === 'android') {
+                        const uri = await pickImageFromGallerySAF();
+                        if (uri) setChildPhotoUri(uri);
+                        return;
+                      }
                       const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                       if (status !== 'granted') {
                         Alert.alert('Permission Required', 'Photo library access is needed.', [

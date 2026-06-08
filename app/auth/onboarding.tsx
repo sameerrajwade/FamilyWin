@@ -1,12 +1,27 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, Alert, Share, Image, Linking,
+  ScrollView, ActivityIndicator, Alert, Share, Image, Linking, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import * as IntentLauncher from 'expo-intent-launcher';
+
+// See app/app/tabs/family.tsx (pickImageFromGallerySAF) for the full,
+// logcat-confirmed explanation: Android's new system Photo Picker fails to
+// composite on this device's OS build (genuinely "Displayed" yet blank until
+// app-switch). Bypass it on Android via the classic opaque ACTION_GET_CONTENT
+// SAF chooser, which manages its own access grants.
+async function pickImageFromGallerySAF(): Promise<string | null> {
+  const result = await IntentLauncher.startActivityAsync('android.intent.action.GET_CONTENT', {
+    type: 'image/*',
+    category: 'android.intent.category.OPENABLE',
+  });
+  if (result.resultCode !== -1 /* Activity.RESULT_OK */ || !result.data) return null;
+  return result.data;
+}
 import auth from '@react-native-firebase/auth';
 import {
   createFamily, getFamilyByInviteCode, createMember, createManagedMember,
@@ -53,29 +68,36 @@ export default function OnboardingScreen() {
 
   async function pickPhoto(setUri: (uri: string | null) => void) {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        if (permission.canAskAgain === false) {
-          Alert.alert('Permission Needed', 'Please enable photo access in Settings to add a profile photo.', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() },
-          ]);
-        } else {
-          Alert.alert('Permission Needed', 'Permission is required to select a photo.');
+      let uri: string | null | undefined;
+
+      if (Platform.OS === 'android') {
+        uri = await pickImageFromGallerySAF();
+      } else {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          if (permission.canAskAgain === false) {
+            Alert.alert('Permission Needed', 'Please enable photo access in Settings to add a profile photo.', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ]);
+          } else {
+            Alert.alert('Permission Needed', 'Permission is required to select a photo.');
+          }
+          return;
         }
-        return;
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.7,
+        });
+        if (result.canceled) return;
+        uri = result.assets?.[0]?.uri;
       }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.7,
-      });
-      if (result.canceled) return;
-      const asset = result.assets?.[0];
-      if (!asset?.uri) {
+
+      if (!uri) {
         Alert.alert('No Photo', 'No photo was selected.');
         return;
       }
-      setUri(asset.uri);
+      setUri(uri);
       Haptics.selectionAsync();
     } catch (err: any) {
       if (__DEV__) console.error('[Onboarding Photo Pick]', err);

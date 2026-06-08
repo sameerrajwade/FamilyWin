@@ -10,8 +10,9 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   RefreshControl, Alert, Modal, TextInput, Share, ActivityIndicator, Image, Linking,
-  InteractionManager,
+  InteractionManager, Platform,
 } from 'react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -310,10 +311,41 @@ function MemberRow({ member, isSelf, isAdmin, isLast, onRolePress, onRemove, onE
 // on top of each other. Only one in-flight launch at a time.
 let pickerBusy = false;
 
+// FACT, confirmed via on-device adb logcat across multiple builds: Android's
+// new system Photo Picker (com.google.android.photopicker) launches as a
+// TRANSLUCENT overlay activity that — on this device's OS build — fails to
+// composite its own content. ActivityTaskManager logs it as genuinely
+// "Displayed" (the window exists and is on top, no stacking conflict), yet
+// the screen shows nothing but a flicker until the app is backgrounded and
+// foregrounded, which forces Android to redraw the whole stack. This is an
+// OS-level compositor bug — confirmed to persist even with `allowsEditing`
+// removed (which rules out the chained-cropper theory) — and is outside our
+// app's control. expo-image-picker always prefers this Photo Picker on
+// Android 13+ with no opt-out flag. The fix: bypass it entirely on Android
+// by firing a classic ACTION_GET_CONTENT intent — the pre-2023 Storage
+// Access Framework chooser, which launches as a normal OPAQUE full-screen
+// activity and never touches the buggy translucent-compositing code path.
+async function pickImageFromGallerySAF(): Promise<string | null> {
+  const result = await IntentLauncher.startActivityAsync('android.intent.action.GET_CONTENT', {
+    type: 'image/*',
+    category: 'android.intent.category.OPENABLE',
+  });
+  // Activity.RESULT_OK === -1
+  if (result.resultCode !== -1 || !result.data) return null;
+  return result.data;
+}
+
 async function pickPhotoUri(source: 'library' | 'camera'): Promise<string | null> {
   if (pickerBusy) return null;
   pickerBusy = true;
   try {
+  // SAF's ACTION_GET_CONTENT chooser manages its own per-URI access grants —
+  // it doesn't need (and won't trigger) the READ_MEDIA_IMAGES permission
+  // prompt, so we skip the permission dance entirely for this path.
+  if (source === 'library' && Platform.OS === 'android') {
+    return await pickImageFromGallerySAF();
+  }
+
   const permission = source === 'camera'
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
