@@ -1,5 +1,9 @@
 import { useEffect, useState, Component } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, withSpring,
+  withSequence, withDelay, Easing,
+} from 'react-native-reanimated';
 import { Stack, router, useRootNavigationState } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -53,6 +57,96 @@ const ebStyles = StyleSheet.create({
 });
 
 SplashScreen.preventAutoHideAsync();
+
+// ── Branded animated splash overlay ──────────────────────────────────────────
+function AnimatedSplash() {
+  const logoScale   = useSharedValue(0.3);
+  const logoOpacity = useSharedValue(0);
+  const textOpacity = useSharedValue(0);
+  const textY       = useSharedValue(20);
+  const tagOpacity  = useSharedValue(0);
+  const shimmer     = useSharedValue(0);
+
+  useEffect(() => {
+    // Trophy bounces in
+    logoScale.value   = withSpring(1, { damping: 10, stiffness: 120 });
+    logoOpacity.value = withTiming(1, { duration: 350 });
+    // Title fades + slides up after trophy lands
+    textOpacity.value = withDelay(300, withTiming(1, { duration: 400 }));
+    textY.value       = withDelay(300, withSpring(0, { damping: 14 }));
+    // Tagline fades in last
+    tagOpacity.value  = withDelay(600, withTiming(1, { duration: 400 }));
+    // Subtle shimmer pulse on trophy
+    shimmer.value     = withDelay(500, withSequence(
+      withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+      withTiming(0, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+    ));
+  }, []);
+
+  const logoStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: logoScale.value }],
+    opacity: logoOpacity.value,
+  }));
+  const textStyle = useAnimatedStyle(() => ({
+    opacity: textOpacity.value,
+    transform: [{ translateY: textY.value }],
+  }));
+  const tagStyle = useAnimatedStyle(() => ({ opacity: tagOpacity.value }));
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + shimmer.value * 0.12 }],
+  }));
+
+  return (
+    <View style={splashStyles.container}>
+      {/* Subtle radial glow behind trophy */}
+      <View style={splashStyles.glow} />
+
+      <Animated.View style={[logoStyle, shimmerStyle]}>
+        <Text style={splashStyles.trophy}>🏆</Text>
+      </Animated.View>
+
+      <Animated.View style={textStyle}>
+        <Text style={splashStyles.title}>FamilyWin</Text>
+      </Animated.View>
+
+      <Animated.View style={tagStyle}>
+        <Text style={splashStyles.tagline}>Who wins this week?</Text>
+      </Animated.View>
+
+      {/* Bottom star row */}
+      <Animated.View style={[tagStyle, splashStyles.stars]}>
+        {['⭐','✨','⭐','✨','⭐'].map((s, i) => (
+          <Text key={i} style={splashStyles.star}>{s}</Text>
+        ))}
+      </Animated.View>
+    </View>
+  );
+}
+
+const splashStyles = StyleSheet.create({
+  container: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: '#6C63FF',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  glow: {
+    position: 'absolute',
+    width: 260, height: 260, borderRadius: 130,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  trophy:  { fontSize: 90, textAlign: 'center' },
+  title: {
+    fontSize: 42, color: '#FFFFFF', textAlign: 'center',
+    marginTop: 16, letterSpacing: 1,
+    fontFamily: 'Nunito-Black',
+  },
+  tagline: {
+    fontSize: 16, color: 'rgba(255,255,255,0.80)', textAlign: 'center',
+    marginTop: 10, fontFamily: 'Nunito-SemiBold', letterSpacing: 0.5,
+  },
+  stars: { flexDirection: 'row', marginTop: 32, gap: 8 },
+  star:  { fontSize: 20 },
+});
 
 function InnerLayout() {
   const { setUser, setMember, setFamily, setLoading, setHydrated } = useAuthStore();
@@ -169,11 +263,8 @@ function InnerLayout() {
         <Stack.Screen name="app/discipline/log" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="app/member/[id]" />
       </Stack>
-      {/* Overlay matching the native splash colour until the first real route has been
-          navigated to — covers the gap so nothing else flashes through underneath. */}
-      {!hasNavigated && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#6C63FF' }} />
-      )}
+      {/* Branded animated splash overlay — shown until first route is navigated to */}
+      {!hasNavigated && <AnimatedSplash />}
     </View>
   );
 }
