@@ -328,6 +328,15 @@ async function pickPhotoUri(source: 'library' | 'camera'): Promise<string | null
     }
     return null;
   }
+  // See member/[id].tsx pickAndUpload for the full explanation: requesting
+  // permission ALSO opens a system dialog/activity, and once permission is
+  // already granted that await resolves almost instantly — launching the
+  // picker Activity immediately afterward collides with Android still
+  // settling from the previous transition (Alert dismiss), causing the
+  // launch to get silently queued until the app regains foreground. A short
+  // fixed delay is the documented workaround for this exact combination.
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
   const result = source === 'camera'
     ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.7 })
     : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.7 });

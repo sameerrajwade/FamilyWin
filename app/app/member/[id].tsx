@@ -84,6 +84,19 @@ export default function MemberProfileScreen() {
         return;
       }
 
+      // IMPORTANT — second transition gotcha: requestCameraPermissionsAsync /
+      // requestMediaLibraryPermissionsAsync ALSO opens a system dialog/activity.
+      // Once permission has already been granted (exactly the "it remembers"
+      // symptom — repeat taps skip the prompt), that await resolves almost
+      // immediately, and launching the picker Activity right after means
+      // Android is still mid-transition from the *previous* screen change
+      // (the Alert dismiss). InteractionManager.runAfterInteractions's
+      // "interaction complete" signal is known to be unreliable for this
+      // exact native transition timing on Android — a small fixed delay is
+      // the documented workaround for this specific expo-image-picker +
+      // Alert combination, so we wait briefly before actually launching.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       const result = source === 'camera'
         ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.7 })
         : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.7 });
