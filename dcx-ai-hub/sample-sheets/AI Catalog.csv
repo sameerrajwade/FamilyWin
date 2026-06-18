@@ -1,0 +1,7 @@
+Name,Type,Owner,Link,Description,Date Added
+Customer Intent Classifier,Gemini Gem,Sameer R.,https://gemini.google.com/gem/example1,Gem that analyzes customer messages and classifies intent into 12 categories with confidence scores,6/1/2026
+Auto-Summary Dashboard,Prototype,Mike K.,https://script.google.com/example2,Generates daily executive summaries from Jira tickets and Slack threads,5/15/2026
+Meeting Notes AI,Tool,Jessica P.,https://script.google.com/example3,"Records meetings, transcribes with Gemini, and auto-generates action items sent to each attendee",5/20/2026
+Code Review Assistant,Gemini Gem,Alex L.,https://gemini.google.com/gem/example4,Custom Gem trained on our coding standards for instant PR feedback,5/10/2026
+Incident Triage Bot,Workflow,Raj N.,https://script.google.com/example5,"Reads PagerDuty alerts, correlates with recent deployments, and suggests root cause",4/28/2026
+Customer Email Drafter,Prototype,Sameer R.,https://script.google.com/example6,Drafts personalized empathetic responses to support tickets following brand voice,5/5/2026

@@ -1,0 +1,5 @@
+Title,Summary,Added By,Date,Category
+Google Gemini 2.5 Pro Released,New model with 1M token context window and improved code generation. We should test our existing Gems on the new model.,Sameer R.,6/14/2026,Announcement
+AI Hackathon Results,Our team won 2nd place at the internal hackathon with the Incident Triage Bot. Raj and Alex presented the demo to VP-level leadership.,Mike K.,6/10/2026,Team Update
+New Gemini API Features: Grounding with Search,Google added search grounding to Gemini API. This could improve accuracy for our customer-facing AI tools significantly.,Alex L.,6/8/2026,Learning
+AI Sprint Retro Summarizer,What if we built a tool that sits in retro meetings captures themes and generates improvement action items automatically?,Jessica P.,6/5/2026,Idea
