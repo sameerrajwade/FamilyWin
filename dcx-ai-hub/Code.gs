@@ -5,23 +5,33 @@ function doGet() {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
+function tryFormatDate(val, format) {
+  if (!val) return '';
+  try {
+    var d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return Utilities.formatDate(d, Session.getScriptTimeZone(), format);
+  } catch (e) {
+    return String(val);
+  }
+}
+
 function getCatalogData() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('AI Catalog');
   if (!sheet) return [];
   var data = sheet.getDataRange().getValues();
   if (data.length < 2) return [];
-  var headers = data[0];
   var rows = [];
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
     if (!row[0]) continue;
     rows.push({
-      name: row[0],
-      type: row[1],
-      owner: row[2],
-      link: row[3],
-      description: row[4],
-      dateAdded: row[5] ? Utilities.formatDate(new Date(row[5]), Session.getScriptTimeZone(), 'MMM d, yyyy') : ''
+      name: String(row[0]),
+      type: String(row[1]),
+      owner: String(row[2]),
+      link: String(row[3] || ''),
+      description: String(row[4] || ''),
+      dateAdded: tryFormatDate(row[5], 'MMM d, yyyy')
     });
   }
   return rows;
@@ -36,15 +46,15 @@ function getPresentationsData() {
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
     if (!row[0]) continue;
-    var dateVal = row[2] ? new Date(row[2]) : null;
     rows.push({
-      presenter: row[0],
-      topic: row[1],
-      date: dateVal ? Utilities.formatDate(dateVal, Session.getScriptTimeZone(), 'MMM d, yyyy') : '',
-      month: dateVal ? Utilities.formatDate(dateVal, Session.getScriptTimeZone(), 'MMM') : '',
-      day: dateVal ? Utilities.formatDate(dateVal, Session.getScriptTimeZone(), 'd') : '',
-      status: row[3],
-      slidesLink: row[4] || ''
+      presenter: String(row[0]),
+      topic: String(row[1]),
+      date: tryFormatDate(row[2], 'MMM d, yyyy'),
+      month: tryFormatDate(row[2], 'MMM'),
+      day: tryFormatDate(row[2], 'd'),
+      status: String(row[3] || ''),
+      description: String(row[4] || ''),
+      slidesLink: String(row[5] || '')
     });
   }
   return rows;
@@ -60,11 +70,11 @@ function getNewsData() {
     var row = data[i];
     if (!row[0]) continue;
     rows.push({
-      title: row[0],
-      summary: row[1],
-      addedBy: row[2],
-      date: row[3] ? Utilities.formatDate(new Date(row[3]), Session.getScriptTimeZone(), 'MMM d, yyyy') : '',
-      category: row[4]
+      title: String(row[0]),
+      summary: String(row[1] || ''),
+      addedBy: String(row[2] || ''),
+      date: tryFormatDate(row[3], 'MMM d, yyyy'),
+      category: String(row[4] || '')
     });
   }
   return rows;

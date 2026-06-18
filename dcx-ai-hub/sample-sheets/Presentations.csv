@@ -1,5 +1,5 @@
-Presenter,Topic,Date,Status,Slides Link
-Sameer Rajwade,Gemini Gems: Building Custom AI Assistants,6/11/2026,Completed,https://docs.google.com/presentation/d/example1
-Sameer Rajwade,AI-Powered Testing: From Unit to Integration,6/25/2026,Next Up,
-Mike Kim,Automating Documentation with AI,7/9/2026,Upcoming,
-Jessica Park,Prompt Engineering Best Practices,7/23/2026,Upcoming,
+Presenter,Topic,Date,Status,Description,Slides Link
+Sameer Rajwade,Gemini Gems: Building Custom AI Assistants,6/11/2026,Completed,Deep dive into creating and sharing custom Gems for team-specific workflows,https://docs.google.com/presentation/d/example1
+Sameer Rajwade,AI-Powered Testing: From Unit to Integration,6/25/2026,Next Up,How to use AI to generate test cases and automate regression testing,
+Mike Kim,Automating Documentation with AI,7/9/2026,Upcoming,Using Gemini to auto-generate API docs and architecture decision records,
+Jessica Park,Prompt Engineering Best Practices,7/23/2026,Upcoming,Practical patterns for getting better results from LLMs in enterprise settings,

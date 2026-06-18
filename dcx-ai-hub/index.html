@@ -36,14 +36,21 @@
     inset: 0;
     background: var(--gray-50);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 16px;
     z-index: 9999;
     transition: opacity 0.4s;
   }
   .loading-overlay.hidden {
     opacity: 0;
     pointer-events: none;
+  }
+  .loading-overlay .loading-text {
+    font-size: 14px;
+    color: var(--gray-400);
+    font-weight: 500;
   }
   .spinner {
     width: 48px; height: 48px;
@@ -53,6 +60,18 @@
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Error State ── */
+  .error-banner {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #991B1B;
+    padding: 12px 24px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    display: none;
+  }
 
   /* ── Hero ── */
   .hero {
@@ -338,7 +357,7 @@
 
   /* ── Presentations Timeline ── */
   .timeline { position: relative; }
-  .timeline::before {
+  .timeline.has-items::before {
     content: '';
     position: absolute;
     left: 120px;
@@ -425,6 +444,7 @@
   .timeline-card .topic-desc {
     font-size: 13px;
     color: var(--gray-600);
+    margin-bottom: 4px;
   }
   .timeline-card .slides-link {
     display: inline-flex;
@@ -548,7 +568,7 @@
     .main { padding: 24px 20px; }
     .nav-inner { padding: 0 20px; overflow-x: auto; }
     .card-grid, .news-grid { grid-template-columns: 1fr; }
-    .timeline::before { left: 20px; }
+    .timeline.has-items::before { left: 20px; }
     .timeline-date { width: 0; display: none; }
     .timeline-dot { margin-left: 12px; }
   }
@@ -559,7 +579,11 @@
 <!-- Loading -->
 <div class="loading-overlay" id="loader">
   <div class="spinner"></div>
+  <div class="loading-text">Loading DCX AI Hub...</div>
 </div>
+
+<!-- Error Banner -->
+<div class="error-banner" id="error-banner"></div>
 
 <!-- Hero -->
 <div class="hero">
@@ -586,9 +610,9 @@
 <!-- Navigation -->
 <div class="nav-bar">
   <div class="nav-inner">
-    <div class="nav-tab active" onclick="scrollToSection('catalog')">AI Catalog</div>
-    <div class="nav-tab" onclick="scrollToSection('presentations')">Presentations</div>
-    <div class="nav-tab" onclick="scrollToSection('news')">News & Notes</div>
+    <div class="nav-tab active" data-section="catalog">AI Catalog</div>
+    <div class="nav-tab" data-section="presentations">Presentations</div>
+    <div class="nav-tab" data-section="news">News & Notes</div>
   </div>
 </div>
 
@@ -649,7 +673,7 @@ function getInitials(name) {
 
 function getAvatarColor(name) {
   var hash = 0;
-  for (var i = 0; i < name.length; i++) {
+  for (var i = 0; i < (name || '').length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   return avatarColors[Math.abs(hash) % avatarColors.length];
@@ -678,6 +702,10 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function escapeAttr(str) {
+  return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // ── Render Catalog ──
 function renderCatalog(items) {
   var grid = document.getElementById('catalog-grid');
@@ -691,7 +719,7 @@ function renderCatalog(items) {
     var initials = getInitials(item.owner);
     var color = getAvatarColor(item.owner || '');
     var linkText = getTypeLinkText(item.type);
-    var hasLink = item.link && item.link.toString().trim();
+    var hasLink = item.link && item.link.trim();
     html += '<div class="card" style="animation-delay:' + (i * 0.06) + 's">';
     html += '<div class="card-type ' + cls + '">' + escapeHtml(item.type) + '</div>';
     html += '<h3>' + escapeHtml(item.name) + '</h3>';
@@ -699,14 +727,14 @@ function renderCatalog(items) {
     html += '<div class="card-meta">';
     html += '<div class="card-owner"><div class="avatar" style="background:' + color + '">' + initials + '</div>' + escapeHtml(item.owner) + '</div>';
     if (hasLink) {
-      html += '<a href="' + escapeHtml(item.link) + '" target="_blank" class="card-link">' + linkText + ' &rarr;</a>';
+      html += '<a href="' + escapeAttr(item.link) + '" target="_blank" rel="noopener" class="card-link">' + linkText + ' &rarr;</a>';
     }
     html += '</div></div>';
   });
   grid.innerHTML = html;
 }
 
-// ── Render Filters ──
+// ── Render Filters (event delegation, no inline onclick) ──
 function renderFilters(items) {
   var types = {};
   items.forEach(function(item) {
@@ -714,32 +742,39 @@ function renderFilters(items) {
     types[t] = (types[t] || 0) + 1;
   });
   var container = document.getElementById('filters');
-  var html = '<div class="filter-pill active" onclick="filterCatalog(\'All\', this)">All</div>';
+  var html = '<div class="filter-pill active" data-filter="All">All</div>';
   Object.keys(types).forEach(function(t) {
-    html += '<div class="filter-pill" onclick="filterCatalog(\'' + escapeHtml(t) + '\', this)">' + escapeHtml(t) + '</div>';
+    html += '<div class="filter-pill" data-filter="' + escapeAttr(t) + '">' + escapeHtml(t) + '</div>';
   });
   container.innerHTML = html;
 }
 
-function filterCatalog(type, el) {
+function handleFilterClick(e) {
+  var pill = e.target.closest('.filter-pill');
+  if (!pill) return;
+  var type = pill.getAttribute('data-filter');
+  if (!type) return;
   activeFilter = type;
   document.querySelectorAll('.filter-pill').forEach(function(p) { p.classList.remove('active'); });
-  el.classList.add('active');
+  pill.classList.add('active');
   var filtered = type === 'All' ? allCatalog : allCatalog.filter(function(item) { return item.type === type; });
   document.getElementById('catalog-count').textContent = filtered.length + (filtered.length === 1 ? ' tool' : ' tools');
   renderCatalog(filtered);
 }
+document.getElementById('filters').addEventListener('click', handleFilterClick);
 
 // ── Render Presentations ──
 function renderPresentations(items) {
   var container = document.getElementById('timeline');
   if (!items.length) {
+    container.classList.remove('has-items');
     container.innerHTML = '<div class="empty-state"><div class="icon">&#x1F399;</div><h3>No presentations scheduled</h3><p>Add entries to the Presentations sheet to see them here.</p></div>';
     return;
   }
+  container.classList.add('has-items');
   var html = '';
   items.forEach(function(item, i) {
-    var statusLower = (item.status || '').toLowerCase();
+    var statusLower = (item.status || '').toLowerCase().trim();
     var dotClass = '';
     var cardClass = '';
     var badgeClass = 'upcoming';
@@ -752,8 +787,6 @@ function renderPresentations(items) {
       dotClass = 'upcoming';
       cardClass = 'next-up';
       badgeClass = 'next-up';
-    } else {
-      dotClass = '';
     }
 
     html += '<div class="timeline-item" style="animation-delay:' + (i * 0.1) + 's">';
@@ -762,8 +795,11 @@ function renderPresentations(items) {
     html += '<div class="timeline-card ' + cardClass + '">';
     html += '<h3>' + escapeHtml(item.topic) + '</h3>';
     html += '<div class="presenter">' + escapeHtml(item.presenter) + '</div>';
+    if (item.description) {
+      html += '<div class="topic-desc">' + escapeHtml(item.description) + '</div>';
+    }
     if (item.slidesLink) {
-      html += '<a href="' + escapeHtml(item.slidesLink) + '" target="_blank" class="slides-link">View Slides &rarr;</a>';
+      html += '<a href="' + escapeAttr(item.slidesLink) + '" target="_blank" rel="noopener" class="slides-link">View Slides &rarr;</a>';
     }
     html += '<div><span class="status-badge ' + badgeClass + '">' + escapeHtml(badgeText) + '</span></div>';
     html += '</div></div>';
@@ -790,31 +826,39 @@ function renderNews(items) {
   grid.innerHTML = html;
 }
 
-// ── Navigation ──
-function scrollToSection(id) {
-  var el = document.getElementById(id);
+// ── Navigation (event delegation) ──
+document.querySelector('.nav-inner').addEventListener('click', function(e) {
+  var tab = e.target.closest('.nav-tab');
+  if (!tab) return;
+  var section = tab.getAttribute('data-section');
+  if (!section) return;
+  var el = document.getElementById(section);
   if (el) {
     var offset = 60;
     var y = el.getBoundingClientRect().top + window.pageYOffset - offset;
     window.scrollTo({ top: y, behavior: 'smooth' });
   }
   document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
-  var tabs = document.querySelectorAll('.nav-tab');
-  var map = { catalog: 0, presentations: 1, news: 2 };
-  if (map[id] !== undefined) tabs[map[id]].classList.add('active');
-}
+  tab.classList.add('active');
+});
 
 // ── Scroll spy for nav highlight ──
+var scrollSpyThrottle = false;
 window.addEventListener('scroll', function() {
-  var sections = ['catalog', 'presentations', 'news'];
-  var tabs = document.querySelectorAll('.nav-tab');
-  var current = 0;
-  sections.forEach(function(id, i) {
-    var el = document.getElementById(id);
-    if (el && el.getBoundingClientRect().top <= 100) current = i;
+  if (scrollSpyThrottle) return;
+  scrollSpyThrottle = true;
+  requestAnimationFrame(function() {
+    var sections = ['catalog', 'presentations', 'news'];
+    var tabs = document.querySelectorAll('.nav-tab');
+    var current = 0;
+    sections.forEach(function(id, i) {
+      var el = document.getElementById(id);
+      if (el && el.getBoundingClientRect().top <= 100) current = i;
+    });
+    tabs.forEach(function(t) { t.classList.remove('active'); });
+    tabs[current].classList.add('active');
+    scrollSpyThrottle = false;
   });
-  tabs.forEach(function(t) { t.classList.remove('active'); });
-  tabs[current].classList.add('active');
 });
 
 // ── Load Data ──
@@ -837,8 +881,10 @@ function onDataLoaded(data) {
 }
 
 function onError(err) {
-  console.error('Failed to load data:', err);
   document.getElementById('loader').classList.add('hidden');
+  var banner = document.getElementById('error-banner');
+  banner.textContent = 'Failed to load data. Please refresh the page or check that the sheet tabs are named correctly (AI Catalog, Presentations, News & Notes).';
+  banner.style.display = 'block';
 }
 
 google.script.run.withSuccessHandler(onDataLoaded).withFailureHandler(onError).getAllData();
