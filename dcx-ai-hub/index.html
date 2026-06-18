@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --navy: #004977;
+    --blue: #0073CF;
+    --light-blue: #E8F4FD;
+    --tan: #C9A96E;
+    --tan-light: #F5EFE0;
+    --sand: #FAF6EF;
+    --white: #FFFFFF;
+    --gray-50: #F8FAFC;
+    --gray-100: #F1F5F9;
+    --gray-200: #E2E8F0;
+    --gray-400: #94A3B8;
+    --gray-600: #475569;
+    --gray-800: #1E293B;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-800);
+    line-height: 1.6;
+  }
+
+  /* ── Loading ── */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--gray-50);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.4s;
+  }
+  .loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 4px solid var(--gray-200);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, var(--navy) 0%, #003A5C 40%, var(--blue) 100%);
+    padding: 60px 40px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -10%;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(201,169,110,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -30%; left: 10%;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(0,115,207,0.2) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50px;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: var(--tan);
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+  }
+  .hero-badge .pulse {
+    width: 8px; height: 8px;
+    background: #43D98F;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+  .hero h1 {
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--white);
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+  }
+  .hero h1 span { color: var(--tan); }
+  .hero p {
+    font-size: 18px;
+    color: rgba(255,255,255,0.7);
+    max-width: 600px;
+    font-weight: 300;
+  }
+  .hero-stats {
+    display: flex;
+    gap: 40px;
+    margin-top: 36px;
+  }
+  .hero-stat { text-align: left; }
+  .hero-stat .number {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--white);
+  }
+  .hero-stat .label {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+  }
+
+  /* ── Navigation Tabs ── */
+  .nav-bar {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    gap: 0;
+    padding: 0 40px;
+  }
+  .nav-tab {
+    padding: 16px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-400);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .nav-tab:hover { color: var(--navy); }
+  .nav-tab.active {
+    color: var(--navy);
+    border-bottom-color: var(--tan);
+  }
+
+  /* ── Main Content ── */
+  .main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px;
+  }
+  .section { margin-bottom: 60px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .section-header h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .section-header .count {
+    background: var(--light-blue);
+    color: var(--blue);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 50px;
+  }
+
+  /* ── Filter Pills ── */
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .filter-pill {
+    padding: 8px 18px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1.5px solid var(--gray-200);
+    background: var(--white);
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-pill:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .filter-pill.active {
+    background: var(--navy);
+    color: var(--white);
+    border-color: var(--navy);
+  }
+
+  /* ── AI Catalog Cards ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 28px;
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(12px);
+    animation: fadeInUp 0.4s forwards;
+  }
+  @keyframes fadeInUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,73,119,0.12);
+    border-color: var(--blue);
+  }
+  .card-type {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+  }
+  .card-type.gem {
+    background: linear-gradient(135deg, #E0F2FE, #BAE6FD);
+    color: #0369A1;
+  }
+  .card-type.prototype {
+    background: linear-gradient(135deg, var(--tan-light), #EDE4D3);
+    color: #92702A;
+  }
+  .card-type.tool {
+    background: linear-gradient(135deg, #DCFCE7, #BBF7D0);
+    color: #15803D;
+  }
+  .card-type.workflow {
+    background: linear-gradient(135deg, #F3E8FF, #E9D5FF);
+    color: #7C3AED;
+  }
+  .card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .card p {
+    font-size: 14px;
+    color: var(--gray-600);
+    margin-bottom: 18px;
+    line-height: 1.7;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 16px;
+    border-top: 1px solid var(--gray-100);
+  }
+  .card-owner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--gray-600);
+  }
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--white);
+  }
+  .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--blue);
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: var(--light-blue);
+    transition: all 0.2s;
+  }
+  .card-link:hover {
+    background: var(--blue);
+    color: var(--white);
+  }
+
+  /* ── Presentations Timeline ── */
+  .timeline { position: relative; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 120px;
+    top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(to bottom, var(--tan), var(--blue));
+    border-radius: 3px;
+  }
+  .timeline-item {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 24px;
+    position: relative;
+    opacity: 0;
+    transform: translateX(-12px);
+    animation: fadeInLeft 0.4s forwards;
+  }
+  @keyframes fadeInLeft {
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .timeline-date {
+    width: 100px;
+    text-align: right;
+    flex-shrink: 0;
+    padding-top: 18px;
+  }
+  .timeline-date .month {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--gray-400);
+    font-weight: 600;
+  }
+  .timeline-date .day {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--navy);
+    line-height: 1;
+  }
+  .timeline-dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 3px solid var(--tan);
+    flex-shrink: 0;
+    margin-top: 22px;
+    z-index: 1;
+  }
+  .timeline-dot.upcoming {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 4px rgba(0,115,207,0.15);
+  }
+  .timeline-dot.completed {
+    background: var(--tan);
+    border-color: var(--tan);
+  }
+  .timeline-card {
+    flex: 1;
+    background: var(--white);
+    border-radius: 14px;
+    padding: 22px 26px;
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s;
+  }
+  .timeline-card:hover {
+    box-shadow: 0 8px 30px rgba(0,73,119,0.08);
+  }
+  .timeline-card.next-up {
+    border-color: var(--blue);
+    background: linear-gradient(135deg, #FAFCFF, #F0F7FF);
+  }
+  .timeline-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .timeline-card .presenter {
+    font-size: 14px;
+    color: var(--blue);
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .timeline-card .topic-desc {
+    font-size: 13px;
+    color: var(--gray-600);
+  }
+  .timeline-card .slides-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue);
+    text-decoration: none;
+    margin-top: 8px;
+  }
+  .timeline-card .slides-link:hover { text-decoration: underline; }
+  .status-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 50px;
+    margin-top: 10px;
+  }
+  .status-badge.upcoming {
+    background: #DBEAFE;
+    color: #1D4ED8;
+  }
+  .status-badge.completed {
+    background: #DCFCE7;
+    color: #15803D;
+  }
+  .status-badge.next-up {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+    color: #92400E;
+  }
+
+  /* ── News Feed ── */
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+  .news-card {
+    background: var(--white);
+    border-radius: 14px;
+    padding: 24px;
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s;
+    border-left: 4px solid var(--tan);
+    opacity: 0;
+    transform: translateY(12px);
+    animation: fadeInUp 0.4s forwards;
+  }
+  .news-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,73,119,0.08);
+  }
+  .news-card .news-category {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--tan);
+    margin-bottom: 8px;
+  }
+  .news-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .news-card p {
+    font-size: 14px;
+    color: var(--gray-600);
+    line-height: 1.7;
+    margin-bottom: 14px;
+  }
+  .news-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--gray-400);
+  }
+  .news-meta .dot {
+    width: 3px; height: 3px;
+    background: var(--gray-400);
+    border-radius: 50%;
+  }
+
+  /* ── Empty State ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gray-400);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+  }
+  .empty-state p { font-size: 14px; }
+
+  /* ── Footer ── */
+  .footer {
+    background: var(--navy);
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    padding: 30px 40px;
+    font-size: 13px;
+  }
+  .footer strong { color: var(--tan); }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .hero { padding: 40px 20px 30px; }
+    .hero h1 { font-size: 32px; }
+    .hero-stats { gap: 24px; }
+    .hero-stat .number { font-size: 28px; }
+    .main { padding: 24px 20px; }
+    .nav-inner { padding: 0 20px; overflow-x: auto; }
+    .card-grid, .news-grid { grid-template-columns: 1fr; }
+    .timeline::before { left: 20px; }
+    .timeline-date { width: 0; display: none; }
+    .timeline-dot { margin-left: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loader">
+  <div class="spinner"></div>
+</div>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">
+      <div class="pulse"></div>
+      DCX AI Innovation Hub
+    </div>
+    <h1>DCX AI <span>Innovation Hub</span></h1>
+    <p>Our team's central hub for AI experiments, tools, prototypes, and knowledge sharing. Explore what we're building and join the innovation.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="number" id="stat-tools">--</div>
+        <div class="label">AI Tools</div>
+      </div>
+      <div class="hero-stat">
+        <div class="number" id="stat-presentations">--</div>
+        <div class="label">Presentations</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav-bar">
+  <div class="nav-inner">
+    <div class="nav-tab active" onclick="scrollToSection('catalog')">AI Catalog</div>
+    <div class="nav-tab" onclick="scrollToSection('presentations')">Presentations</div>
+    <div class="nav-tab" onclick="scrollToSection('news')">News & Notes</div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="section" id="catalog">
+    <div class="section-header">
+      <h2>AI Catalog</h2>
+      <span class="count" id="catalog-count"></span>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div class="card-grid" id="catalog-grid"></div>
+  </div>
+
+  <div class="section" id="presentations">
+    <div class="section-header">
+      <h2>Presentations</h2>
+      <span class="count" id="pres-count"></span>
+    </div>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <div class="section" id="news">
+    <div class="section-header">
+      <h2>News & Notes</h2>
+      <span class="count">Latest updates</span>
+    </div>
+    <div class="news-grid" id="news-grid"></div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <strong>DCX AI Innovation Hub</strong> &mdash; Data is powered by Google Sheets. Team members add entries in the sheet, this page updates automatically.
+</div>
+
+<script>
+var allCatalog = [];
+var activeFilter = 'All';
+
+var avatarColors = [
+  'linear-gradient(135deg, #004977, #0073CF)',
+  'linear-gradient(135deg, #C9A96E, #A07D3A)',
+  'linear-gradient(135deg, #15803D, #166534)',
+  'linear-gradient(135deg, #7C3AED, #5B21B6)',
+  'linear-gradient(135deg, #0073CF, #0056A0)',
+  'linear-gradient(135deg, #DC2626, #991B1B)',
+  'linear-gradient(135deg, #D97706, #92400E)',
+  'linear-gradient(135deg, #0891B2, #155E75)'
+];
+
+function getInitials(name) {
+  if (!name) return '??';
+  var parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.substring(0, 2).toUpperCase();
+}
+
+function getAvatarColor(name) {
+  var hash = 0;
+  for (var i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return avatarColors[Math.abs(hash) % avatarColors.length];
+}
+
+function getTypeClass(type) {
+  var t = (type || '').toLowerCase();
+  if (t.indexOf('gem') !== -1) return 'gem';
+  if (t.indexOf('prototype') !== -1) return 'prototype';
+  if (t.indexOf('tool') !== -1) return 'tool';
+  if (t.indexOf('workflow') !== -1) return 'workflow';
+  return 'tool';
+}
+
+function getTypeLinkText(type) {
+  var t = (type || '').toLowerCase();
+  if (t.indexOf('gem') !== -1) return 'Open Gem';
+  if (t.indexOf('prototype') !== -1) return 'Try It';
+  if (t.indexOf('workflow') !== -1) return 'View Workflow';
+  return 'Open Tool';
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+// ── Render Catalog ──
+function renderCatalog(items) {
+  var grid = document.getElementById('catalog-grid');
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4E6;</div><h3>No tools yet</h3><p>Add entries to the AI Catalog sheet to see them here.</p></div>';
+    return;
+  }
+  var html = '';
+  items.forEach(function(item, i) {
+    var cls = getTypeClass(item.type);
+    var initials = getInitials(item.owner);
+    var color = getAvatarColor(item.owner || '');
+    var linkText = getTypeLinkText(item.type);
+    var hasLink = item.link && item.link.toString().trim();
+    html += '<div class="card" style="animation-delay:' + (i * 0.06) + 's">';
+    html += '<div class="card-type ' + cls + '">' + escapeHtml(item.type) + '</div>';
+    html += '<h3>' + escapeHtml(item.name) + '</h3>';
+    html += '<p>' + escapeHtml(item.description) + '</p>';
+    html += '<div class="card-meta">';
+    html += '<div class="card-owner"><div class="avatar" style="background:' + color + '">' + initials + '</div>' + escapeHtml(item.owner) + '</div>';
+    if (hasLink) {
+      html += '<a href="' + escapeHtml(item.link) + '" target="_blank" class="card-link">' + linkText + ' &rarr;</a>';
+    }
+    html += '</div></div>';
+  });
+  grid.innerHTML = html;
+}
+
+// ── Render Filters ──
+function renderFilters(items) {
+  var types = {};
+  items.forEach(function(item) {
+    var t = item.type || 'Other';
+    types[t] = (types[t] || 0) + 1;
+  });
+  var container = document.getElementById('filters');
+  var html = '<div class="filter-pill active" onclick="filterCatalog(\'All\', this)">All</div>';
+  Object.keys(types).forEach(function(t) {
+    html += '<div class="filter-pill" onclick="filterCatalog(\'' + escapeHtml(t) + '\', this)">' + escapeHtml(t) + '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function filterCatalog(type, el) {
+  activeFilter = type;
+  document.querySelectorAll('.filter-pill').forEach(function(p) { p.classList.remove('active'); });
+  el.classList.add('active');
+  var filtered = type === 'All' ? allCatalog : allCatalog.filter(function(item) { return item.type === type; });
+  document.getElementById('catalog-count').textContent = filtered.length + (filtered.length === 1 ? ' tool' : ' tools');
+  renderCatalog(filtered);
+}
+
+// ── Render Presentations ──
+function renderPresentations(items) {
+  var container = document.getElementById('timeline');
+  if (!items.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">&#x1F399;</div><h3>No presentations scheduled</h3><p>Add entries to the Presentations sheet to see them here.</p></div>';
+    return;
+  }
+  var html = '';
+  items.forEach(function(item, i) {
+    var statusLower = (item.status || '').toLowerCase();
+    var dotClass = '';
+    var cardClass = '';
+    var badgeClass = 'upcoming';
+    var badgeText = item.status || 'Upcoming';
+
+    if (statusLower === 'completed') {
+      dotClass = 'completed';
+      badgeClass = 'completed';
+    } else if (statusLower === 'next up') {
+      dotClass = 'upcoming';
+      cardClass = 'next-up';
+      badgeClass = 'next-up';
+    } else {
+      dotClass = '';
+    }
+
+    html += '<div class="timeline-item" style="animation-delay:' + (i * 0.1) + 's">';
+    html += '<div class="timeline-date"><div class="month">' + escapeHtml(item.month) + '</div><div class="day">' + escapeHtml(item.day) + '</div></div>';
+    html += '<div class="timeline-dot ' + dotClass + '"></div>';
+    html += '<div class="timeline-card ' + cardClass + '">';
+    html += '<h3>' + escapeHtml(item.topic) + '</h3>';
+    html += '<div class="presenter">' + escapeHtml(item.presenter) + '</div>';
+    if (item.slidesLink) {
+      html += '<a href="' + escapeHtml(item.slidesLink) + '" target="_blank" class="slides-link">View Slides &rarr;</a>';
+    }
+    html += '<div><span class="status-badge ' + badgeClass + '">' + escapeHtml(badgeText) + '</span></div>';
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+// ── Render News ──
+function renderNews(items) {
+  var grid = document.getElementById('news-grid');
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4F0;</div><h3>No news yet</h3><p>Add entries to the News & Notes sheet to see them here.</p></div>';
+    return;
+  }
+  var html = '';
+  items.forEach(function(item, i) {
+    html += '<div class="news-card" style="animation-delay:' + (i * 0.06) + 's">';
+    html += '<div class="news-category">' + escapeHtml(item.category) + '</div>';
+    html += '<h3>' + escapeHtml(item.title) + '</h3>';
+    html += '<p>' + escapeHtml(item.summary) + '</p>';
+    html += '<div class="news-meta"><span>' + escapeHtml(item.addedBy) + '</span><div class="dot"></div><span>' + escapeHtml(item.date) + '</span></div>';
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+}
+
+// ── Navigation ──
+function scrollToSection(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    var offset = 60;
+    var y = el.getBoundingClientRect().top + window.pageYOffset - offset;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+  }
+  document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
+  var tabs = document.querySelectorAll('.nav-tab');
+  var map = { catalog: 0, presentations: 1, news: 2 };
+  if (map[id] !== undefined) tabs[map[id]].classList.add('active');
+}
+
+// ── Scroll spy for nav highlight ──
+window.addEventListener('scroll', function() {
+  var sections = ['catalog', 'presentations', 'news'];
+  var tabs = document.querySelectorAll('.nav-tab');
+  var current = 0;
+  sections.forEach(function(id, i) {
+    var el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top <= 100) current = i;
+  });
+  tabs.forEach(function(t) { t.classList.remove('active'); });
+  tabs[current].classList.add('active');
+});
+
+// ── Load Data ──
+function onDataLoaded(data) {
+  allCatalog = data.catalog || [];
+  var presentations = data.presentations || [];
+  var news = data.news || [];
+
+  document.getElementById('stat-tools').textContent = allCatalog.length;
+  document.getElementById('stat-presentations').textContent = presentations.length;
+  document.getElementById('catalog-count').textContent = allCatalog.length + (allCatalog.length === 1 ? ' tool' : ' tools');
+  document.getElementById('pres-count').textContent = presentations.length + ' scheduled';
+
+  renderFilters(allCatalog);
+  renderCatalog(allCatalog);
+  renderPresentations(presentations);
+  renderNews(news);
+
+  document.getElementById('loader').classList.add('hidden');
+}
+
+function onError(err) {
+  console.error('Failed to load data:', err);
+  document.getElementById('loader').classList.add('hidden');
+}
+
+google.script.run.withSuccessHandler(onDataLoaded).withFailureHandler(onError).getAllData();
+</script>
+
+</body>
+</html>
