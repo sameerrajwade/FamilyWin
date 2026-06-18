@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCX AI Innovation Hub</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --navy: #004977;
+    --blue: #0073CF;
+    --light-blue: #E8F4FD;
+    --tan: #C9A96E;
+    --tan-light: #F5EFE0;
+    --sand: #FAF6EF;
+    --white: #FFFFFF;
+    --gray-50: #F8FAFC;
+    --gray-100: #F1F5F9;
+    --gray-200: #E2E8F0;
+    --gray-400: #94A3B8;
+    --gray-600: #475569;
+    --gray-800: #1E293B;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-800);
+    line-height: 1.6;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, var(--navy) 0%, #003A5C 40%, var(--blue) 100%);
+    padding: 60px 40px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(201,169,110,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: 10%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(0,115,207,0.2) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50px;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: var(--tan);
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+  }
+  .hero-badge .pulse {
+    width: 8px; height: 8px;
+    background: #43D98F;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+  .hero h1 {
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--white);
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+  }
+  .hero h1 span { color: var(--tan); }
+  .hero p {
+    font-size: 18px;
+    color: rgba(255,255,255,0.7);
+    max-width: 600px;
+    font-weight: 300;
+  }
+  .hero-stats {
+    display: flex;
+    gap: 40px;
+    margin-top: 36px;
+  }
+  .hero-stat {
+    text-align: left;
+  }
+  .hero-stat .number {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--white);
+  }
+  .hero-stat .label {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+  }
+
+  /* ── Navigation Tabs ── */
+  .nav-bar {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    gap: 0;
+    padding: 0 40px;
+  }
+  .nav-tab {
+    padding: 16px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-400);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .nav-tab:hover { color: var(--navy); }
+  .nav-tab.active {
+    color: var(--navy);
+    border-bottom-color: var(--tan);
+  }
+
+  /* ── Main Content ── */
+  .main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px;
+  }
+
+  .section { margin-bottom: 60px; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .section-header h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .section-header .count {
+    background: var(--light-blue);
+    color: var(--blue);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 50px;
+  }
+
+  /* ── Filter Pills ── */
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .filter-pill {
+    padding: 8px 18px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1.5px solid var(--gray-200);
+    background: var(--white);
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-pill:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .filter-pill.active {
+    background: var(--navy);
+    color: var(--white);
+    border-color: var(--navy);
+  }
+
+  /* ── AI Catalog Cards ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 28px;
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,73,119,0.12);
+    border-color: var(--blue);
+  }
+  .card-type {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+  }
+  .card-type.gem {
+    background: linear-gradient(135deg, #E0F2FE, #BAE6FD);
+    color: #0369A1;
+  }
+  .card-type.prototype {
+    background: linear-gradient(135deg, var(--tan-light), #EDE4D3);
+    color: #92702A;
+  }
+  .card-type.tool {
+    background: linear-gradient(135deg, #DCFCE7, #BBF7D0);
+    color: #15803D;
+  }
+  .card-type.workflow {
+    background: linear-gradient(135deg, #F3E8FF, #E9D5FF);
+    color: #7C3AED;
+  }
+  .card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .card p {
+    font-size: 14px;
+    color: var(--gray-600);
+    margin-bottom: 18px;
+    line-height: 1.7;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 16px;
+    border-top: 1px solid var(--gray-100);
+  }
+  .card-owner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--gray-600);
+  }
+  .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--white);
+  }
+  .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--blue);
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: var(--light-blue);
+    transition: all 0.2s;
+  }
+  .card-link:hover {
+    background: var(--blue);
+    color: var(--white);
+  }
+
+  /* ── Presentations Timeline ── */
+  .timeline {
+    position: relative;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 120px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(to bottom, var(--tan), var(--blue));
+    border-radius: 3px;
+  }
+  .timeline-item {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .timeline-date {
+    width: 100px;
+    text-align: right;
+    flex-shrink: 0;
+    padding-top: 18px;
+  }
+  .timeline-date .month {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--gray-400);
+    font-weight: 600;
+  }
+  .timeline-date .day {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--navy);
+    line-height: 1;
+  }
+  .timeline-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 3px solid var(--tan);
+    flex-shrink: 0;
+    margin-top: 22px;
+    z-index: 1;
+  }
+  .timeline-dot.upcoming {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 4px rgba(0,115,207,0.15);
+  }
+  .timeline-dot.completed {
+    background: var(--tan);
+    border-color: var(--tan);
+  }
+  .timeline-card {
+    flex: 1;
+    background: var(--white);
+    border-radius: 14px;
+    padding: 22px 26px;
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s;
+  }
+  .timeline-card:hover {
+    box-shadow: 0 8px 30px rgba(0,73,119,0.08);
+  }
+  .timeline-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .timeline-card .presenter {
+    font-size: 14px;
+    color: var(--blue);
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .timeline-card .topic-desc {
+    font-size: 13px;
+    color: var(--gray-600);
+  }
+  .status-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 50px;
+    margin-top: 10px;
+  }
+  .status-badge.upcoming {
+    background: #DBEAFE;
+    color: #1D4ED8;
+  }
+  .status-badge.completed {
+    background: #DCFCE7;
+    color: #15803D;
+  }
+  .status-badge.next-up {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+    color: #92400E;
+  }
+
+  /* ── News Feed ── */
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+  .news-card {
+    background: var(--white);
+    border-radius: 14px;
+    padding: 24px;
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s;
+    border-left: 4px solid var(--tan);
+  }
+  .news-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,73,119,0.08);
+  }
+  .news-card .news-category {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--tan);
+    margin-bottom: 8px;
+  }
+  .news-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .news-card p {
+    font-size: 14px;
+    color: var(--gray-600);
+    line-height: 1.7;
+    margin-bottom: 14px;
+  }
+  .news-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--gray-400);
+  }
+  .news-meta .dot {
+    width: 3px; height: 3px;
+    background: var(--gray-400);
+    border-radius: 50%;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    background: var(--navy);
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    padding: 30px 40px;
+    font-size: 13px;
+  }
+  .footer strong {
+    color: var(--tan);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .hero { padding: 40px 20px 30px; }
+    .hero h1 { font-size: 32px; }
+    .hero-stats { gap: 24px; }
+    .hero-stat .number { font-size: 28px; }
+    .main { padding: 24px 20px; }
+    .nav-inner { padding: 0 20px; overflow-x: auto; }
+    .card-grid, .news-grid { grid-template-columns: 1fr; }
+    .timeline::before { left: 20px; }
+    .timeline-date { width: 0; display: none; }
+    .timeline-dot { margin-left: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">
+      <div class="pulse"></div>
+      DCX AI Innovation Hub
+    </div>
+    <h1>Powering DCX with <span>AI</span></h1>
+    <p>Our team's central hub for AI experiments, tools, prototypes, and knowledge sharing. Explore what we're building and join the innovation.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="number">12</div>
+        <div class="label">AI Projects</div>
+      </div>
+      <div class="hero-stat">
+        <div class="number">6</div>
+        <div class="label">Team Members</div>
+      </div>
+      <div class="hero-stat">
+        <div class="number">4</div>
+        <div class="label">Presentations</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Navigation ── -->
+<div class="nav-bar">
+  <div class="nav-inner">
+    <div class="nav-tab active">AI Catalog</div>
+    <div class="nav-tab">Presentations</div>
+    <div class="nav-tab">News & Notes</div>
+  </div>
+</div>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- AI Catalog Section -->
+  <div class="section">
+    <div class="section-header">
+      <h2>AI Catalog</h2>
+      <span class="count">8 projects</span>
+    </div>
+
+    <div class="filters">
+      <div class="filter-pill active">All</div>
+      <div class="filter-pill">Gemini Gems</div>
+      <div class="filter-pill">Prototypes</div>
+      <div class="filter-pill">Tools</div>
+      <div class="filter-pill">Workflows</div>
+    </div>
+
+    <div class="card-grid">
+
+      <div class="card">
+        <div class="card-type gem">Gemini Gem</div>
+        <h3>Customer Intent Classifier</h3>
+        <p>Gem that analyzes customer messages and classifies intent into 12 categories with confidence scores. Used by the routing team.</p>
+        <div class="card-meta">
+          <div class="card-owner">
+            <div class="avatar" style="background: linear-gradient(135deg, var(--blue), var(--navy));">SR</div>
+            Sameer R.
+          </div>
+          <a href="#" class="card-link">Open Gem &rarr;</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-type prototype">Prototype</div>
+        <h3>Auto-Summary Dashboard</h3>
+        <p>Generates daily executive summaries from Jira tickets, Slack threads, and Confluence pages. Prototype in Apps Script.</p>
+        <div class="card-meta">
+          <div class="card-owner">
+            <div class="avatar" style="background: linear-gradient(135deg, var(--tan), #A07D3A);">MK</div>
+            Mike K.
+          </div>
+          <a href="#" class="card-link">Try It &rarr;</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-type tool">Tool</div>
+        <h3>Meeting Notes AI</h3>
+        <p>Records meetings, transcribes with Gemini, and auto-generates action items sent to each attendee's email.</p>
+        <div class="card-meta">
+          <div class="card-owner">
+            <div class="avatar" style="background: linear-gradient(135deg, #15803D, #166534);">JP</div>
+            Jessica P.
+          </div>
+          <a href="#" class="card-link">Open Tool &rarr;</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-type gem">Gemini Gem</div>
+        <h3>Code Review Assistant</h3>
+        <p>Custom Gem trained on our team's coding standards. Paste a PR diff and get style + logic feedback instantly.</p>
+        <div class="card-meta">
+          <div class="card-owner">
+            <div class="avatar" style="background: linear-gradient(135deg, var(--blue), #0056A0);">AL</div>
+            Alex L.
+          </div>
+          <a href="#" class="card-link">Open Gem &rarr;</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-type workflow">Workflow</div>
+        <h3>Incident Triage Bot</h3>
+        <p>Automated workflow that reads PagerDuty alerts, correlates with recent deployments, and suggests root cause.</p>
+        <div class="card-meta">
+          <div class="card-owner">
+            <div class="avatar" style="background: linear-gradient(135deg, #7C3AED, #5B21B6);">RN</div>
+            Raj N.
+          </div>
+          <a href="#" class="card-link">View Workflow &rarr;</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-type prototype">Prototype</div>
+        <h3>Customer Email Drafter</h3>
+        <p>Takes a support ticket and drafts a personalized, empathetic response following our brand voice guidelines.</p>
+        <div class="card-meta">
+          <div class="card-owner">
+            <div class="avatar" style="background: linear-gradient(135deg, var(--tan), #B8944A);">SR</div>
+            Sameer R.
+          </div>
+          <a href="#" class="card-link">Try It &rarr;</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Presentations Section -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Presentations</h2>
+      <span class="count">4 scheduled</span>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-date">
+          <div class="month">Jun</div>
+          <div class="day">11</div>
+        </div>
+        <div class="timeline-dot completed"></div>
+        <div class="timeline-card">
+          <h3>Gemini Gems: Building Custom AI Assistants</h3>
+          <div class="presenter">Sameer Rajwade</div>
+          <div class="topic-desc">Deep dive into creating and sharing custom Gems for team-specific workflows</div>
+          <div class="status-badge completed">Completed</div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-date">
+          <div class="month">Jun</div>
+          <div class="day">25</div>
+        </div>
+        <div class="timeline-dot upcoming"></div>
+        <div class="timeline-card" style="border-color: var(--blue); background: linear-gradient(135deg, #FAFCFF, #F0F7FF);">
+          <h3>AI-Powered Testing: From Unit to Integration</h3>
+          <div class="presenter">Sameer Rajwade</div>
+          <div class="topic-desc">How to use AI to generate test cases, find edge cases, and automate regression testing</div>
+          <div class="status-badge next-up">Next Up</div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-date">
+          <div class="month">Jul</div>
+          <div class="day">09</div>
+        </div>
+        <div class="timeline-dot"></div>
+        <div class="timeline-card">
+          <h3>Automating Documentation with AI</h3>
+          <div class="presenter">Mike Kim</div>
+          <div class="topic-desc">Using Gemini to auto-generate API docs, runbooks, and architecture decision records</div>
+          <div class="status-badge upcoming">Upcoming</div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-date">
+          <div class="month">Jul</div>
+          <div class="day">23</div>
+        </div>
+        <div class="timeline-dot"></div>
+        <div class="timeline-card">
+          <h3>Prompt Engineering Best Practices</h3>
+          <div class="presenter">Jessica Park</div>
+          <div class="topic-desc">Practical patterns for getting better results from LLMs in enterprise settings</div>
+          <div class="status-badge upcoming">Upcoming</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- News & Notes Section -->
+  <div class="section">
+    <div class="section-header">
+      <h2>News & Notes</h2>
+      <span class="count">Latest updates</span>
+    </div>
+
+    <div class="news-grid">
+
+      <div class="news-card">
+        <div class="news-category">Announcement</div>
+        <h3>Google Gemini 2.5 Pro Released</h3>
+        <p>New model with 1M token context window and improved code generation. We should test our existing Gems on the new model.</p>
+        <div class="news-meta">
+          <span>Sameer R.</span>
+          <div class="dot"></div>
+          <span>Jun 14, 2026</span>
+        </div>
+      </div>
+
+      <div class="news-card">
+        <div class="news-category">Team Update</div>
+        <h3>AI Hackathon Results</h3>
+        <p>Our team won 2nd place at the internal hackathon with the Incident Triage Bot. Raj and Alex presented the demo to VP-level leadership.</p>
+        <div class="news-meta">
+          <span>Mike K.</span>
+          <div class="dot"></div>
+          <span>Jun 10, 2026</span>
+        </div>
+      </div>
+
+      <div class="news-card">
+        <div class="news-category">Learning</div>
+        <h3>New Gemini API Features: Grounding with Search</h3>
+        <p>Google added search grounding to Gemini API. This could improve accuracy for our customer-facing AI tools significantly.</p>
+        <div class="news-meta">
+          <span>Alex L.</span>
+          <div class="dot"></div>
+          <span>Jun 8, 2026</span>
+        </div>
+      </div>
+
+      <div class="news-card">
+        <div class="news-category">Idea</div>
+        <h3>AI Sprint Retro Summarizer</h3>
+        <p>What if we built a tool that sits in retro meetings, captures themes, and generates improvement action items automatically?</p>
+        <div class="news-meta">
+          <span>Jessica P.</span>
+          <div class="dot"></div>
+          <span>Jun 5, 2026</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Footer ── -->
+<div class="footer">
+  <strong>DCX AI Innovation Hub</strong> &mdash; Data is powered by Google Sheets. Team members add entries in the sheet, this page updates automatically.
+</div>
+
+</body>
+</html>
