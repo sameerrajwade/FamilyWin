@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import { getUserFamilyAndMember } from '@/lib/firebase';
 import { configureGoogleSignIn } from '@/lib/googleAuth';
+import { setupAppCheck } from '@/lib/appCheck';
 import { useAuthStore } from '@/store';
 import { setupNotificationListeners } from '@/lib/notifications';
 import { registerBackgroundTasks } from '@/lib/backgroundTasks';
@@ -343,6 +344,9 @@ function InnerLayout() {
   });
 
   useEffect(() => {
+    // Attest app integrity (App Check) before Firebase traffic. Monitor-only
+    // until enforcement is enabled server-side, so it's safe on every build.
+    setupAppCheck();
     // Configure Google Sign-In on app launch
     configureGoogleSignIn();
     // Register background auto-fail task

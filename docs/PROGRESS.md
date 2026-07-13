@@ -137,6 +137,18 @@
 - NO app-source code changes this iter (audit only) → no rebuild needed. Phase 3 NOT complete → not pushed yet (per-phase push rule).
 - REMAINING Phase 3 (do next, batch 1 rebuild): 3.10 App Check (dep @react-native-firebase/app-check → wire client, verify, THEN enforce), 3.9 invite-code hardening (callable + expiry/size cap), 3.8 server-side point integrity (BIG: move completeTask/addPointTransaction writes to a Cloud Function, then tighten rules to block client-forged pointsAwarded/tx), 3.6 Hermes+R8 (risky, verify heavily), 3.3/3.4 FlatList+memo (check screens), 3.5 expo-image caching, 3.1 persisted-cache render.
 
+## Iteration 15 (2026-07-13) — 3.10 App Check DEVICE-VERIFIED + commit
+- Rebuild b0zc514xu SUCCESS (2m15s, app-check autolinked, no prebuild). Installed on Pixel (wireless adb flaky — use `adb reconnect && adb wait-for-device` before install).
+- ✅ VERIFIED: app process launches, NO FATAL crash, `RNFBAppCheck` inits cleanly (token refresh on, collection enabled, no "provider missing" error). tsc clean. Monitor-only → no regression.
+- ⚠️ DEVICE NOW LOCKED (fingerprint) → can't screenshot app UI until user unlocks. Process/log/crash verification still works; for backend items prefer throwaway-REST tests (like deleteAccount) over UI shots.
+- Committed locally on autonomous/phase-3-perf-security (not pushed — Phase 3 not complete yet).
+
+## Iteration 14 (2026-07-12) — 3.10 App Check client wiring (building)
+- Added @react-native-firebase/app-check@20.5.0. NEW lib/appCheck.ts: setupAppCheck() configures provider (playIntegrity release / debug in __DEV__), initializeAppCheck w/ auto-refresh, ALL wrapped in try/catch (never breaks startup). Called first in _layout.tsx init effect (before Google Sign-In).
+- MONITOR-ONLY: enforcement NOT enabled server-side → safe on every build, cannot break existing Firestore/Storage/Functions calls. Enforce later in console AFTER confirming real-device tokens + registering a debug token.
+- tsc app-src clean. Rebuild bg b0zc514xu (App Check autolinks, no prebuild). On completion: verify app starts clean + data loads on Pixel (no regression), then commit.
+- NEXT after verify: 3.9 invite hardening, 3.8 server-side point integrity, 3.6 R8, 3.3/3.4/3.5; then package rename (add expo-build-properties FIRST for heap).
+
 ## AUTHORIZATIONS (user-granted 2026-07-12, override earlier "staged" defaults)
 1. **Firebase prod deploys → APPROVED.** May `firebase deploy --only storage,functions` (authed sameerrajwade@gmail.com).
 2. **Package rename com.lootboard.app → APPROVED.** Do via firebase CLI (`firebase apps:create ANDROID com.lootboard.app` → `firebase apps:sdkconfig ANDROID <appId>` → write google-services.json) so NO manual console step needed. Then app.json package+bundleId, prebuild, rebuild, re-add debug SHA-1 for Google Sign-In. NOTE: needs expo-build-properties heap fix FIRST (prebuild resets gradle.properties to 2GB → Jetifier OOM; must be ≥4GB).
