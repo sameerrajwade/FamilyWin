@@ -369,7 +369,7 @@ export default function HomeScreen() {
         <SlideIn delay={0}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={[styles.greeting, { color: colors.text, fontSize: fontSize(FontSize.xxl) }]}>
+              <Text numberOfLines={1} style={[styles.greeting, { color: colors.text, fontSize: fontSize(FontSize.xxl) }]}>
                 {actingAsMember
                   ? `${effectiveMember?.avatarEmoji} ${effectiveMember?.displayName}'s tasks${isReadOnly ? ' 👁' : ''}`
                   : `Hey, ${member?.displayName?.split(' ')[0]} ${member?.avatarEmoji}`}
@@ -380,15 +380,28 @@ export default function HomeScreen() {
             </View>
             <View style={styles.headerRight}>
               {streak > 0 && <StreakFlame streak={streak} />}
-              <TouchableOpacity
-                style={[styles.newTaskPill, { backgroundColor: colors.primary }]}
-                onPress={() => router.push({ pathname: '/app/task/create' as any, params: actingAsMember ? { defaultAssignee: actingAsMember.id } : {} })}
-                accessibilityLabel="Create new task"
-                accessibilityRole="button"
-                activeOpacity={0.85}
-              >
-                <Text style={styles.newTaskPillText}>＋ New task</Text>
-              </TouchableOpacity>
+              {isParent && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.actionPill, { backgroundColor: colors.primary }]}
+                    onPress={() => router.push({ pathname: '/app/task/create' as any, params: actingAsMember ? { defaultAssignee: actingAsMember.id } : {} })}
+                    accessibilityLabel="Create new task"
+                    accessibilityRole="button"
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.actionPillText}>📋 Task</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionPill, { backgroundColor: colors.danger + '18', borderWidth: 1.5, borderColor: colors.danger }]}
+                    onPress={() => router.push({ pathname: '/app/discipline/log' as any, params: actingAsMember ? { memberId: actingAsMember.id } : {} })}
+                    accessibilityLabel="Log a penalty"
+                    accessibilityRole="button"
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.actionPillText, { color: colors.danger }]}>⚠️ Penalty</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         </SlideIn>
@@ -604,8 +617,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   pointBurstContainer: { position: 'absolute', top: 120, left: 0, right: 0, alignItems: 'center', zIndex: 100 },
   brandRow: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
-  newTaskPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: 9, borderRadius: BorderRadius.full, ...Shadow.md },
-  newTaskPillText: { color: '#FFFFFF', fontFamily: FontFamily.extraBold, fontSize: FontSize.sm },
+  actionPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingVertical: 8, borderRadius: BorderRadius.full, ...Shadow.sm },
+  actionPillText: { color: '#FFFFFF', fontFamily: FontFamily.extraBold, fontSize: FontSize.xs },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },

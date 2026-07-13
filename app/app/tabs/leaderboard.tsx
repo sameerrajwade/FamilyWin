@@ -139,12 +139,6 @@ export default function LeaderboardScreen() {
             <Text style={[styles.title, { color: colors.text }]}>Leaderboard</Text>
             <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>{weekLabel}</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.historyBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '44' }]}
-            onPress={() => router.push('/app/tabs/history')}
-          >
-            <Text style={[styles.historyBtnText, { color: colors.primary }]}>📊 Insights</Text>
-          </TouchableOpacity>
         </View>
 
         {isLoading ? (
@@ -281,28 +275,41 @@ export default function LeaderboardScreen() {
 // ── Three-crowns row ────────────────────────────────────────────────────────
 // A fixed 👑 / 📈 / 🎯 trio. Awarded slots show the member; unawarded slots read
 // as "up for grabs" so the row looks intentional even early in the week.
+// Per-crown accent: `tint` drives the background wash, `ink` is a readable
+// border/label colour that holds contrast in BOTH light and dark mode (plain
+// gold text is unreadable on white, so 'top' uses a darker gold ink).
+const CROWN_ACCENT: Record<CrownSlot['kind'], { tint: string; ink: string }> = {
+  top:      { tint: '#FFD700', ink: '#C98A00' },
+  improved: { tint: '#43D98F', ink: '#1E9E63' },
+  goal:     { tint: '#6C63FF', ink: '#5A4FD6' },
+};
+
 function CrownsRow({ crowns, colors }: { crowns: CrownSlot[]; colors: any }) {
   return (
     <View style={crownStyles.row}>
       {crowns.map((c) => {
         const awarded = !!c.awardeeMemberId;
+        const accent = CROWN_ACCENT[c.kind];
         return (
           <View
             key={c.kind}
             style={[
               crownStyles.card,
               awarded
-                ? { backgroundColor: Colors.gold + '14', borderColor: Colors.gold + '77', borderStyle: 'solid' }
+                ? { backgroundColor: accent.tint + '24', borderColor: accent.ink, borderStyle: 'solid' }
                 : { backgroundColor: colors.surface, borderColor: colors.primary + '33', borderStyle: 'dashed' },
               awarded && Shadow.sm,
             ]}
           >
             <Text style={[crownStyles.emoji, !awarded && { opacity: 0.8 }]}>{c.emoji}</Text>
-            <Text style={[crownStyles.title, { color: colors.textSecondary }]} numberOfLines={1}>{c.title}</Text>
+            <Text
+              style={[crownStyles.title, { color: awarded ? accent.ink : colors.textSecondary }]}
+              numberOfLines={1}
+            >{c.title}</Text>
             {awarded ? (
               <>
                 <Text style={[crownStyles.name, { color: colors.text }]} numberOfLines={1}>{c.awardeeName}</Text>
-                <Text style={[crownStyles.detail, { color: colors.primary }]} numberOfLines={1}>{c.detail}</Text>
+                <Text style={[crownStyles.detail, { color: accent.ink }]} numberOfLines={1}>{c.detail}</Text>
               </>
             ) : (
               <Text style={[crownStyles.upForGrabs, { color: colors.primary }]} numberOfLines={1}>up for grabs</Text>

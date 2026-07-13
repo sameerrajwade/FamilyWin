@@ -1,3 +1,7 @@
+// Play Store link for the app (used in share sheets / cards). Update the id if
+// the package is renamed (e.g. com.lootboard.app).
+export const APP_STORE_URL = 'https://play.google.com/store/apps/details?id=com.familywin.app';
+
 export const Strings = {
   app: {
     name: 'Lootboard',

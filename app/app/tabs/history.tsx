@@ -17,11 +17,21 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BAR_MAX_HEIGHT = 120;
 type ViewMode = 'mine' | 'family';
 
+// Distinct, high-contrast per-member colours for the family contribution view —
+// readable in both light and dark mode. Assigned by member order.
+const MEMBER_COLORS = ['#6C63FF', '#43D98F', '#FF6B2C', '#00B8D4', '#FF5C8A', '#FFB300', '#8E5BFF', '#00C48C'];
+
+type MemberContribution = {
+  memberId: string; name: string; emoji: string; photoURL?: string;
+  color: string; total: number; weeks: number[];
+};
+
 export default function HistoryScreen() {
   const { member, family } = useAuthStore();
   const { members, setMembers } = useFamilyStore();
   const [transactions, setTransactions] = useState<TransactionDoc[]>([]);
   const [weeklyData, setWeeklyData] = useState<{ week: string; points: number }[]>([]);
+  const [familyBreakdown, setFamilyBreakdown] = useState<MemberContribution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('mine');
@@ -83,6 +93,41 @@ export default function HistoryScreen() {
       }
       setWeeklyData(weeks);
 
+      // Family view: per-member contribution over the last 4 weeks, so you can
+      // see at a glance WHO is driving the family's points.
+      if (viewMode === 'family') {
+        const bounds: { start: Date; end: Date }[] = [];
+        for (let i = 3; i >= 0; i--) {
+          const mon = new Date();
+          mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7) - i * 7);
+          mon.setHours(0, 0, 0, 0);
+          const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23, 59, 59, 999);
+          bounds.push({ start: mon, end: sun });
+        }
+        const byMember = new Map<string, number[]>();
+        for (const tx of txList) {
+          const d = tx.createdAt?.toDate?.();
+          if (!d) continue;
+          const wi = bounds.findIndex((b) => d >= b.start && d <= b.end);
+          if (wi < 0) continue;
+          if (!byMember.has(tx.memberId)) byMember.set(tx.memberId, [0, 0, 0, 0]);
+          byMember.get(tx.memberId)![wi] += tx.delta;
+        }
+        const breakdown: MemberContribution[] = Array.from(byMember.entries())
+          .map(([mid, wk]) => {
+            const m = members.find((mm) => mm.id === mid);
+            return {
+              memberId: mid, name: m?.displayName ?? 'Member', emoji: m?.avatarEmoji ?? '🙂',
+              photoURL: (m as any)?.photoURL, color: '', total: wk.reduce((a, b) => a + b, 0), weeks: wk,
+            };
+          })
+          .sort((a, b) => b.total - a.total)
+          .map((c, i) => ({ ...c, color: MEMBER_COLORS[i % MEMBER_COLORS.length] }));
+        setFamilyBreakdown(breakdown);
+      } else {
+        setFamilyBreakdown([]);
+      }
+
       // Plain-language insight cards derived from the same transaction log.
       setInsights(computeInsights(
         txList.map((tx) => ({
@@ -99,7 +144,7 @@ export default function HistoryScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [member?.id, family?.id, viewMode]);
+  }, [member?.id, family?.id, viewMode, members]);
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
@@ -117,6 +162,8 @@ export default function HistoryScreen() {
   }, [loadHistory]);
 
   const maxBarValue = Math.max(...weeklyData.map((d) => Math.abs(d.points)), 1);
+  const maxContribTotal = Math.max(...familyBreakdown.map((x) => Math.abs(x.total)), 1);
+  const maxContribWeek = Math.max(...familyBreakdown.flatMap((x) => x.weeks.map((w) => Math.abs(w))), 1);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -197,6 +244,38 @@ export default function HistoryScreen() {
                 })}
               </View>
             </View>
+
+            {viewMode === 'family' && familyBreakdown.length > 0 && (
+              <View style={[styles.chartCard, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.chartTitle, { color: colors.text }]}>Who's contributing · last 4 weeks</Text>
+                {familyBreakdown.map((m) => (
+                  <View key={m.memberId} style={styles.contribRow}>
+                    <View style={styles.contribHead}>
+                      <View style={[styles.contribDot, { backgroundColor: m.color }]} />
+                      <Text style={[styles.contribName, { color: colors.text }]} numberOfLines={1}>{m.emoji}  {m.name}</Text>
+                      <Text style={[styles.contribTotal, { color: m.color }]}>{m.total >= 0 ? '+' : ''}{m.total}</Text>
+                    </View>
+                    <View style={styles.contribBottom}>
+                      <View style={[styles.contribBarTrack, { backgroundColor: colors.border + '66' }]}>
+                        <View style={[styles.contribBarFill, { width: `${Math.max((Math.abs(m.total) / maxContribTotal) * 100, 3)}%`, backgroundColor: m.color }]} />
+                      </View>
+                      <View style={styles.contribTrend}>
+                        {m.weeks.map((w, i) => (
+                          <View
+                            key={i}
+                            style={[styles.contribTrendBar, {
+                              height: Math.max((Math.abs(w) / maxContribWeek) * 22, 2),
+                              backgroundColor: m.color, opacity: i === 3 ? 1 : 0.45,
+                            }]}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                ))}
+                <Text style={[styles.contribHint, { color: colors.textMuted }]}>Trend = last 4 weeks · brightest bar = this week</Text>
+              </View>
+            )}
 
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
@@ -279,6 +358,17 @@ const styles = StyleSheet.create({
   insightTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginBottom: 3 },
   insightDetail: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, lineHeight: 15 },
   chartCard: { marginHorizontal: Spacing.lg, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.lg, ...Shadow.sm },
+  contribRow: { marginBottom: Spacing.md },
+  contribHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
+  contribDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
+  contribName: { flex: 1, fontSize: FontSize.sm, fontFamily: FontFamily.bold },
+  contribTotal: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginLeft: 8 },
+  contribBottom: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm },
+  contribBarTrack: { flex: 1, height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 6 },
+  contribBarFill: { height: '100%', borderRadius: 5, minWidth: 6 },
+  contribTrend: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 24, width: 58 },
+  contribTrendBar: { flex: 1, borderRadius: 2, minHeight: 2 },
+  contribHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2, fontStyle: 'italic' },
   chartTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, marginBottom: Spacing.md },
   chartContainer: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: BAR_MAX_HEIGHT + 60 },
   barWrapper: { flex: 1, alignItems: 'center', justifyContent: 'flex-end' },

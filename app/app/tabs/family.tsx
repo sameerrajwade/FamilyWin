@@ -25,6 +25,7 @@ import firestore from '@react-native-firebase/firestore';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { useTheme } from '@/lib/theme';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
+import { APP_STORE_URL } from '@/constants/strings';
 import { Avatar } from '@/components/ui';
 import type { MemberDoc } from '@/lib/firebase';
 
@@ -58,8 +59,8 @@ export default function FamilyScreen() {
     if (!family?.inviteCode) return;
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Share.share({
-      message: `Join our family on FamilyWin! 🏆\n\nDownload FamilyWin and enter invite code: ${family.inviteCode}\n\nComplete tasks, earn points, and win the week!`,
-      title: 'Join FamilyWin',
+      message: `Join our family on Lootboard! 🏆\n\nInvite code: ${family.inviteCode}\n\nGet the app: ${APP_STORE_URL}\n\nComplete tasks, earn points, and win the week!`,
+      title: 'Join us on Lootboard',
     });
   }
 
@@ -127,14 +128,6 @@ export default function FamilyScreen() {
             <Text style={[styles.headerTitle, { color: colors.text }]}>👨‍👩‍👧 {family?.name ?? 'Family'}</Text>
             <Text style={[styles.headerSub, { color: colors.textSecondary }]}>{members.length} members</Text>
           </View>
-          {isParent && (
-            <TouchableOpacity
-              style={[styles.disciplineBtn, { backgroundColor: colors.warning + '20', borderColor: colors.warning + '55' }]}
-              onPress={() => router.push('/app/discipline/log')}
-            >
-              <Text style={[styles.disciplineBtnText, { color: colors.warning }]}>⚠️ Penalty/Bonus</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Invite card */}
@@ -738,7 +731,7 @@ const styles = StyleSheet.create({
   // Invite card
   inviteCard: { marginHorizontal: Spacing.lg, marginBottom: Spacing.lg, borderRadius: BorderRadius.xl, padding: Spacing.lg, flexDirection: 'row', alignItems: 'center', ...Shadow.md },
   inviteLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
-  inviteCode: { fontSize: 32, fontFamily: FontFamily.black, color: '#FFF', letterSpacing: 6 },
+  inviteCode: { fontSize: 25, fontFamily: FontFamily.black, color: '#FFF', letterSpacing: 4 },
   inviteHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: 'rgba(255,255,255,0.65)', marginTop: 4 },
   inviteBtns: { gap: Spacing.sm },
   inviteIconBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },

@@ -157,6 +157,16 @@
 - tsc app-src clean. Rebuild bg b0zc514xu (App Check autolinks, no prebuild). On completion: verify app starts clean + data loads on Pixel (no regression), then commit.
 - NEXT after verify: 3.9 invite hardening, 3.8 server-side point integrity, 3.6 R8, 3.3/3.4/3.5; then package rename (add expo-build-properties FIRST for heap).
 
+## Iteration 17 (2026-07-13) — USER UI FEEDBACK batch (loop STOPPED by user)
+User gave 8 items. Branch autonomous/phase-3-perf-security (UI fixes piggyback here for now).
+- ✅ (3) Leaderboard crowns: per-kind accent colors (gold/green/purple `ink` readable in light mode) replace grayed gold-only; awarded title now colored not textSecondary. `CROWN_ACCENT` map in leaderboard.tsx.
+- ✅ (5) Removed redundant "📊 Insights" button from Scores header (it's a bottom tab now).
+- ✅ (8) Home: replaced single "＋ New task" pill with TWO parent-gated pills side-by-side: "📋 Task" (primary) + "⚠️ Penalty" (danger outline → discipline/log). greeting numberOfLines=1.
+- ✅ (7 partial) Family: removed stray "⚠️ Penalty/Bonus" btn (now on Home); invite code 32→25px; share text FamilyWin→Lootboard + APP_STORE_URL (new const in strings.ts). IMAGE card still TODO.
+- ✅ (6) Insights Family view: NEW per-member contribution card — distinct color per member (MEMBER_COLORS), horizontal share bar + 4-week mini trend, sorted by total. history.tsx.
+- tsc clean. Rebuild bg b22vdxeit (JS-only, no prebuild). VERIFY on device when stable (wireless adb flaky).
+- STILL TODO (need native deps + rebuild 2): (2) PHOTO → switch to react-native-image-picker (file:// guaranteed; OPEN_DOCUMENT still failed per user); (4) champion share IMAGE card + (7) invite IMAGE card → react-native-view-shot + expo-sharing.
+
 ## AUTHORIZATIONS (user-granted 2026-07-12, override earlier "staged" defaults)
 1. **Firebase prod deploys → APPROVED.** May `firebase deploy --only storage,functions` (authed sameerrajwade@gmail.com).
 2. **Package rename com.lootboard.app → APPROVED.** Do via firebase CLI (`firebase apps:create ANDROID com.lootboard.app` → `firebase apps:sdkconfig ANDROID <appId>` → write google-services.json) so NO manual console step needed. Then app.json package+bundleId, prebuild, rebuild, re-add debug SHA-1 for Google Sign-In. NOTE: needs expo-build-properties heap fix FIRST (prebuild resets gradle.properties to 2GB → Jetifier OOM; must be ≥4GB).
