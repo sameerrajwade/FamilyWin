@@ -24,7 +24,7 @@ async function pickImageFromGallerySAF(): Promise<string | null> {
 }
 import auth from '@react-native-firebase/auth';
 import {
-  createFamily, getFamilyByInviteCode, createMember, createManagedMember,
+  createFamily, joinFamily, createMember, createManagedMember,
   getFamilyMembers, upsertNotifConfig, uploadMemberPhoto, type FamilyDoc,
 } from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
@@ -221,10 +221,8 @@ export default function OnboardingScreen() {
     if (!uid) return;
     try {
       setIsLoading(true);
-      const family = await getFamilyByInviteCode(inviteCode.trim().toUpperCase());
-      const member = await createMember({
-        familyId: family.id,
-        userId: uid,
+      const { family, member } = await joinFamily(uid, {
+        inviteCode: inviteCode.trim().toUpperCase(),
         displayName: displayName.trim(),
         role,
         avatarEmoji: selectedEmoji,

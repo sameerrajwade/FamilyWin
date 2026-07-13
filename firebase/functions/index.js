@@ -276,3 +276,71 @@ exports.deleteAccount = onCall(async (request) => {
   await getAuth().deleteUser(uid);
   return { ok: true };
 });
+
+// ─── JOIN FAMILY (invite-code hardening) ──────────────────────────────────────
+// Server-authoritative join so we can (a) rate-limit brute-force guessing of the
+// 6-char invite code, (b) enforce a family-size cap, and (c) keep families
+// NON-listable by clients (the code lookup happens here with the admin SDK, so
+// firestore.rules never has to allow non-members to query /families by code).
+const JOIN_MAX_ATTEMPTS_PER_HOUR = 10;
+const FAMILY_MAX_MEMBERS = 8;
+
+exports.joinFamily = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'You must be signed in.');
+
+  const d = request.data || {};
+  const code = String(d.inviteCode || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{6}$/.test(code)) {
+    throw new HttpsError('invalid-argument', 'Enter a valid 6-character code.');
+  }
+
+  // (a) Rate limit — sliding 1h window of attempt timestamps per user.
+  const rlRef = db.collection('joinRateLimits').doc(uid);
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000;
+  const prior = (await rlRef.get()).data();
+  const attempts = ((prior && prior.attempts) || []).filter((t) => now - t < windowMs);
+  if (attempts.length >= JOIN_MAX_ATTEMPTS_PER_HOUR) {
+    throw new HttpsError('resource-exhausted', 'Too many attempts. Please try again later.');
+  }
+  attempts.push(now);
+  await rlRef.set({ attempts }, { merge: true });
+
+  // One family per account.
+  const userSnap = await db.collection('users').doc(uid).get();
+  if (userSnap.exists && userSnap.data().familyId) {
+    throw new HttpsError('failed-precondition', 'You are already in a family.');
+  }
+
+  // Look up family by code (admin — bypasses rules).
+  const q = await db.collection('families').where('inviteCode', '==', code).limit(1).get();
+  if (q.empty) throw new HttpsError('not-found', 'No family found with that code.');
+  const familyRef = q.docs[0].ref;
+
+  // (b) Size cap.
+  const membersSnap = await familyRef.collection('members').get();
+  if (membersSnap.size >= FAMILY_MAX_MEMBERS) {
+    throw new HttpsError('resource-exhausted', 'This family is full.');
+  }
+
+  // Create the member + link the user doc, atomically. Shape mirrors
+  // lib/firebase.ts::createMember.
+  const memberRef = familyRef.collection('members').doc();
+  const age = Number(d.age);
+  const memberData = {
+    familyId: familyRef.id,
+    userId: uid,
+    displayName: String(d.displayName || '').slice(0, 40) || 'Member',
+    role: d.role === 'child' ? 'child' : 'parent',
+    avatarEmoji: String(d.avatarEmoji || '🦁'),
+    ...(Number.isFinite(age) && age > 0 ? { age } : {}),
+    createdAt: Timestamp.now(),
+  };
+  const batch = db.batch();
+  batch.set(memberRef, memberData);
+  batch.set(db.collection('users').doc(uid), { familyId: familyRef.id, memberId: memberRef.id });
+  await batch.commit();
+
+  return { ok: true, familyId: familyRef.id, memberId: memberRef.id };
+});

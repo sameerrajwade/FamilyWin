@@ -137,6 +137,14 @@
 - NO app-source code changes this iter (audit only) → no rebuild needed. Phase 3 NOT complete → not pushed yet (per-phase push rule).
 - REMAINING Phase 3 (do next, batch 1 rebuild): 3.10 App Check (dep @react-native-firebase/app-check → wire client, verify, THEN enforce), 3.9 invite-code hardening (callable + expiry/size cap), 3.8 server-side point integrity (BIG: move completeTask/addPointTransaction writes to a Cloud Function, then tighten rules to block client-forged pointsAwarded/tx), 3.6 Hermes+R8 (risky, verify heavily), 3.3/3.4 FlatList+memo (check screens), 3.5 expo-image caching, 3.1 persisted-cache render.
 
+## Iteration 16 (2026-07-13) — 3.9 invite-code hardening (deployed + REST-verified)
+- NEW callable `joinFamily` (functions/index.js): server-side code lookup + rate-limit (10/hr/uid via joinRateLimits) + family-size cap (8) + one-family-per-account. Deployed.
+- Client: `joinFamily(uid, params)` helper in lib/firebase.ts (calls callable → re-hydrates via getUserFamilyAndMember); onboarding.tsx join flow swapped off client-side getFamilyByInviteCode+createMember. tsc clean.
+- ✅ REST-VERIFIED (throwaway A/B/C, all cleaned up): join→ok+correct family, user doc linked, re-join→FAILED_PRECONDITION, 11th bad attempt→RESOURCE_EXHAUSTED (rate limit fires after 10).
+- NOTE: onboarding only shows for NEW users (not device-testable via logged-in account + locked screen) → REST test IS the verification; client-launch check batches with next (3.8) rebuild.
+- Minor: one orphaned throwaway family (twfam_1783945397513) from a failed 1st test run left in Firestore (inert dev data).
+- Committed local (Phase 3 not complete → not pushed).
+
 ## Iteration 15 (2026-07-13) — 3.10 App Check DEVICE-VERIFIED + commit
 - Rebuild b0zc514xu SUCCESS (2m15s, app-check autolinked, no prebuild). Installed on Pixel (wireless adb flaky — use `adb reconnect && adb wait-for-device` before install).
 - ✅ VERIFIED: app process launches, NO FATAL crash, `RNFBAppCheck` inits cleanly (token refresh on, collection enabled, no "provider missing" error). tsc clean. Monitor-only → no regression.

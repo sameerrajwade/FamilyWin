@@ -163,6 +163,28 @@ export async function createFamily(name: string): Promise<FamilyDoc> {
 }
 
 /** Look up a family by 6-char invite code */
+/**
+ * Join a family by invite code via the server-authoritative `joinFamily` Cloud
+ * Function (rate-limited, size-capped). Replaces the old client-side
+ * getFamilyByInviteCode + createMember pair. Re-hydrates typed family/member
+ * docs afterward (now that the caller is a member, rules allow the reads).
+ */
+export async function joinFamily(
+  uid: string,
+  params: { inviteCode: string; displayName: string; role: MemberDoc['role']; avatarEmoji: string; age?: number },
+): Promise<{ family: FamilyDoc; member: MemberDoc }> {
+  await functions().httpsCallable('joinFamily')({
+    inviteCode: params.inviteCode,
+    displayName: params.displayName,
+    role: params.role,
+    avatarEmoji: params.avatarEmoji,
+    ...(params.age != null ? { age: params.age } : {}),
+  });
+  const result = await getUserFamilyAndMember(uid);
+  if (!result) throw new Error('Joined but could not load family.');
+  return result;
+}
+
 export async function getFamilyByInviteCode(code: string): Promise<FamilyDoc> {
   const snap = await Col.families()
     .where('inviteCode', '==', code.toUpperCase())
