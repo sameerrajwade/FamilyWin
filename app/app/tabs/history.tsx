@@ -5,9 +5,11 @@ import firestore from '@react-native-firebase/firestore';
 import { Col, getFamilyMembers } from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
 import type { MemberDoc } from '@/lib/firebase';
-import { getPointsColor, formatPoints, getWeekLabel, getCurrentWeekRange } from '@/lib/pointsEngine';
+import { getPointsColor, formatPoints, getWeekLabel, getCurrentWeekRange, computeInsights } from '@/lib/pointsEngine';
+import type { InsightCard } from '@/lib/pointsEngine';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { Avatar } from '@/components/ui';
+import { BrandBar } from '@/components/ui/Brand';
 import { useTheme } from '@/lib/theme';
 import type { TransactionDoc } from '@/lib/firebase';
 
@@ -25,6 +27,7 @@ export default function HistoryScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('mine');
   const [totalPoints, setTotalPoints] = useState(0);
   const [thisWeekPoints, setThisWeekPoints] = useState(0);
+  const [insights, setInsights] = useState<InsightCard[]>([]);
 
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
   const { colors } = useTheme();
@@ -79,6 +82,18 @@ export default function HistoryScreen() {
         weeks.push({ week: monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), points: weekPts });
       }
       setWeeklyData(weeks);
+
+      // Plain-language insight cards derived from the same transaction log.
+      setInsights(computeInsights(
+        txList.map((tx) => ({
+          delta: tx.delta,
+          source: tx.source,
+          reason: (tx as any).reason,
+          date: tx.createdAt?.toDate?.() ?? new Date(),
+        })),
+        weeks,
+        weekStart,
+      ));
     } catch (error) {
       if (__DEV__) console.error(error);
     } finally {
@@ -105,9 +120,10 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <BrandBar />
       <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}>
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>📊 History</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Insights</Text>
           {isParent && (
             <View style={[styles.toggleRow, { backgroundColor: colors.border }]}>
               <TouchableOpacity style={[styles.toggleBtn, viewMode === 'mine' && { backgroundColor: colors.primary }]} onPress={() => setViewMode('mine')}>
@@ -143,6 +159,24 @@ export default function HistoryScreen() {
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Events</Text>
               </View>
             </View>
+
+            {/* Plain-language insight cards — the signature of this screen */}
+            {insights.length > 0 && (
+              <View style={styles.insightsWrap}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.insightsScroll}>
+                  {insights.map((c) => {
+                    const toneColor = c.tone === 'good' ? colors.success : c.tone === 'bad' ? colors.danger : colors.textSecondary;
+                    return (
+                      <View key={c.key} style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: toneColor + '44' }]}>
+                        <Text style={styles.insightEmoji}>{c.emoji}</Text>
+                        <Text style={[styles.insightTitle, { color: colors.text }]} numberOfLines={2}>{c.title}</Text>
+                        <Text style={[styles.insightDetail, { color: colors.textSecondary }]} numberOfLines={2}>{c.detail}</Text>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             <View style={[styles.chartCard, { backgroundColor: colors.surface }]}>
               <Text style={[styles.chartTitle, { color: colors.text }]}>6-Week Points Trend</Text>
@@ -227,7 +261,8 @@ function TransactionRow({ tx, showMember, colors, members }: {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg },
+  brandRow: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.xs, paddingBottom: Spacing.lg },
   headerTitle: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold },
   toggleRow: { flexDirection: 'row', borderRadius: 20, padding: 2 },
   toggleBtn: { paddingHorizontal: Spacing.md, paddingVertical: 6, borderRadius: 20 },
@@ -237,6 +272,12 @@ const styles = StyleSheet.create({
   statEmoji: { fontSize: 24, marginBottom: 4 },
   statValue: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold },
   statLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2 },
+  insightsWrap: { marginBottom: Spacing.lg },
+  insightsScroll: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },
+  insightCard: { width: 150, borderRadius: BorderRadius.lg, borderWidth: 1.5, padding: Spacing.md, ...Shadow.sm },
+  insightEmoji: { fontSize: 22, marginBottom: 6 },
+  insightTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginBottom: 3 },
+  insightDetail: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, lineHeight: 15 },
   chartCard: { marginHorizontal: Spacing.lg, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.lg, ...Shadow.sm },
   chartTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, marginBottom: Spacing.md },
   chartContainer: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: BAR_MAX_HEIGHT + 60 },

@@ -11,6 +11,9 @@ import {
   calculateTotalPoints,
   calculateWeeklyPoints,
   buildLeaderboard,
+  computeCrowns,
+  computeInsights,
+  getLevel,
   calculateStreak,
   getCurrentWeekRange,
   getWeekLabel,
@@ -353,5 +356,214 @@ describe('formatPoints', () => {
   });
   it('formats 10000 as 10.0k', () => {
     expect(formatPoints(10000)).toBe('10.0k');
+  });
+});
+
+// ─── computeCrowns ────────────────────────────────────────────────────────────
+describe('computeCrowns', () => {
+  const members = [
+    { id: 'dad', displayName: 'Dad Smith', avatarEmoji: '👨' },
+    { id: 'mom', displayName: 'Mom Smith', avatarEmoji: '👩' },
+    { id: 'alex', displayName: 'Alex Smith', avatarEmoji: '🧒' },
+  ];
+  const board = (totals: Record<string, number>) =>
+    buildLeaderboard(totals, members as any, 'alex', {}, {});
+
+  it('returns exactly three slots in fixed order', () => {
+    const crowns = computeCrowns(board({ dad: 100, mom: 50, alex: 10 }));
+    expect(crowns.map((c) => c.kind)).toEqual(['top', 'improved', 'goal']);
+  });
+
+  it('awards top scorer to the rank-1 member', () => {
+    const crowns = computeCrowns(board({ dad: 100, mom: 50, alex: 10 }));
+    expect(crowns[0].awardeeMemberId).toBe('dad');
+    expect(crowns[0].detail).toBe('100 pts');
+    expect(crowns[0].awardeeName).toBe('Dad');
+  });
+
+  it('does not award top scorer in a zero-point week', () => {
+    const crowns = computeCrowns(board({ dad: 0, mom: 0, alex: 0 }));
+    expect(crowns[0].awardeeMemberId).toBeNull();
+    expect(crowns[0].detail).toBeNull();
+  });
+
+  it('awards most improved to the biggest positive delta vs last week', () => {
+    const crowns = computeCrowns(
+      board({ dad: 100, mom: 120, alex: 60 }),
+      { dad: 90, mom: 40, alex: 55 }, // mom gained +80, the biggest
+    );
+    expect(crowns[1].awardeeMemberId).toBe('mom');
+    expect(crowns[1].detail).toBe('+80 vs last wk');
+  });
+
+  it('gives no improved crown when there is no last-week data', () => {
+    const crowns = computeCrowns(board({ dad: 100, mom: 50, alex: 10 }));
+    expect(crowns[1].awardeeMemberId).toBeNull();
+  });
+
+  it('gives no improved crown when nobody improved', () => {
+    const crowns = computeCrowns(
+      board({ dad: 10, mom: 20, alex: 5 }),
+      { dad: 100, mom: 100, alex: 100 },
+    );
+    expect(crowns[1].awardeeMemberId).toBeNull();
+  });
+
+  it('awards goal crusher to a member who reached their goal', () => {
+    const crowns = computeCrowns(
+      board({ dad: 100, mom: 50, alex: 160 }),
+      {},
+      { alex: 150 },
+    );
+    expect(crowns[2].awardeeMemberId).toBe('alex');
+    expect(crowns[2].detail).toBe('160 / 150');
+  });
+
+  it('credits the widest goal margin and counts the rest', () => {
+    const crowns = computeCrowns(
+      board({ dad: 300, mom: 210, alex: 160 }),
+      {},
+      { dad: 100, mom: 200, alex: 150 }, // dad +200, alex +10, mom +10 — dad widest
+    );
+    expect(crowns[2].awardeeMemberId).toBe('dad');
+    expect(crowns[2].detail).toContain('+2'); // two other achievers noted
+  });
+
+  it('gives no goal crown when no goals are set', () => {
+    const crowns = computeCrowns(board({ dad: 100, mom: 50, alex: 10 }));
+    expect(crowns[2].awardeeMemberId).toBeNull();
+  });
+
+  it('handles an empty family without throwing', () => {
+    expect(() => computeCrowns([])).not.toThrow();
+    const crowns = computeCrowns([]);
+    expect(crowns.every((c) => c.awardeeMemberId === null)).toBe(true);
+  });
+});
+
+// ─── computeInsights ──────────────────────────────────────────────────────────
+describe('computeInsights', () => {
+  const D = (weekday: number) => {
+    // a date in the current week with the given getDay()
+    const d = new Date();
+    d.setDate(d.getDate() - d.getDay() + weekday);
+    d.setHours(12, 0, 0, 0);
+    return d;
+  };
+
+  it('returns an up-trend card when this week beats last week', () => {
+    const cards = computeInsights([], [{ week: 'Jun 1', points: 100 }, { week: 'Jun 8', points: 150 }]);
+    const trend = cards.find((c) => c.key === 'trend')!;
+    expect(trend.tone).toBe('good');
+    expect(trend.title).toContain('Up 50%');
+  });
+
+  it('returns a down-trend card when this week is worse', () => {
+    const cards = computeInsights([], [{ week: 'Jun 1', points: 200 }, { week: 'Jun 8', points: 150 }]);
+    expect(cards.find((c) => c.key === 'trend')!.tone).toBe('bad');
+  });
+
+  it('marks a flat week as steady/neutral', () => {
+    const cards = computeInsights([], [{ week: 'Jun 1', points: 100 }, { week: 'Jun 8', points: 100 }]);
+    expect(cards.find((c) => c.key === 'trend')!.tone).toBe('neutral');
+  });
+
+  it('omits the trend card entirely for two empty weeks', () => {
+    const cards = computeInsights([], [{ week: 'Jun 1', points: 0 }, { week: 'Jun 8', points: 0 }]);
+    expect(cards.find((c) => c.key === 'trend')).toBeUndefined();
+  });
+
+  it('identifies the best day of week by points', () => {
+    const txns = [
+      { delta: 10, source: 'task', date: D(1) }, // Monday
+      { delta: 50, source: 'task', date: D(6) }, // Saturday
+      { delta: 20, source: 'task', date: D(6) }, // Saturday
+    ];
+    const cards = computeInsights(txns, []);
+    const best = cards.find((c) => c.key === 'bestday')!;
+    expect(best.title).toContain('Saturdays');
+    expect(best.detail).toContain('70 pts');
+  });
+
+  it('surfaces a record week from the 6-week window', () => {
+    const cards = computeInsights([], [
+      { week: 'May 1', points: 80 }, { week: 'May 8', points: 300 }, { week: 'May 15', points: 120 },
+    ]);
+    const rec = cards.find((c) => c.key === 'record')!;
+    expect(rec.title).toContain('300 pts');
+  });
+
+  it('flags the most-dodged task when a reason repeats', () => {
+    const txns = [
+      { delta: -10, source: 'task', reason: 'Missed: Make the bed', date: D(1) },
+      { delta: -10, source: 'task', reason: 'Missed: Make the bed', date: D(2) },
+      { delta: -25, source: 'task', reason: 'Auto-failed: Dishes', date: D(3) },
+    ];
+    const cards = computeInsights(txns, []);
+    const dodged = cards.find((c) => c.key === 'dodged')!;
+    expect(dodged.detail).toContain('Make the bed'); // prefix stripped
+    expect(dodged.detail).toContain('2');
+  });
+
+  it('does not flag most-dodged for a single miss', () => {
+    const txns = [{ delta: -10, source: 'task', reason: 'Missed: Make the bed', date: D(1) }];
+    expect(computeInsights(txns, []).find((c) => c.key === 'dodged')).toBeUndefined();
+  });
+
+  it('counts tasks done this week when a weekStart is given', () => {
+    const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay()); weekStart.setHours(0, 0, 0, 0);
+    const txns = [
+      { delta: 10, source: 'task', date: D(1) },
+      { delta: 25, source: 'task', date: D(2) },
+      { delta: 5, source: 'bonus', date: D(2) }, // not a task
+    ];
+    const cards = computeInsights(txns, [], weekStart);
+    const t = cards.find((c) => c.key === 'tasks')!;
+    expect(t.title).toContain('2 tasks');
+  });
+
+  it('returns an empty array for a member with no data', () => {
+    expect(computeInsights([], [])).toEqual([]);
+  });
+});
+
+// ─── getLevel ─────────────────────────────────────────────────────────────────
+describe('getLevel', () => {
+  it('starts everyone at level 1 Rookie', () => {
+    const l = getLevel(0);
+    expect(l.level).toBe(1);
+    expect(l.title).toBe('Rookie');
+  });
+
+  it('treats negative or NaN points as level 1', () => {
+    expect(getLevel(-50).level).toBe(1);
+    expect(getLevel(NaN).level).toBe(1);
+  });
+
+  it('advances a level exactly at the floor', () => {
+    expect(getLevel(150).title).toBe('Helper');
+    expect(getLevel(149).title).toBe('Rookie');
+  });
+
+  it('reports remaining points to the next level', () => {
+    const l = getLevel(100); // Rookie band is 0..150
+    expect(l.next).toBe(50);
+    expect(l.progress).toBeCloseTo(100 / 150, 5);
+  });
+
+  it('never decreases level as points grow (monotonic)', () => {
+    let prev = 0;
+    for (let p = 0; p <= 8000; p += 137) {
+      const lvl = getLevel(p).level;
+      expect(lvl).toBeGreaterThanOrEqual(prev);
+      prev = lvl;
+    }
+  });
+
+  it('caps at the top tier with full progress and no next', () => {
+    const l = getLevel(999999);
+    expect(l.title).toBe('Mythic');
+    expect(l.next).toBeNull();
+    expect(l.progress).toBe(1);
   });
 });

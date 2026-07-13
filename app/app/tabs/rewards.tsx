@@ -20,14 +20,16 @@ import {
   TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Sounds } from '@/lib/sounds';
+import { SlideIn, ScalePress } from '@/components/ui/Animations';
 import { Col, getActiveRewards, requestRedemption, approveRedemption, rejectRedemption, createReward, getFamilyMembers } from '@/lib/firebase';
 import { useAuthStore, usePointsStore, useFamilyStore } from '@/store';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
 import { Avatar } from '@/components/ui';
+import { BrandBar } from '@/components/ui/Brand';
 import type { RewardDoc, RedemptionDoc } from '@/lib/firebase';
 
 export default function RewardsScreen() {
@@ -256,6 +258,8 @@ export default function RewardsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
 
+      {/* Brand always sits on top, above the family profile switcher */}
+      <BrandBar />
       {/* Profile tab bar — parents with managed children */}
       {isParent && members.some((m) => m.isManaged) && (
         <ProfileTabBar
@@ -276,13 +280,13 @@ export default function RewardsScreen() {
         {/* Header — points summary */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>🎁 Rewards Store</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Rewards</Text>
             {/* Primary: all-time bank balance (for spending) */}
             <View style={[styles.pointsCard, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '44' }]}>
               <View style={styles.pointsRow}>
                 <View>
                   <Text style={[styles.pointsLabel, { color: colors.textSecondary }]}>
-                    {actingAsMember ? `${actingAsMember.displayName.split(' ')[0]}'s` : 'Your'} Points
+                    💰 {actingAsMember ? `${actingAsMember.displayName.split(' ')[0]}'s` : 'Your'} Points Vault
                   </Text>
                   <Text style={[styles.pointsBig, { color: colors.primary }]}>
                     {bankBalance !== null ? bankBalance : weekPoints}
@@ -323,25 +327,46 @@ export default function RewardsScreen() {
           <>
             {/* Rewards grid */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Available Rewards</Text>
+              <View style={styles.sectionHeadRow}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Available Rewards</Text>
+                {isParent && rewards.length > 0 && (
+                  <TouchableOpacity onPress={() => router.push('/app/reward/packs' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={[styles.packsLink, { color: colors.primary }]}>🎁 Packs</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               {rewards.length === 0 ? (
-                <EmptyState
-                  emoji="🎁"
-                  title="No rewards yet"
-                  subtitle={isParent ? 'Tap + Add to create your first reward' : 'Ask a parent to add rewards'}
-                  colors={colors}
-                />
+                <View>
+                  <EmptyState
+                    emoji="🎁"
+                    title="No rewards yet"
+                    subtitle={isParent ? 'Add a ready-made reward pack, or create your own.' : 'Ask a parent to add rewards'}
+                    colors={colors}
+                  />
+                  {isParent && (
+                    <TouchableOpacity
+                      style={[styles.packsCta, { backgroundColor: colors.primary }]}
+                      onPress={() => router.push('/app/reward/packs' as any)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.packsCtaText}>🎁 Browse reward packs</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               ) : (
                 <View style={styles.rewardsGrid}>
-                  {rewards.map((reward) => (
-                    <RewardCard
-                      key={reward.id}
-                      reward={reward}
-                      spendablePoints={spendablePoints}
-                      isRedeeming={redeemingId === reward.id}
-                      onRedeem={() => handleRedeem(reward)}
-                      colors={colors}
-                    />
+                  {rewards.map((reward, index) => (
+                    <SlideIn key={reward.id} delay={100 + index * 100} from="bottom">
+                      <ScalePress onPress={() => {}} style={undefined}>
+                        <RewardCard
+                          reward={reward}
+                          spendablePoints={spendablePoints}
+                          isRedeeming={redeemingId === reward.id}
+                          onRedeem={() => handleRedeem(reward)}
+                          colors={colors}
+                        />
+                      </ScalePress>
+                    </SlideIn>
                   ))}
                 </View>
               )}
@@ -503,35 +528,79 @@ const ptStyles = StyleSheet.create({
 
 // ─── Reward Card ──────────────────────────────────────────────────────────────
 
+// Pick a fitting emoji for a reward. Uses an explicit `icon` field if the reward
+// has one, otherwise infers from keywords in the title, falling back to 🎁.
+function rewardIcon(reward: RewardDoc): string {
+  const explicit = (reward as any).icon;
+  if (explicit) return explicit;
+  const t = (reward.title ?? '').toLowerCase();
+  const map: [RegExp, string][] = [
+    [/screen|tablet|phone|ipad|device/, '📱'],
+    [/game|xbox|playstation|ps5|nintendo|switch|roblox|minecraft/, '🎮'],
+    [/tv|movie|netflix|show|cinema|film/, '🍿'],
+    [/ice ?cream|dessert|candy|sweet|chocolate|treat/, '🍦'],
+    [/dinner|meal|food|pizza|restaurant|lunch|snack/, '🍽️'],
+    [/money|cash|allowance|dollar|\$/, '💵'],
+    [/late|bedtime|stay up|sleep in/, '🌙'],
+    [/toy|lego/, '🧸'],
+    [/book|story|read/, '📚'],
+    [/outing|trip|park|zoo|beach|out/, '🎡'],
+    [/skip|chore|day off|pass/, '🎟️'],
+    [/friend|sleepover|party/, '🎉'],
+    [/sport|bike|ball|swim|scooter/, '⚽'],
+  ];
+  for (const [re, emoji] of map) if (re.test(t)) return emoji;
+  return '🎁';
+}
+
 function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, colors }: {
   reward: RewardDoc; spendablePoints: number; isRedeeming: boolean;
   onRedeem: () => void; colors: any;
 }) {
   const canAfford = spendablePoints >= reward.pointCost;
+  const remaining = Math.max(0, reward.pointCost - spendablePoints);
+  const progress = reward.pointCost > 0 ? Math.min(1, spendablePoints / reward.pointCost) : 1;
   return (
     <View style={[styles.rewardCard, { backgroundColor: colors.surface }, !canAfford && styles.rewardCardDisabled]}>
-      <Text style={[styles.rewardTitle, { color: colors.text }]}>{reward.title}</Text>
-      {reward.description ? (
-        <Text style={[styles.rewardDesc, { color: colors.textSecondary }]}>{reward.description}</Text>
-      ) : null}
-      <View style={styles.rewardFooter}>
+      <View style={styles.rewardTop}>
+        <View style={[styles.rewardIconBox, { backgroundColor: colors.primary + '18' }]}>
+          <Text style={styles.rewardIcon}>{rewardIcon(reward)}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.rewardTitle, { color: colors.text }]}>{reward.title}</Text>
+          {reward.description ? (
+            <Text style={[styles.rewardDesc, { color: colors.textSecondary }]} numberOfLines={2}>{reward.description}</Text>
+          ) : null}
+        </View>
         <View style={styles.rewardCostRow}>
-          <Text style={[styles.rewardCostValue, { color: canAfford ? colors.primary : colors.danger }]}>
+          <Text style={[styles.rewardCostValue, { color: canAfford ? colors.primary : colors.text }]}>
             {reward.pointCost}
           </Text>
-          <Text style={[styles.rewardCostLabel, { color: colors.textSecondary }]}> pts</Text>
+          <Text style={[styles.rewardCostLabel, { color: colors.textSecondary }]}>pts</Text>
         </View>
-        <Pressable
-          android_disableSound
-          style={[styles.redeemBtn, { backgroundColor: canAfford ? colors.primary : colors.textMuted }]}
-          onPress={onRedeem}
-          disabled={!canAfford || isRedeeming}
-        >
-          {isRedeeming
-            ? <ActivityIndicator color="#FFF" size="small" />
-            : <Text style={styles.redeemBtnText}>{canAfford ? 'Redeem 🎁' : 'Need More'}</Text>
-          }
-        </Pressable>
+      </View>
+
+      {/* Progress-to-afford: a motivating "N pts to go" bar until it's earned */}
+      {!canAfford && (
+        <View style={styles.affordWrap}>
+          <View style={[styles.affordTrack, { backgroundColor: colors.primary + '1A' }]}>
+            <View style={[styles.affordFill, { width: `${progress * 100}%`, backgroundColor: colors.primary }]} />
+          </View>
+          <Text style={[styles.affordLabel, { color: colors.textSecondary }]}>
+            <Text style={{ color: colors.primary, fontFamily: FontFamily.extraBold }}>{remaining}</Text> pts to go
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.rewardFooter}>
+        <ScalePress onPress={onRedeem} disabled={!canAfford || isRedeeming} style={{ flex: 1 }}>
+          <View style={[styles.redeemBtn, { backgroundColor: canAfford ? colors.primary : colors.primary + '22' }]}>
+            {isRedeeming
+              ? <ActivityIndicator color="#FFF" size="small" />
+              : <Text style={[styles.redeemBtnText, { color: canAfford ? '#FFF' : colors.primary }]}>{canAfford ? 'Redeem 🎁' : `Keep earning`}</Text>
+            }
+          </View>
+        </ScalePress>
       </View>
     </View>
   );
@@ -694,7 +763,8 @@ function EmptyState({ emoji, title, subtitle, colors }: {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  header: { flexDirection: 'row', alignItems: 'flex-start', padding: Spacing.lg, gap: Spacing.sm },
+  brandRow: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
+  header: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: Spacing.lg, paddingTop: Spacing.xs, paddingBottom: Spacing.lg, gap: Spacing.sm },
   headerTitle: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, marginBottom: Spacing.sm },
   pointsCard: { borderRadius: BorderRadius.lg, padding: Spacing.md, borderWidth: 1.5 },
   pointsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -709,18 +779,29 @@ const styles = StyleSheet.create({
   addBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFF' },
 
   section: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },
+  sectionHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
   sectionTitle: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, marginBottom: Spacing.sm },
+  packsLink: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
+  packsCta: { borderRadius: BorderRadius.md, paddingVertical: 13, alignItems: 'center', marginHorizontal: Spacing.xl, marginTop: Spacing.sm, ...Shadow.md },
+  packsCtaText: { color: '#FFF', fontFamily: FontFamily.extraBold, fontSize: FontSize.md },
 
   rewardsGrid: { gap: Spacing.sm },
   rewardCard: { borderRadius: BorderRadius.lg, padding: Spacing.md, ...Shadow.sm },
-  rewardCardDisabled: { opacity: 0.55 },
-  rewardTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold, marginBottom: 4 },
-  rewardDesc: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, marginBottom: Spacing.sm },
+  rewardCardDisabled: { opacity: 0.9 },
+  rewardTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  rewardIconBox: { width: 44, height: 44, borderRadius: BorderRadius.md, alignItems: 'center', justifyContent: 'center' },
+  rewardIcon: { fontSize: 24 },
+  rewardTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold, marginBottom: 2 },
+  rewardDesc: { fontSize: FontSize.xs, fontFamily: FontFamily.regular },
   rewardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Spacing.sm },
-  rewardCostRow: { flexDirection: 'row', alignItems: 'baseline' },
+  rewardCostRow: { alignItems: 'center', minWidth: 44 },
   rewardCostValue: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold },
-  rewardCostLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.regular },
-  redeemBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 8 },
+  rewardCostLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, marginTop: -2 },
+  affordWrap: { marginTop: Spacing.sm },
+  affordTrack: { height: 7, borderRadius: 4, overflow: 'hidden' },
+  affordFill: { height: '100%', borderRadius: 4 },
+  affordLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, marginTop: 5 },
+  redeemBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, alignItems: 'center' },
   redeemBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFF' },
 
   historyRow: { flexDirection: 'row', alignItems: 'center', borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.sm, gap: Spacing.sm, ...Shadow.sm },

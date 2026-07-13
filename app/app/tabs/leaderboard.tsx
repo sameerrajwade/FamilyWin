@@ -1,21 +1,25 @@
 import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import firestore from '@react-native-firebase/firestore';
 import { useAuthStore, useFamilyStore, usePointsStore } from '@/store';
 import { Col, getFamilyMembers, getCurrentWeekId, getWeekCompletions, getMemberPersonalBest } from '@/lib/firebase';
-import { buildLeaderboard, getWeekLabel, getCurrentWeekRange, getRankEmoji } from '@/lib/pointsEngine';
+import { buildLeaderboard, computeCrowns, getWeekLabel, getCurrentWeekRange, getRankEmoji } from '@/lib/pointsEngine';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { Avatar } from '@/components/ui';
+import { BrandBar } from '@/components/ui/Brand';
 import { useTheme } from '@/lib/theme';
-import type { LeaderboardEntry } from '@/lib/pointsEngine';
+import { SlideIn, CountUp, ScalePress, RankChangeBadge } from '@/components/ui/Animations';
+import type { LeaderboardEntry, CrownSlot } from '@/lib/pointsEngine';
 
 export default function LeaderboardScreen() {
   const { member: currentMember, family } = useAuthStore();
   const { members, setMembers } = useFamilyStore();
   const { weeklyTotals, setWeeklyTotals } = usePointsStore();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [crowns, setCrowns] = useState<CrownSlot[]>([]);
+  const [lastWeekChampion, setLastWeekChampion] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [personalBest, setPersonalBest] = useState<number>(0);
@@ -57,6 +61,37 @@ export default function LeaderboardScreen() {
       const board = buildLeaderboard(totals, membersList as any, currentMember.id, taskStats, {});
       setLeaderboard(board);
 
+      // Three-crowns row: needs LAST week's earned totals (for "most improved")
+      // and any per-member weekly goals (for "goal crusher"). Both degrade
+      // gracefully — a fresh family with no history simply shows unawarded slots.
+      const prevStart = new Date(start); prevStart.setDate(prevStart.getDate() - 7);
+      const prevEnd = new Date(start); prevEnd.setMilliseconds(prevEnd.getMilliseconds() - 1);
+      const prevSnap = await Col.transactions(family.id)
+        .where('createdAt', '>=', firestore.Timestamp.fromDate(prevStart))
+        .where('createdAt', '<=', firestore.Timestamp.fromDate(prevEnd))
+        .get();
+      const lastWeekTotals: Record<string, number> = {};
+      for (const doc of prevSnap.docs) {
+        const d = doc.data();
+        if (d.source === 'redemption') continue;
+        lastWeekTotals[d.memberId] = (lastWeekTotals[d.memberId] ?? 0) + d.delta;
+      }
+      const goals: Record<string, number> = {};
+      for (const m of membersList as any[]) {
+        const g = (m as any).weeklyGoal;
+        if (typeof g === 'number' && g > 0) goals[m.id] = g;
+      }
+      setCrowns(computeCrowns(board, lastWeekTotals, goals));
+
+      // Last week's champion (for the Winner Board entry banner). Highest positive total.
+      const lwTop = Object.entries(lastWeekTotals).sort((a, b) => b[1] - a[1])[0];
+      if (lwTop && lwTop[1] > 0) {
+        const champ = (membersList as any[]).find((m) => m.id === lwTop[0]);
+        setLastWeekChampion(champ ? champ.displayName.split(' ')[0] : null);
+      } else {
+        setLastWeekChampion(null);
+      }
+
       // Load personal best for current member
       const best = await getMemberPersonalBest(family.id, currentMember.id);
       // Also consider current week as potential best
@@ -79,6 +114,11 @@ export default function LeaderboardScreen() {
     return () => unsubscribe();
   }, [loadLeaderboard, family?.id]);
 
+  // Reload when the tab regains focus — a goal set on a member profile doesn't
+  // emit a transaction, so the crowns row would otherwise show stale goal data
+  // until the next points change. Focus-reload keeps 🎯 Goal Crusher current.
+  useFocusEffect(useCallback(() => { loadLeaderboard(); }, [loadLeaderboard]));
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadLeaderboard();
@@ -89,20 +129,21 @@ export default function LeaderboardScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <BrandBar />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
         <View style={styles.header}>
           <View>
-            <Text style={[styles.title, { color: colors.text }]}>🏆 Leaderboard</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Leaderboard</Text>
             <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>{weekLabel}</Text>
           </View>
           <TouchableOpacity
             style={[styles.historyBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '44' }]}
             onPress={() => router.push('/app/tabs/history')}
           >
-            <Text style={[styles.historyBtnText, { color: colors.primary }]}>📊 History</Text>
+            <Text style={[styles.historyBtnText, { color: colors.primary }]}>📊 Insights</Text>
           </TouchableOpacity>
         </View>
 
@@ -132,14 +173,41 @@ export default function LeaderboardScreen() {
               </View>
             )}
 
+            {/* Last week's champion — entry to the Winner Board takeover */}
+            {lastWeekChampion && (
+              <SlideIn delay={40} from="bottom">
+                <TouchableOpacity
+                  style={[styles.winnerBanner, { backgroundColor: Colors.gold + '1E', borderColor: Colors.gold + '66' }]}
+                  onPress={() => router.push('/app/winner' as any)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={`View last week's champion, ${lastWeekChampion}`}
+                >
+                  <Text style={styles.winnerBannerEmoji}>🏆</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.winnerBannerTitle, { color: colors.text }]}>Last week's champion</Text>
+                    <Text style={[styles.winnerBannerSub, { color: colors.textSecondary }]}>{lastWeekChampion} took the crown — tap to relive it</Text>
+                  </View>
+                  <Text style={[styles.winnerBannerChevron, { color: colors.textSecondary }]}>›</Text>
+                </TouchableOpacity>
+              </SlideIn>
+            )}
+
+            {/* Three-crowns row — rewards more than raw points (Roadmap 1.1/4.2) */}
+            {leaderboard.length >= 2 && (
+              <SlideIn delay={80} from="bottom">
+                <CrownsRow crowns={crowns} colors={colors} />
+              </SlideIn>
+            )}
+
             {/* Podium */}
             {topThree.length >= 2 && (
-              <View style={styles.podiumContainer}>
+              <SlideIn delay={100} from="bottom"><View style={styles.podiumContainer}>
                 {/* 2nd */}
                 <View style={styles.podiumItem}>
                   <View style={styles.podiumAvatar}><Avatar emoji={topThree[1]?.avatarEmoji ?? '👤'} photoURL={topThree[1]?.photoURL} size={48} /></View>
                   <Text style={[styles.podiumName, { color: colors.text }]}>{topThree[1]?.displayName}</Text>
-                  <Text style={[styles.podiumPoints, { color: colors.silver }]}>{topThree[1]?.points}</Text>
+                  <CountUp value={topThree[1]?.points ?? 0} style={[styles.podiumPoints, { color: colors.silver }]} />
                   <Text style={[styles.podiumPtsLabel, { color: colors.textMuted }]}>pts</Text>
                   <View style={[styles.podiumBlock, { height: 54, backgroundColor: colors.silver }]}>
                     <Text style={styles.podiumRankText}>2</Text>
@@ -150,7 +218,7 @@ export default function LeaderboardScreen() {
                   <Text style={styles.crownEmoji}>👑</Text>
                   <View style={styles.podiumAvatar}><Avatar emoji={topThree[0]?.avatarEmoji ?? '👤'} photoURL={topThree[0]?.photoURL} size={56} showRing ringColor={Colors.gold} /></View>
                   <Text style={[styles.podiumName, { color: colors.text }]}>{topThree[0]?.displayName}</Text>
-                  <Text style={[styles.podiumPoints, { color: colors.gold }]}>{topThree[0]?.points}</Text>
+                  <CountUp value={topThree[0]?.points ?? 0} style={[styles.podiumPoints, { color: colors.gold }]} />
                   <Text style={[styles.podiumPtsLabel, { color: colors.textMuted }]}>pts</Text>
                   <View style={[styles.podiumBlock, { height: 78, backgroundColor: colors.gold }]}>
                     <Text style={styles.podiumRankText}>1</Text>
@@ -161,38 +229,46 @@ export default function LeaderboardScreen() {
                   <View style={styles.podiumItem}>
                     <View style={styles.podiumAvatar}><Avatar emoji={topThree[2].avatarEmoji} photoURL={topThree[2].photoURL} size={48} /></View>
                     <Text style={[styles.podiumName, { color: colors.text }]}>{topThree[2].displayName}</Text>
-                    <Text style={[styles.podiumPoints, { color: colors.bronze }]}>{topThree[2].points}</Text>
+                    <CountUp value={topThree[2].points} style={[styles.podiumPoints, { color: colors.bronze }]} />
                     <Text style={[styles.podiumPtsLabel, { color: colors.textMuted }]}>pts</Text>
                     <View style={[styles.podiumBlock, { height: 40, backgroundColor: colors.bronze }]}>
                       <Text style={styles.podiumRankText}>3</Text>
                     </View>
                   </View>
                 )}
-              </View>
+              </View></SlideIn>
             )}
 
             {/* Full list */}
             <View style={styles.list}>
-              {leaderboard.map((entry) => (
-                <View
-                  key={entry.memberId}
-                  style={[styles.row, { backgroundColor: colors.surface }, entry.isCurrentUser && { borderWidth: 2, borderColor: colors.primary }]}
-                  accessibilityLabel={`${entry.displayName}, rank ${entry.rank}, ${entry.points} points`}
-                >
-                  <Text style={[styles.rowRank, { color: colors.textSecondary }]}>{getRankEmoji(entry.rank)}</Text>
-                  <Avatar emoji={entry.avatarEmoji} photoURL={entry.photoURL} size={40} />
-                  <View style={styles.rowInfo}>
-                    <Text style={[styles.rowName, { color: colors.text }]}>{entry.displayName}{entry.isCurrentUser ? ' (You)' : ''}</Text>
-                    <Text style={[styles.rowStats, { color: colors.textSecondary }]}>
-                      {entry.tasksCompleted}/{entry.tasksTotal} tasks
-                      {entry.streak > 0 ? ` · 🔥 ${entry.streak}d` : ''}
-                    </Text>
-                  </View>
-                  <View style={styles.rowPoints}>
-                    <Text style={[styles.rowPointsValue, { color: colors.primary }]}>{entry.points}</Text>
-                    <Text style={[styles.rowPointsLabel, { color: colors.textSecondary }]}>pts</Text>
-                  </View>
-                </View>
+              {leaderboard.map((entry, index) => (
+                <SlideIn key={entry.memberId} delay={200 + index * 100} from="bottom">
+                  <ScalePress onPress={() => router.push(`/app/member/${entry.memberId}`)} style={undefined}>
+                    <View
+                      style={[styles.row, { backgroundColor: colors.surface }, entry.isCurrentUser && { borderWidth: 2, borderColor: colors.primary }]}
+                      accessibilityLabel={`${entry.displayName}, rank ${entry.rank}, ${entry.points} points`}
+                    >
+                      <Text style={[styles.rowRank, { color: colors.textSecondary }]}>{getRankEmoji(entry.rank)}</Text>
+                      <Avatar emoji={entry.avatarEmoji} photoURL={entry.photoURL} size={40} />
+                      <View style={styles.rowInfo}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={[styles.rowName, { color: colors.text }]}>{entry.displayName}{entry.isCurrentUser ? ' (You)' : ''}</Text>
+                          {(entry as any).previousRank != null && (
+                            <RankChangeBadge previousRank={(entry as any).previousRank} currentRank={entry.rank} />
+                          )}
+                        </View>
+                        <Text style={[styles.rowStats, { color: colors.textSecondary }]}>
+                          {entry.tasksCompleted}/{entry.tasksTotal} tasks
+                          {entry.streak > 0 ? ` · 🔥 ${entry.streak}d` : ''}
+                        </Text>
+                      </View>
+                      <View style={styles.rowPoints}>
+                        <CountUp value={entry.points} style={[styles.rowPointsValue, { color: colors.primary }]} />
+                        <Text style={[styles.rowPointsLabel, { color: colors.textSecondary }]}>pts</Text>
+                      </View>
+                    </View>
+                  </ScalePress>
+                </SlideIn>
               ))}
             </View>
           </>
@@ -202,9 +278,60 @@ export default function LeaderboardScreen() {
   );
 }
 
+// ── Three-crowns row ────────────────────────────────────────────────────────
+// A fixed 👑 / 📈 / 🎯 trio. Awarded slots show the member; unawarded slots read
+// as "up for grabs" so the row looks intentional even early in the week.
+function CrownsRow({ crowns, colors }: { crowns: CrownSlot[]; colors: any }) {
+  return (
+    <View style={crownStyles.row}>
+      {crowns.map((c) => {
+        const awarded = !!c.awardeeMemberId;
+        return (
+          <View
+            key={c.kind}
+            style={[
+              crownStyles.card,
+              awarded
+                ? { backgroundColor: Colors.gold + '14', borderColor: Colors.gold + '77', borderStyle: 'solid' }
+                : { backgroundColor: colors.surface, borderColor: colors.primary + '33', borderStyle: 'dashed' },
+              awarded && Shadow.sm,
+            ]}
+          >
+            <Text style={[crownStyles.emoji, !awarded && { opacity: 0.8 }]}>{c.emoji}</Text>
+            <Text style={[crownStyles.title, { color: colors.textSecondary }]} numberOfLines={1}>{c.title}</Text>
+            {awarded ? (
+              <>
+                <Text style={[crownStyles.name, { color: colors.text }]} numberOfLines={1}>{c.awardeeName}</Text>
+                <Text style={[crownStyles.detail, { color: colors.primary }]} numberOfLines={1}>{c.detail}</Text>
+              </>
+            ) : (
+              <Text style={[crownStyles.upForGrabs, { color: colors.primary }]} numberOfLines={1}>up for grabs</Text>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+const crownStyles = StyleSheet.create({
+  row: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md },
+  card: { flex: 1, borderRadius: BorderRadius.lg, borderWidth: 1.5, paddingVertical: Spacing.sm, paddingHorizontal: 6, alignItems: 'center' },
+  emoji: { fontSize: 22, marginBottom: 2 },
+  title: { fontSize: 9.5, fontFamily: FontFamily.bold, textTransform: 'uppercase', letterSpacing: 0.3 },
+  name: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginTop: 3 },
+  detail: { fontSize: 10, fontFamily: FontFamily.bold, marginTop: 1 },
+  upForGrabs: { fontSize: 10, fontFamily: FontFamily.regular, marginTop: 5, fontStyle: 'italic' },
+});
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { padding: Spacing.lg, paddingBottom: Spacing.sm, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  brandRow: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
+  winnerBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginHorizontal: Spacing.lg, marginBottom: Spacing.md, borderRadius: BorderRadius.lg, borderWidth: 1.5, padding: Spacing.md },
+  winnerBannerEmoji: { fontSize: 26 },
+  winnerBannerTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold },
+  winnerBannerSub: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 1 },
+  winnerBannerChevron: { fontSize: 26, fontFamily: FontFamily.bold },
+  header: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.xs, paddingBottom: Spacing.sm, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   historyBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.sm, paddingVertical: 8, borderWidth: 1 },
   historyBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold },
   title: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold },

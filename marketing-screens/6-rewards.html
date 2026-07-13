@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="shared.css"><style>
+.ptab-bar { display: flex; gap: 18px; padding: 6px 18px 0; border-bottom: 1px solid var(--border); }
+.ptab { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 8px; border-bottom: 2.5px solid transparent; min-width: 50px; }
+.ptab.active { border-bottom-color: var(--primary); }
+.ptab .av { width: 32px; height: 32px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 17px; }
+.ptab .name { font-size: 11px; font-weight: 800; color: var(--text-secondary); }
+.ptab.active .name { color: var(--primary); }
+
+.r-header { padding: 16px 18px 0; }
+.r-title { font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+
+.points-card { background: rgba(45,122,255,0.12); border: 1px solid rgba(45,122,255,0.3); border-radius: 16px; padding: 16px; }
+.points-row { display: flex; justify-content: space-between; align-items: flex-end; }
+.points-label { font-size: 12px; color: var(--text-secondary); font-weight: 700; }
+.points-big { font-family: 'Poppins', sans-serif; font-size: 30px; font-weight: 900; color: var(--primary); }
+.points-suffix { font-size: 14px; color: var(--text-secondary); font-weight: 700; }
+.points-breakdown { text-align: right; display: flex; flex-direction: column; gap: 3px; }
+.points-breakdown .item { font-size: 11px; color: var(--text-secondary); font-weight: 600; }
+.points-breakdown b { color: var(--primary); font-weight: 800; }
+
+.section { padding: 18px 18px 0; }
+.section-title { font-size: 16px; font-weight: 800; margin-bottom: 12px; }
+
+.rewards-grid { display: flex; flex-direction: column; gap: 10px; }
+.reward-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 12px; }
+.reward-emoji { font-size: 30px; }
+.reward-info { flex: 1; }
+.reward-title { font-size: 15px; font-weight: 800; }
+.reward-cost { font-size: 12px; color: var(--text-secondary); font-weight: 700; margin-top: 2px; }
+.redeem-btn { background: linear-gradient(135deg, #2D7AFF, #4A8FFF); border-radius: 12px; padding: 10px 16px; font-size: 13px; font-weight: 800; color: #fff; }
+.redeem-btn.disabled { background: var(--border); color: var(--text-muted); }
+</style></head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><div class="right"><span>📶</span><span>🔋</span></div></div>
+
+  <div class="ptab-bar">
+    <div class="ptab"><div class="av">👨</div><div class="name">Me</div></div>
+    <div class="ptab"><div class="av">👩</div><div class="name">Mom</div></div>
+    <div class="ptab active"><div class="av">🧒</div><div class="name">Alex</div></div>
+    <div class="ptab"><div class="av">👧</div><div class="name">Jamie</div></div>
+  </div>
+
+  <div class="r-header">
+    <div class="r-title">🎁 Rewards Store</div>
+    <div class="points-card">
+      <div class="points-row">
+        <div>
+          <div class="points-label">ALEX'S BALANCE</div>
+          <div class="points-big">540<span class="points-suffix"> pts</span></div>
+        </div>
+        <div class="points-breakdown">
+          <div class="item">📅 This week: <b>540 pts</b></div>
+          <div class="item">💰 All-time: <b>1,280 pts</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Available Rewards</div>
+    <div class="rewards-grid">
+      <div class="reward-card">
+        <div class="reward-emoji">🎮</div>
+        <div class="reward-info"><div class="reward-title">1 Hour Extra Screen Time</div><div class="reward-cost">200 pts</div></div>
+        <div class="redeem-btn">Redeem</div>
+      </div>
+      <div class="reward-card">
+        <div class="reward-emoji">🍕</div>
+        <div class="reward-info"><div class="reward-title">Pick Family Dinner</div><div class="reward-cost">300 pts</div></div>
+        <div class="redeem-btn">Redeem</div>
+      </div>
+      <div class="reward-card">
+        <div class="reward-emoji">🎬</div>
+        <div class="reward-info"><div class="reward-title">Movie Night Pick</div><div class="reward-cost">350 pts</div></div>
+        <div class="redeem-btn">Redeem</div>
+      </div>
+      <div class="reward-card">
+        <div class="reward-emoji">🛹</div>
+        <div class="reward-info"><div class="reward-title">New Skateboard</div><div class="reward-cost">1,500 pts</div></div>
+        <div class="redeem-btn disabled">Redeem</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:1"></div>
+  <div class="tabbar">
+    <div class="tab"><span class="emoji">📋</span><span class="label">Tasks</span><div class="pill"></div></div>
+    <div class="tab"><span class="emoji">🏆</span><span class="label">Scores</span><div class="pill"></div></div>
+    <div class="tab active"><span class="emoji">🎁</span><span class="label">Rewards</span><div class="pill"></div></div>
+    <div class="tab"><span class="emoji">👨‍👩‍👧</span><span class="label">Family</span><div class="pill"></div></div>
+    <div class="tab"><span class="emoji">⚙️</span><span class="label">Settings</span><div class="pill"></div></div>
+  </div>
+</div>
+</body></html>

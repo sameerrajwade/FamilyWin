@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="shared.css"><style>
+.lb-header { padding: 14px 18px 6px; display: flex; justify-content: space-between; align-items: flex-start; }
+.lb-title { font-family: 'Poppins', sans-serif; font-size: 26px; font-weight: 900; }
+.lb-sub { font-size: 13px; color: var(--text-secondary); font-weight: 600; margin-top: 2px; }
+.history-btn { border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; font-size: 11px; font-weight: 800; color: var(--text); }
+
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: 14px; padding: 24px 18px 10px; }
+.p-item { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.crown { font-size: 22px; margin-bottom: 4px; }
+.p-avatar { border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+.p-avatar.gold-ring { border: 3px solid var(--gold); box-shadow: 0 0 16px rgba(255,215,0,0.4); }
+.p-name { font-size: 13px; font-weight: 800; }
+.p-points { font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 900; }
+.p-pts-label { font-size: 10px; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; }
+.p-block { width: 100%; border-radius: 10px 10px 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 6px; }
+.p-block .rank { font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 900; color: rgba(0,0,0,0.55); }
+
+.lb-list { padding: 18px 18px 0; display: flex; flex-direction: column; gap: 10px; }
+.lb-row { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 14px; padding: 12px 14px; border: 1px solid var(--border); }
+.lb-row.me { border: 2px solid var(--primary); box-shadow: 0 0 12px rgba(45,122,255,0.2); }
+.lb-row .rank-emoji { font-size: 16px; width: 26px; text-align: center; }
+.lb-row .av { width: 40px; height: 40px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.lb-row .info { flex: 1; }
+.lb-row .name { font-size: 14px; font-weight: 800; }
+.lb-row .stats { font-size: 12px; color: var(--text-secondary); font-weight: 600; margin-top: 2px; }
+.lb-row .pts { text-align: right; }
+.lb-row .pts .num { font-family: 'Poppins', sans-serif; font-size: 17px; font-weight: 900; color: var(--primary); }
+.lb-row .pts .lbl { font-size: 10px; color: var(--text-secondary); font-weight: 700; }
+</style></head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><div class="right"><span>📶</span><span>🔋</span></div></div>
+
+  <div class="lb-header">
+    <div><div class="lb-title">Leaderboard</div><div class="lb-sub">Weekly Standings</div></div>
+    <div class="history-btn">📜 History</div>
+  </div>
+
+  <div class="podium">
+    <div class="p-item">
+      <div class="p-avatar" style="width:48px;height:48px;font-size:24px;">👩</div>
+      <div class="p-name">Mom</div>
+      <div class="p-points" style="color:var(--silver)">410</div>
+      <div class="p-pts-label">pts</div>
+      <div class="p-block" style="height:54px;background:linear-gradient(180deg,#E0E0E0,#9E9E9E)"><span class="rank">2</span></div>
+    </div>
+    <div class="p-item">
+      <div class="crown">👑</div>
+      <div class="p-avatar gold-ring" style="width:56px;height:56px;font-size:28px;">🧒</div>
+      <div class="p-name">Alex</div>
+      <div class="p-points" style="color:var(--gold)">540</div>
+      <div class="p-pts-label">pts</div>
+      <div class="p-block" style="height:78px;background:linear-gradient(180deg,#FFD700,#FFA000)"><span class="rank">1</span></div>
+    </div>
+    <div class="p-item">
+      <div class="p-avatar" style="width:48px;height:48px;font-size:24px;">👧</div>
+      <div class="p-name">Jamie</div>
+      <div class="p-points" style="color:var(--bronze)">365</div>
+      <div class="p-pts-label">pts</div>
+      <div class="p-block" style="height:40px;background:linear-gradient(180deg,#D4853B,#A05A2C)"><span class="rank">3</span></div>
+    </div>
+  </div>
+
+  <div class="lb-list">
+    <div class="lb-row">
+      <div class="rank-emoji">🥇</div><div class="av">🧒</div>
+      <div class="info"><div class="name">Alex</div><div class="stats">5/5 tasks · 🔥 7d</div></div>
+      <div class="pts"><div class="num">540</div><div class="lbl">pts</div></div>
+    </div>
+    <div class="lb-row">
+      <div class="rank-emoji">🥈</div><div class="av">👩</div>
+      <div class="info"><div class="name">Mom</div><div class="stats">4/4 tasks · 🔥 4d</div></div>
+      <div class="pts"><div class="num">410</div><div class="lbl">pts</div></div>
+    </div>
+    <div class="lb-row">
+      <div class="rank-emoji">🥉</div><div class="av">👧</div>
+      <div class="info"><div class="name">Jamie</div><div class="stats">4/5 tasks · 🔥 2d</div></div>
+      <div class="pts"><div class="num">365</div><div class="lbl">pts</div></div>
+    </div>
+    <div class="lb-row me">
+      <div class="rank-emoji">4</div><div class="av">👨</div>
+      <div class="info"><div class="name">Dad (You)</div><div class="stats">3/5 tasks · 🔥 5d</div></div>
+      <div class="pts"><div class="num">240</div><div class="lbl">pts</div></div>
+    </div>
+  </div>
+
+  <div style="flex:1"></div>
+  <div class="tabbar">
+    <div class="tab"><span class="emoji">📋</span><span class="label">Tasks</span><div class="pill"></div></div>
+    <div class="tab active"><span class="emoji">🏆</span><span class="label">Scores</span><div class="pill"></div></div>
+    <div class="tab"><span class="emoji">🎁</span><span class="label">Rewards</span><div class="pill"></div></div>
+    <div class="tab"><span class="emoji">👨‍👩‍👧</span><span class="label">Family</span><div class="pill"></div></div>
+    <div class="tab"><span class="emoji">⚙️</span><span class="label">Settings</span><div class="pill"></div></div>
+  </div>
+</div>
+</body></html>

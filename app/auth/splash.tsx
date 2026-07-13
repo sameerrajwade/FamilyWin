@@ -28,8 +28,8 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     emoji: '🏆',
-    title: 'Welcome to\nFamilyWin!',
-    subtitle: 'Turn everyday chores into an exciting family competition',
+    title: 'Welcome to\nLootboard!',
+    subtitle: 'Turn everyday tasks into an epic weekly showdown',
     bg: '#6C63FF',
     accent: '#FFFFFF',
     features: ['📋 Assign tasks', '⭐ Earn points', '🏅 Win the week'],

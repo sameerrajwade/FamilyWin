@@ -4,7 +4,7 @@ import {
   ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Sounds } from '@/lib/sounds';
 import { addPointTransaction, getFamilyMembers } from '@/lib/firebase';
@@ -28,6 +28,8 @@ export default function DisciplineLogScreen() {
   const { member, family } = useAuthStore();
   const { members, setMembers } = useFamilyStore();
   const { colors } = useTheme();
+  // Optional deep-link param: pre-select this member (from member profile / leaderboard row).
+  const { memberId } = useLocalSearchParams<{ memberId?: string }>();
 
   const [selectedMember, setSelectedMember] = useState<MemberDoc | null>(null);
   const [reason, setReason] = useState('');
@@ -42,6 +44,14 @@ export default function DisciplineLogScreen() {
     if (!family?.id || members.length > 0) return;
     getFamilyMembers(family.id).then((list) => setMembers(list as any));
   }, [family?.id]);
+
+  // Pre-select the member passed via deep link once members are loaded.
+  useEffect(() => {
+    if (memberId && !selectedMember && members.length > 0) {
+      const m = members.find((mm) => mm.id === memberId);
+      if (m) setSelectedMember(m as MemberDoc);
+    }
+  }, [memberId, members, selectedMember]);
 
   if (!isParent) {
     return (

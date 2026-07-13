@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "FamilyWin",
-    "slug": "familywin",
+    "name": "Lootboard",
+    "slug": "lootboard",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -18,14 +18,17 @@
       },
       "package": "com.familywin.app",
       "googleServicesFile": "./google-services.json",
+      "versionCode": 1,
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "POST_NOTIFICATIONS",
         "SCHEDULE_EXACT_ALARM",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
         "CAMERA"
+      ],
+      "blockedPermissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
       ],
       "notification": {
         "icon": "./assets/notification-icon.png",
@@ -51,17 +54,18 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
+      "@react-native-firebase/crashlytics",
       "@react-native-google-signin/google-signin",
       [
         "expo-image-picker",
         {
-          "photosPermission": "FamilyWin uses your photos to set profile pictures for family members.",
-          "cameraPermission": "FamilyWin uses your camera to take profile photos.",
+          "photosPermission": "Lootboard uses your photos to set profile pictures for family members.",
+          "cameraPermission": "Lootboard uses your camera to take profile photos.",
           "microphonePermission": false
         }
       ]
     ],
-    "scheme": "familywin",
+    "scheme": "lootboard",
     "experiments": {
       "typedRoutes": true
     }

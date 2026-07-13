@@ -7,8 +7,9 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withSpring,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/lib/theme';
-import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 
 // ─── BUTTON ───────────────────────────────────────────────────────────────────
 
@@ -89,17 +90,17 @@ export function Button({
     <Animated.View style={[fullWidth && styles.fullWidth, animStyle]}>
       <TouchableOpacity
         style={[
-          styles.button,
-          {
+          variant !== 'primary' && styles.button,
+          variant !== 'primary' && {
             backgroundColor: bgColors[variant],
             paddingHorizontal: pad.h,
             paddingVertical: pad.v,
             borderWidth: variant === 'secondary' ? 1.5 : 0,
             borderColor: variant === 'secondary' ? colors.border : 'transparent',
-            opacity: disabled || loading ? 0.6 : 1,
           },
+          { opacity: disabled || loading ? 0.6 : 1 },
           variant === 'primary' && Shadow.lg,
-          style,
+          variant !== 'primary' && style,
         ]}
         onPress={handlePress}
         onPressIn={handlePressIn}
@@ -107,7 +108,32 @@ export function Button({
         disabled={disabled || loading}
         activeOpacity={1}
       >
-        {loading ? (
+        {variant === 'primary' ? (
+          <LinearGradient
+            colors={[...Gradients.primaryButton]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              styles.button,
+              {
+                paddingHorizontal: pad.h,
+                paddingVertical: pad.v,
+              },
+              style,
+            ]}
+          >
+            {loading ? (
+              <ActivityIndicator color={textColors[variant]} size="small" />
+            ) : (
+              <View style={styles.buttonInner}>
+                {icon ? <Text style={[styles.buttonIcon, { fontSize: fontSizes[size] + 2 }]}>{icon}</Text> : null}
+                <Text style={[styles.buttonLabel, { color: textColors[variant], fontSize: fontSizes[size] }]}>
+                  {label}
+                </Text>
+              </View>
+            )}
+          </LinearGradient>
+        ) : loading ? (
           <ActivityIndicator color={textColors[variant]} size="small" />
         ) : (
           <View style={styles.buttonInner}>

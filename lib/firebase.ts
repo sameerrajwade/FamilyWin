@@ -10,6 +10,9 @@
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import storage from '@react-native-firebase/storage';
+import functions from '@react-native-firebase/functions';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system';
 
 // ─── OFFLINE PERSISTENCE ──────────────────────────────────────────────────────
 // Enable Firestore disk cache so the app works offline (reads from local cache,
@@ -104,6 +107,19 @@ export async function signOut() {
   return auth().signOut();
 }
 
+/**
+ * Permanently delete the signed-in user's account (Play policy requirement).
+ * Delegates to the `deleteAccount` Cloud Function, which cascade-deletes the
+ * family/photos/member docs and the Auth user server-side (the client can't do
+ * this under our security rules). After it returns, the onAuthStateChanged
+ * listener in _layout.tsx sees the user gone and routes back to auth.
+ */
+export async function deleteMyAccount(): Promise<void> {
+  await functions().httpsCallable('deleteAccount')();
+  // Auth user is already deleted server-side; make sure the local session clears.
+  try { await auth().signOut(); } catch { /* already signed out */ }
+}
+
 export function getSession() {
   return auth().currentUser;
 }
@@ -128,6 +144,7 @@ export interface MemberDoc {
   photoURL?: string;        // Firebase Storage download URL for profile photo
   age?: number;
   isManaged?: boolean;      // true = parent-created profile, no Firebase Auth account
+  weeklyGoal?: number | null; // personal weekly points target (🎯 Goal Crusher crown); null/absent = none
   createdAt: FirebaseFirestoreTypes.Timestamp;
 }
 
@@ -233,11 +250,187 @@ export async function uploadMemberPhoto(
   familyId: string,
   memberId: string,
 ): Promise<string> {
+  // Normalise ANY picked URI (file://, or content:// from the Google Photos /
+  // MediaStore picker) into a real, compressed JPEG file on disk. expo-image-
+  // manipulator reads content:// via ContentResolver and always writes a plain
+  // file:// path, which the native Firebase SDK's putFile() can upload reliably.
+  //
+  // This replaces the old fetch()->blob()->ref.put(blob) path: on Android + the
+  // native RN-Firebase SDK, Blob support is unreliable and content:// blobs come
+  // back empty, so uploads silently produced 0-byte files. putFile(path) is the
+  // native SDK's supported primitive. Resize to 512px also cuts Storage cost.
   const ref = storage().ref(`member-photos/${familyId}/${memberId}.jpg`);
-  await ref.putFile(localUri);
+
+  // Turn WHATEVER the picker returned into an app-owned, compressed file:// JPEG.
+  //
+  // Android's ACTION_GET_CONTENT (routed to the system Photo Picker on 13+) hands
+  // back a `content://media/picker/…` URI. Confirmed on-device, BOTH Expo file
+  // APIs choke on it: FileSystem.copyAsync → ERR_UNEXPECTED, and
+  // ImageManipulator.manipulateAsync → ERR_IMAGE_DECODE. React Native's own
+  // fetch(), however, resolves content:// through the ContentResolver at the
+  // native networking layer, so it reads the bytes where Expo can't. We fetch →
+  // blob → base64 → write a REAL file:// we own, then compress + putFile that.
+  const compress = async (uri: string) => {
+    const m = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 512 } }],
+      { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG },
+    );
+    return m.uri;
+  };
+
+  const errors: string[] = [];
+  let localFile: string | null = localUri.startsWith('file://') ? localUri : null;
+
+  // Strategy 1 (content://) — read bytes via fetch, persist as an owned file://.
+  if (!localFile) {
+    try {
+      const res = await fetch(localUri);
+      const blob = await res.blob();
+      if (!blob || (blob as any).size === 0) throw new Error('empty blob');
+      const base64: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('reader failed'));
+        reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+        reader.readAsDataURL(blob);
+      });
+      if (!base64) throw new Error('no base64');
+      const dest = `${FileSystem.cacheDirectory}upload_${memberId}_${Date.now()}.jpg`;
+      await FileSystem.writeAsStringAsync(dest, base64, { encoding: FileSystem.EncodingType.Base64 });
+      localFile = dest;
+    } catch (e: any) {
+      errors.push(`fetch: ${e?.code ?? e?.message ?? e}`);
+    }
+  }
+
+  // Strategy 2 (content://) — FileSystem.copyAsync as a fallback.
+  if (!localFile) {
+    try {
+      const dest = `${FileSystem.cacheDirectory}upload_${memberId}_${Date.now()}.jpg`;
+      await FileSystem.copyAsync({ from: localUri, to: dest });
+      localFile = dest;
+    } catch (e: any) {
+      errors.push(`copy: ${e?.code ?? e?.message ?? e}`);
+    }
+  }
+
+  // Strategy 3 (content://) — LAST RESORT: hand the raw content:// URI straight
+  // to putFile. @react-native-firebase/storage v20's native putFile reads the
+  // stream via Android's ContentResolver, and a SAF ACTION_GET_CONTENT result
+  // carries an implicit read grant to our process — so this can succeed even
+  // when every Expo file API (fetch/copy/manipulate) failed to bridge it to a
+  // file://. No client-side compression on this path (we couldn't decode it),
+  // which is an acceptable trade for a working upload; Storage-side resize is a
+  // Phase 3 concern. Only reached when Strategies 1 & 2 both failed.
+  if (!localFile) {
+    try {
+      await ref.putFile(localUri, { contentType: 'image/jpeg' });
+      const directURL = await ref.getDownloadURL();
+      await Col.members(familyId).doc(memberId).update({ photoURL: directURL });
+      return directURL;
+    } catch (e: any) {
+      const code = e?.code ?? '';
+      const native = e?.nativeErrorMessage ?? e?.message ?? String(e);
+      errors.push(`putFile(content): ${code} ${native}`);
+    }
+  }
+
+  if (!localFile) {
+    throw new Error(`Couldn't read the selected image — ${errors.join(' | ')}`);
+  }
+
+  // Compress the owned file (≤512px jpeg) to cut Storage cost; upload as-is if that fails.
+  let uploadUri = localFile;
+  try {
+    uploadUri = await compress(localFile);
+  } catch { /* upload the full-size file rather than fail the whole flow */ }
+
+  // Upload the resolved file://. Surface the real Firebase code on failure.
+  try {
+    await ref.putFile(uploadUri, { contentType: 'image/jpeg' });
+  } catch (e: any) {
+    const code = e?.code ?? '';
+    const native = e?.nativeErrorMessage ?? e?.message ?? String(e);
+    throw new Error(`Upload failed [${code}] ${native}`);
+  }
+
   const downloadURL = await ref.getDownloadURL();
   await Col.members(familyId).doc(memberId).update({ photoURL: downloadURL });
   return downloadURL;
+}
+
+/**
+ * Bulk-create rewards from a starter pack in one batched write. Mirrors
+ * createTasksFromPack — stocks an empty rewards store in a single tap.
+ */
+export async function createRewardsFromPack(
+  familyId: string,
+  createdBy: string,
+  rows: { title: string; pointCost: number; icon: string }[],
+): Promise<number> {
+  if (rows.length === 0) return 0;
+  const batch = firestore().batch();
+  for (const r of rows) {
+    const ref = Col.rewards(familyId).doc();
+    batch.set(ref, {
+      familyId,
+      title: r.title,
+      pointCost: r.pointCost,
+      icon: r.icon,
+      createdBy,
+      isActive: true,
+      createdAt: firestore.Timestamp.now(),
+    });
+  }
+  await batch.commit();
+  return rows.length;
+}
+
+/**
+ * Bulk-create tasks from a starter pack in one batched write (Roadmap 4.6).
+ * Callers pass fully-resolved rows (points + emoji already computed) so this
+ * layer stays free of UI/theme constants. Returns how many were created.
+ */
+export async function createTasksFromPack(
+  familyId: string,
+  createdBy: string,
+  rows: { title: string; category: string; difficulty: string; recurrence: string; pointValue: number; taskEmoji: string }[],
+): Promise<number> {
+  if (rows.length === 0) return 0;
+  const batch = firestore().batch();
+  for (const r of rows) {
+    const ref = Col.tasks(familyId).doc();
+    batch.set(ref, {
+      familyId,
+      title: r.title,
+      description: null,
+      category: r.category,
+      difficulty: r.difficulty,
+      recurrence: r.recurrence,
+      assignedTo: null,          // pack tasks default to the whole family
+      pointValue: r.pointValue,
+      autoFailHour: 20,
+      taskEmoji: r.taskEmoji,
+      isActive: true,
+      createdBy,
+      createdAt: firestore.Timestamp.now(),
+    });
+  }
+  await batch.commit();
+  return rows.length;
+}
+
+/**
+ * Set (or clear) a member's personal weekly points goal. Beating your own goal
+ * earns the 🎯 Goal Crusher crown (pointsEngine.computeCrowns) — the core of the
+ * "losing-child" fix so every member has something winnable. Pass null to clear.
+ */
+export async function setMemberWeeklyGoal(
+  familyId: string,
+  memberId: string,
+  goal: number | null,
+): Promise<void> {
+  await Col.members(familyId).doc(memberId).update({ weeklyGoal: goal });
 }
 
 /**
@@ -287,10 +480,11 @@ export interface TaskDoc {
   description?: string;
   category: string;
   difficulty: 'easy' | 'medium' | 'hard';
-  recurrence: 'daily' | 'weekly' | 'monthly' | 'once';
+  recurrence: 'daily' | 'weekly' | 'monthly' | 'once' | 'custom';
   assignedTo?: string | null;
   pointValue: number;
   autoFailHour?: number;
+  taskEmoji?: string;
   isActive: boolean;
   createdBy: string;
   createdAt: FirebaseFirestoreTypes.Timestamp;
@@ -602,7 +796,7 @@ export async function sendPasswordReset(email: string): Promise<void> {
 export async function updateTask(
   familyId: string,
   taskId: string,
-  updates: Partial<Pick<TaskDoc, 'title' | 'description' | 'category' | 'difficulty' | 'recurrence' | 'assignedTo' | 'pointValue' | 'autoFailHour'>>,
+  updates: Partial<Pick<TaskDoc, 'title' | 'description' | 'category' | 'difficulty' | 'recurrence' | 'assignedTo' | 'pointValue' | 'autoFailHour' | 'taskEmoji'>>,
 ): Promise<void> {
   await Col.tasks(familyId).doc(taskId).update(updates);
 }

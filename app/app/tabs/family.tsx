@@ -326,9 +326,16 @@ let pickerBusy = false;
 // Access Framework chooser, which launches as a normal OPAQUE full-screen
 // activity and never touches the buggy translucent-compositing code path.
 async function pickImageFromGallerySAF(): Promise<string | null> {
-  const result = await IntentLauncher.startActivityAsync('android.intent.action.GET_CONTENT', {
+  // ACTION_OPEN_DOCUMENT (not GET_CONTENT): GET_CONTENT gets hijacked by the
+  // Android 13+ system Photo Picker, whose content://media/picker/… URIs are
+  // unopenable downstream ("No content provider" — confirmed on device across
+  // fetch, Expo copy, AND native putFile). OPEN_DOCUMENT opens DocumentsUI
+  // instead and returns a content://…/documents URI that ContentResolver +
+  // putFile CAN read. flags:1 = FLAG_GRANT_READ_URI_PERMISSION.
+  const result = await IntentLauncher.startActivityAsync('android.intent.action.OPEN_DOCUMENT', {
     type: 'image/*',
     category: 'android.intent.category.OPENABLE',
+    flags: 1,
   });
   // Activity.RESULT_OK === -1
   if (result.resultCode !== -1 || !result.data) return null;

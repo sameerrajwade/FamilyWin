@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="shared.css"><style>
+.splash {
+  width: 390px; height: 844px; overflow: hidden; position: relative;
+  background: linear-gradient(160deg, #1A56CC 0%, #2D7AFF 50%, #4A8FFF 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.orb { position: absolute; border-radius: 50%; opacity: 0.18; filter: blur(2px); }
+.orb1 { width: 90px; height: 90px; background: #FF6B2C; top: 80px; left: -20px; }
+.orb2 { width: 70px; height: 70px; background: #00E676; top: 160px; right: -10px; }
+.orb3 { width: 50px; height: 50px; background: #FFD700; bottom: 200px; left: 30px; }
+.orb4 { width: 60px; height: 60px; background: #FF6B2C; bottom: 120px; right: 20px; }
+
+.trophy { font-size: 96px; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.3)); z-index: 2; }
+
+.sparkle-ring { position: absolute; width: 240px; height: 240px; z-index: 1; }
+.sparkle { position: absolute; font-size: 20px; }
+.s1 { top: 0; left: 50%; transform: translateX(-50%); }
+.s2 { top: 15%; right: 8%; }
+.s3 { top: 50%; right: 0; transform: translateY(-50%); }
+.s4 { bottom: 15%; right: 8%; }
+.s5 { bottom: 0; left: 50%; transform: translateX(-50%); }
+.s6 { bottom: 15%; left: 8%; }
+.s7 { top: 50%; left: 0; transform: translateY(-50%); }
+.s8 { top: 15%; left: 8%; }
+
+.title {
+  font-family: 'Poppins', sans-serif; font-size: 46px; font-weight: 900; color: #fff;
+  text-shadow: 0 4px 16px rgba(0,0,0,0.3); margin-top: 20px; z-index: 2;
+  letter-spacing: -1px;
+}
+.accent-line { width: 50px; height: 4px; background: #FF6B2C; border-radius: 2px; margin: 8px 0; z-index: 2; }
+.tagline { font-size: 17px; font-weight: 700; color: rgba(255,255,255,0.85); z-index: 2; }
+.star-row { display: flex; gap: 14px; margin-top: 28px; z-index: 2; }
+.star-row span { font-size: 24px; }
+</style></head>
+<body>
+<div class="splash">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="orb orb4"></div>
+
+  <div class="sparkle-ring" style="top:190px; left:75px;">
+    <div class="sparkle s1">✨</div>
+    <div class="sparkle s2">⚡</div>
+    <div class="sparkle s3">💫</div>
+    <div class="sparkle s4">🔥</div>
+    <div class="sparkle s5">⭐</div>
+    <div class="sparkle s6">💥</div>
+    <div class="sparkle s7">✨</div>
+    <div class="sparkle s8">⚡</div>
+  </div>
+
+  <div class="trophy">🏆</div>
+  <div class="title">Lootboard</div>
+  <div class="accent-line"></div>
+  <div class="tagline">Your family's weekly showdown 🎯</div>
+  <div class="star-row">
+    <span>🏅</span><span>⭐</span><span>🏆</span><span>⭐</span><span>🏅</span>
+  </div>
+</div>
+</body></html>

@@ -12,6 +12,7 @@ GoogleService-Info.plist
 .expo/
 build-release*.log
 *.log
+build_backup/
 .env
 .env.*
 dist/

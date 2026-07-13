@@ -27,9 +27,14 @@ import * as IntentLauncher from 'expo-intent-launcher';
 // Bypass it on Android via the classic opaque ACTION_GET_CONTENT/SAF chooser,
 // which manages its own access grants (no READ_MEDIA_IMAGES permission needed).
 async function pickImageFromGallerySAF(): Promise<string | null> {
-  const result = await IntentLauncher.startActivityAsync('android.intent.action.GET_CONTENT', {
+  // ACTION_OPEN_DOCUMENT, not GET_CONTENT — GET_CONTENT routes to the Android
+  // 13+ Photo Picker whose content://media/picker/… URIs are unreadable
+  // downstream. OPEN_DOCUMENT opens DocumentsUI and returns a readable
+  // …/documents URI. flags:1 = FLAG_GRANT_READ_URI_PERMISSION.
+  const result = await IntentLauncher.startActivityAsync('android.intent.action.OPEN_DOCUMENT', {
     type: 'image/*',
     category: 'android.intent.category.OPENABLE',
+    flags: 1,
   });
   if (result.resultCode !== -1 /* Activity.RESULT_OK */ || !result.data) return null;
   return result.data;
@@ -39,7 +44,7 @@ import {
   signOut, getFamilyMembers, updateMemberProfile,
   upsertNotifConfig, getNotifConfig, updateFamilyWeekStartDay,
   createManagedMember, removeManagedMember,
-  uploadMemberPhoto, removeMemberPhoto,
+  uploadMemberPhoto, removeMemberPhoto, deleteMyAccount,
 } from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { AppearanceSettings } from '@/components/ui/AppearanceSettings';
@@ -63,6 +68,7 @@ export default function SettingsScreen() {
   const { members, setMembers, updateMember } = useFamilyStore();
   const { colors } = useTheme();
 
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState('20:00');
   const [showTimeModal, setShowTimeModal] = useState(false);
@@ -268,8 +274,8 @@ export default function SettingsScreen() {
         {
           text: '📤 Share',
           onPress: () => Share.share({
-            message: `Join our family on FamilyWin! 🏆\n\nDownload FamilyWin and enter invite code: ${family!.inviteCode}\n\nComplete tasks, earn points, and win the week!`,
-            title: 'Join FamilyWin',
+            message: `Join our family on Lootboard! 🏆\n\nDownload Lootboard and enter invite code: ${family!.inviteCode}\n\nComplete tasks, earn points, and win the week!`,
+            title: 'Join Lootboard',
           }),
         },
         { text: 'Cancel', style: 'cancel' },
@@ -292,6 +298,35 @@ export default function SettingsScreen() {
         },
       },
     ]);
+  }
+
+  // ── Delete account (Play policy: in-app account deletion) ───────────────────
+
+  function confirmDeleteAccount() {
+    const isAdmin = member?.role === 'admin_parent';
+    Alert.alert(
+      'Delete My Account?',
+      isAdmin
+        ? 'This permanently deletes your account. If you are the last account-holder, your whole family — all members, tasks, points and photos — is deleted too.\n\nThis cannot be undone.'
+        : 'This permanently deletes your account and your profile.\n\nThis cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: reallyDeleteAccount },
+      ],
+    );
+  }
+
+  async function reallyDeleteAccount() {
+    try {
+      setIsDeletingAccount(true);
+      await deleteMyAccount();
+      clearSession();
+      // onAuthStateChanged in _layout also fires, but route explicitly too.
+      router.replace('/auth/login');
+    } catch (e: any) {
+      setIsDeletingAccount(false);
+      Alert.alert('Could not delete account', e?.message ?? 'Please try again in a moment.');
+    }
   }
 
   // ── Weekly reset day ───────────────────────────────────────────────────────
@@ -622,14 +657,14 @@ export default function SettingsScreen() {
         )}
 
         {/* ── Share App ── */}
-        <SettingsSection title="Share FamilyWin">
+        <SettingsSection title="Share Lootboard">
           <TouchableOpacity
             style={styles.actionRow}
             onPress={() =>
               Share.share({
                 message:
-                  '🏆 We use FamilyWin to turn chores into a fun family competition!\n\nKids earn points for completing tasks and win rewards. Download it free:\nhttps://play.google.com/store/apps/details?id=com.familywin.app',
-                title: 'Try FamilyWin — Family Chore Tracker',
+                  '🏆 We use Lootboard to turn chores into a fun family competition!\n\nKids earn points for completing tasks and win rewards. Download it free:\nhttps://play.google.com/store/apps/details?id=com.familywin.app',
+                title: 'Try Lootboard — Family Chore Tracker',
               })
             }
           >
@@ -650,33 +685,28 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </SettingsSection>
 
-        {/* ── Danger Zone (admin_parent only) ── */}
-        {member?.role === 'admin_parent' && (
-          <SettingsSection title="Danger Zone">
-            <TouchableOpacity
-              style={styles.actionRow}
-              onPress={() => Alert.alert('Delete Family', 'This will permanently delete all family data, tasks, and scores. This cannot be undone.\n\nContact support to delete your family account.', [{ text: 'OK' }])}
-            >
-              <Text style={styles.actionEmoji}>🗑️</Text>
-              <View style={styles.actionInfo}>
-                <Text style={[styles.actionLabel, { color: colors.danger }]}>Delete Family</Text>
-                <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Permanently removes all data</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionRow, { borderTopWidth: 1, borderTopColor: colors.border }]}
-              onPress={() => Alert.alert('Deactivate Account', 'This will sign you out and remove your access. Your family data will remain.\n\nContact support to fully deactivate.', [{ text: 'OK' }])}
-            >
-              <Text style={styles.actionEmoji}>🔒</Text>
-              <View style={styles.actionInfo}>
-                <Text style={[styles.actionLabel, { color: colors.danger }]}>Deactivate My Account</Text>
-                <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Remove your access only</Text>
-              </View>
-            </TouchableOpacity>
-          </SettingsSection>
-        )}
+        {/* ── Danger Zone (any account holder can delete their own account) ── */}
+        <SettingsSection title="Danger Zone">
+          <TouchableOpacity
+            style={styles.actionRow}
+            disabled={isDeletingAccount}
+            onPress={confirmDeleteAccount}
+          >
+            <Text style={styles.actionEmoji}>🗑️</Text>
+            <View style={styles.actionInfo}>
+              <Text style={[styles.actionLabel, { color: colors.danger }]}>
+                {isDeletingAccount ? 'Deleting…' : 'Delete My Account'}
+              </Text>
+              <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>
+                {member?.role === 'admin_parent'
+                  ? 'Deletes your account — and the whole family if you are the last member'
+                  : 'Permanently deletes your account and profile'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </SettingsSection>
 
-        <Text style={[styles.version, { color: colors.textMuted }]}>FamilyWin v1.0.0 · Made with ❤️</Text>
+        <Text style={[styles.version, { color: colors.textMuted }]}>Lootboard v1.0.0 · Made with ❤️</Text>
       </ScrollView>
 
       {/* ── Avatar picker modal ── */}

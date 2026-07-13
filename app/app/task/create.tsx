@@ -132,7 +132,7 @@ export default function CreateTaskScreen() {
           category,
           difficulty,
           recurrence,
-          assignedTo: assignedTo.length > 0 ? assignedTo : null,
+          assignedTo: assignedTo.length > 0 ? assignedTo[0] : null,
           pointValue,
           autoFailHour,
           taskEmoji,
@@ -146,7 +146,7 @@ export default function CreateTaskScreen() {
           category,
           difficulty,
           recurrence,
-          assignedTo: assignedTo.length > 0 ? assignedTo : null,
+          assignedTo: assignedTo.length > 0 ? assignedTo[0] : null,
           pointValue,
           autoFailHour,
           taskEmoji,
@@ -228,7 +228,14 @@ export default function CreateTaskScreen() {
                 </Text>
               </TouchableOpacity>
             ) : (
-              <View style={{ width: 60 }} />
+              <TouchableOpacity
+                onPress={() => router.push('/app/task/packs' as any)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Browse starter task packs"
+                accessibilityRole="button"
+              >
+                <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: Colors.primary }}>📦 Packs</Text>
+              </TouchableOpacity>
             )}
           </View>
 

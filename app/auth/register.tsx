@@ -68,7 +68,7 @@ export default function RegisterScreen() {
           <View style={styles.header}>
             <Text style={styles.logo}>🏆</Text>
             <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join FamilyWin and start your family&apos;s journey</Text>
+            <Text style={styles.subtitle}>Join Lootboard and start your family&apos;s journey</Text>
           </View>
 
           {/* ── Google button at top — most users will tap this ── */}

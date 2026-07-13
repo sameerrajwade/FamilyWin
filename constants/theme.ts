@@ -3,45 +3,45 @@ export const Colors = {
   primary: '#6C63FF',
   primaryLight: '#9D97FF',
   primaryDark: '#4A42CC',
-  accent: '#FF6584',
-  accentLight: '#FF9BAF',
+  accent: '#FF6B2C',
+  accentLight: '#FFB088',
 
   // Semantic
-  success: '#43D98F',
-  successLight: '#B8F5DA',
-  warning: '#FFB347',
-  warningLight: '#FFE0A3',
-  danger: '#FF5C5C',
-  dangerLight: '#FFB3B3',
+  success: '#00E676',
+  successLight: '#B9F6CA',
+  warning: '#FFAB00',
+  warningLight: '#FFE082',
+  danger: '#FF1744',
+  dangerLight: '#FF8A80',
   info: '#4FC3F7',
 
   // Points
-  positivePoints: '#43D98F',
-  negativePoints: '#FF5C5C',
+  positivePoints: '#00E676',
+  negativePoints: '#FF1744',
 
   // Backgrounds
-  background: '#F8F9FF',
-  backgroundDark: '#12121F',
+  background: '#F5F5FF',
+  backgroundDark: '#100E1B',
   surface: '#FFFFFF',
-  surfaceDark: '#1E1E2E',
+  surfaceDark: '#1A1826',
   card: '#FFFFFF',
-  cardDark: '#252535',
+  cardDark: '#242235',
 
   // Text
-  text: '#1A1A2E',
+  text: '#1A1830',
   textSecondary: '#6B7280',
   textMuted: '#9CA3AF',
-  textDark: '#F1F1F1',
+  textDark: '#EDECF7',
   textSecondaryDark: '#9CA3AF',
 
   // Borders
-  border: '#E5E7EB',
-  borderDark: '#374151',
+  border: '#E7E5F2',
+  borderDark: '#2E2B40',
 
   // Ranks
   gold: '#FFD700',
-  silver: '#C0C0C0',
-  bronze: '#CD7F32',
+  silver: '#B0BEC5',
+  bronze: '#D4853B',
 
   // Categories
   chores: '#4FC3F7',
@@ -110,6 +110,16 @@ export const Shadow = {
     elevation: 8,
   },
 } as const;
+
+export const Gradients = {
+  primary: ['#6C63FF', '#9D97FF', '#FF6B2C'] as const,
+  primaryButton: ['#6C63FF', '#8B84FF'] as const,
+  gold: ['#FFD700', '#FFA000'] as const,
+  silver: ['#E0E0E0', '#9E9E9E'] as const,
+  bronze: ['#D4853B', '#A05A2C'] as const,
+  success: ['#00E676', '#00C853'] as const,
+  darkSurface: ['rgba(108,99,255,0.06)', 'transparent'] as const,
+};
 
 export const CATEGORY_COLORS: Record<string, string> = {
   chores: Colors.chores,

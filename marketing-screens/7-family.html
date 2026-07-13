@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="shared.css"><style>
+.f-header { padding: 16px 18px 0; display: flex; justify-content: space-between; align-items: flex-start; }
+.f-title { font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 800; }
+.f-sub { font-size: 13px; color: var(--text-secondary); font-weight: 600; margin-top: 2px; }
+.discipline-btn { border: 1.5px solid rgba(255,171,0,0.4); background: rgba(255,171,0,0.13); border-radius: 12px; padding: 9px 12px; font-size: 12px; font-weight: 800; color: var(--warning); }
+
+.invite-card { margin: 14px 18px 0; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; }
+.invite-text { flex: 1; }
+.invite-label { font-size: 11px; font-weight: 800; color: var(--text-secondary); letter-spacing: 0.5px; }
+.invite-code { font-family: 'Poppins', sans-serif; font-size: 26px; font-weight: 900; color: var(--primary); letter-spacing: 4px; margin-top: 2px; }
+.invite-hint { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
+.invite-icon { width: 38px; height: 38px; border-radius: 19px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+.section { padding: 20px 18px 0; }
+.section-title { font-size: 12px; font-weight: 800; color: var(--text-secondary); letter-spacing: 1px; margin-bottom: 10px; }
+
+.member-row { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+.member-row .av { width: 44px; height: 44px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.member-info { flex: 1; }
+.member-name { font-size: 15px; font-weight: 800; }
+.member-role { font-size: 12px; color: var(--text-secondary); font-weight: 700; margin-top: 2px; }
+.role-badge { font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 999px; }
+.role-badge.admin { background: rgba(45,122,255,0.18); color: var(--primary); }
+.role-badge.parent { background: rgba(0,230,118,0.16); color: var(--success); }
+.role-badge.child { background: rgba(255,107,44,0.16); color: var(--accent); }
+
+.add-another { text-align: center; padding: 14px; border: 1.5px dashed var(--border); border-radius: 14px; font-size: 14px; font-weight: 800; color: var(--primary); margin-top: 4px; }
+</style></head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><div class="right"><span>📶</span><span>🔋</span></div></div>
+
+  <div class="f-header">
+    <div><div class="f-title">👨‍👩‍👧 The Smiths</div><div class="f-sub">4 members</div></div>
+    <div class="discipline-btn">⚠️ Penalty/Bonus</div>
+  </div>
+
+  <div class="invite-card">
+    <div class="invite-text">
+      <div class="invite-label">INVITE CODE</div>
+      <div class="invite-code">7K9P2M</div>
+      <div class="invite-hint">Share so others with phones can join</div>
+    </div>
+    <div class="invite-icon">📋</div>
+    <div class="invite-icon">📤</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">ADULTS</div>
+    <div class="member-row">
+      <div class="av">👨</div>
+      <div class="member-info"><div class="member-name">Dad</div><div class="member-role">Family creator</div></div>
+      <div class="role-badge admin">Admin Parent</div>
+    </div>
+    <div class="member-row">
+      <div class="av">👩</div>
+      <div class="member-info"><div class="member-name">Mom</div><div class="member-role">Can manage tasks & rewards</div></div>
+      <div class="role-badge parent">Parent</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">CHILDREN</div>
+    <div class="member-row">
+      <div class="av">🧒</div>
+      <div class="member-info"><div class="member-name">Alex</div><div class="member-role">Age 11 · 🔥 7 day streak</div></div>
+      <div class="role-badge child">Child</div>
+    </div>
+    <div class="member-row">
+      <div class="av">👧</div>
+      <div class="member-info"><div class="member-name">Jamie</div><div class="member-role">Age 8 · 🔥 2 day streak</div></div>
+      <div class="role-badge child">Child</div>
+    </div>
+    <div class="add-another">➕ Add Another Child</div>
+  </div>
+
+  <div style="flex:1"></div>
+  <div class="tabbar">
+    <div class="tab"><span class="emoji">📋</span><span class="label">Tasks</span><div class="pill"></div></div>
+    <div class="tab"><span class="emoji">🏆</span><span class="label">Scores</span><div class="pill"></div></div>
+    <div class="tab"><span class="emoji">🎁</span><span class="label">Rewards</span><div class="pill"></div></div>
+    <div class="tab active"><span class="emoji">👨‍👩‍👧</span><span class="label">Family</span><div class="pill"></div></div>
+    <div class="tab"><span class="emoji">⚙️</span><span class="label">Settings</span><div class="pill"></div></div>
+  </div>
+</div>
+</body></html>

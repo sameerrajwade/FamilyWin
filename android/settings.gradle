@@ -44,7 +44,7 @@ if (getRNMinorVersion() >= 75) {
   }
 }
 
-rootProject.name = 'FamilyWin'
+rootProject.name = 'Lootboard'
 
 dependencyResolutionManagement {
   versionCatalogs {

@@ -124,22 +124,15 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-        release {
-            // Secrets supplied via environment variables only — never hardcode in tracked files.
-            // Set FAMILYWIN_KEYSTORE_PASSWORD and FAMILYWIN_KEY_PASSWORD before building release.
-            storeFile file('familywin-release.keystore')
-            storePassword System.getenv("FAMILYWIN_KEYSTORE_PASSWORD")
-            keyAlias 'familywin'
-            keyPassword System.getenv("FAMILYWIN_KEY_PASSWORD")
-        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Signed with the FamilyWin production keystore (android/app/familywin-release.keystore)
-            signingConfig signingConfigs.release
+            // Caution! In production, you need to generate your own keystore file.
+            // see https://reactnative.dev/docs/signed-apk-android.
+            signingConfig signingConfigs.debug
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
@@ -208,3 +201,4 @@ if (rnVersion < versionToNumber(0, 75, 0)) {
 }
 
 apply plugin: 'com.google.gms.google-services'
+apply plugin: 'com.google.firebase.crashlytics'

@@ -9,7 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { Sounds } from '@/lib/sounds';
 import { router, useFocusEffect } from 'expo-router';
 import firestore from '@react-native-firebase/firestore';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence, withDelay, interpolateColor } from 'react-native-reanimated';
 import { useAuthStore, useTaskStore, useFamilyStore, usePointsStore } from '@/store';
 import {
   getActiveTasks, getWeekCompletions, completeTask as fbCompleteTask,
@@ -22,6 +22,7 @@ import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
 import { EmptyState, SectionHeader, PointsChip, Avatar } from '@/components/ui/index';
+import { BrandBar } from '@/components/ui/Brand';
 // ProfileSwitcherBanner replaced by inline ProfileTabBar below
 import { CATEGORY_COLORS, CATEGORY_ICONS, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 
@@ -94,7 +95,7 @@ export default function HomeScreen() {
       function isCompleted(taskId: string, recurrence: string) {
         // All completions for this task + this member this week
         const all = completions.filter(
-          (c) => c.taskId === taskId && c.memberId === effectiveMember.id,
+          (c) => c.taskId === taskId && c.memberId === effectiveMember!.id,
         );
         if (all.length === 0) return null;
 
@@ -229,6 +230,10 @@ export default function HomeScreen() {
       const remaining = todaysTasks.filter((t: any) => !t.completion && t.id !== task.id);
       if (remaining.length === 0) {
         Sounds.allDone();
+        // Celebratory haptic flourish for the "cleared the board" moment — a
+        // success buzz followed by a heavier thump, distinct from a single tap.
+        setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}), 140);
+        setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}), 300);
         setShowConfetti(true);
         setTimeout(() => { setShowConfetti(false); if (isChildMode) setShowCelebration(true); }, 2400);
       }
@@ -342,6 +347,8 @@ export default function HomeScreen() {
         totalPoints={weeklyPoints}
         onDismiss={() => setShowCelebration(false)}
       />
+      {/* Brand always sits on top, above the family profile switcher */}
+      <BrandBar />
       {/* Profile tabs — visible to parents when family has other members */}
       {isParent && members.length > 1 && (
         <ProfileTabBar
@@ -367,27 +374,20 @@ export default function HomeScreen() {
                   ? `${effectiveMember?.avatarEmoji} ${effectiveMember?.displayName}'s tasks${isReadOnly ? ' 👁' : ''}`
                   : `Hey, ${member?.displayName?.split(' ')[0]} ${member?.avatarEmoji}`}
               </Text>
-              <Text style={[styles.date, { color: colors.textSecondary }]}>{dateString}</Text>
+              <Text style={[styles.date, { color: colors.textSecondary }]}>
+                {allDone ? "All done — you're crushing it! 🎉" : totalCount > 0 ? `${completedCount} of ${totalCount} done today` : "Let's make today count 💪"}
+              </Text>
             </View>
             <View style={styles.headerRight}>
               {streak > 0 && <StreakFlame streak={streak} />}
-              {isParent && (
-                <TouchableOpacity
-                  style={[styles.penaltyButton, { backgroundColor: colors.warning + '22', borderColor: colors.warning + '66' }]}
-                  onPress={() => router.push('/app/discipline/log')}
-                  accessibilityLabel="Log discipline event"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.penaltyButtonText}>⚠️</Text>
-                </TouchableOpacity>
-              )}
               <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: colors.primary }]}
+                style={[styles.newTaskPill, { backgroundColor: colors.primary }]}
                 onPress={() => router.push({ pathname: '/app/task/create' as any, params: actingAsMember ? { defaultAssignee: actingAsMember.id } : {} })}
                 accessibilityLabel="Create new task"
                 accessibilityRole="button"
+                activeOpacity={0.85}
               >
-                <Text style={styles.addButtonText}>＋</Text>
+                <Text style={styles.newTaskPillText}>＋ New task</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -418,7 +418,12 @@ export default function HomeScreen() {
           {isLoadingTasks ? <LoadingSkeletons /> :
             todaysTasks.length === 0 ? (
               <SlideIn delay={250}>
-                <EmptyState emoji="🌟" title="No tasks today!" subtitle="Enjoy your free day or tap + to add some tasks." action={{ label: '+ Add Task', onPress: () => router.push('/app/task/create') }} />
+                <EmptyState emoji="🌟" title="No tasks today!" subtitle="Kick-start the week with a ready-made starter pack, or add your own." action={{ label: '📦 Browse starter packs', onPress: () => router.push('/app/task/packs' as any) }} />
+                {isParent && (
+                  <TouchableOpacity style={styles.emptyAltBtn} onPress={() => router.push('/app/task/create')} activeOpacity={0.7}>
+                    <Text style={[styles.emptyAltBtnText, { color: colors.primary }]}>＋ Or create a single task</Text>
+                  </TouchableOpacity>
+                )}
               </SlideIn>
             ) : isChildMode ? (
               (todaysTasks as any[]).map((task, i) => (
@@ -598,6 +603,9 @@ function LoadingSkeletons() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   pointBurstContainer: { position: 'absolute', top: 120, left: 0, right: 0, alignItems: 'center', zIndex: 100 },
+  brandRow: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
+  newTaskPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: 9, borderRadius: BorderRadius.full, ...Shadow.md },
+  newTaskPillText: { color: '#FFFFFF', fontFamily: FontFamily.extraBold, fontSize: FontSize.sm },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
@@ -616,6 +624,8 @@ const styles = StyleSheet.create({
   progressBarBg: { height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(128,128,128,0.2)' },
   progressBarFill: { height: '100%', borderRadius: 4 },
   section: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
+  emptyAltBtn: { alignItems: 'center', paddingVertical: Spacing.sm, marginTop: -Spacing.sm },
+  emptyAltBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
   taskCard: { borderRadius: BorderRadius.lg, marginBottom: Spacing.sm, flexDirection: 'row', overflow: 'hidden' },
   taskCardDone: { opacity: 0.65 },
   taskCategoryBar: { width: 5 },

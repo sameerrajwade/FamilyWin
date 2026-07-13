@@ -46,6 +46,14 @@ export default function AppTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="history"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="📊" label="Insights" focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="rewards"
         options={{
           tabBarIcon: ({ focused }) => (
@@ -67,12 +75,6 @@ export default function AppTabsLayout() {
           tabBarIcon: ({ focused }) => (
             <TabIcon emoji="⚙️" label="Settings" focused={focused} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          href: null, // hidden from tab bar — accessible via Leaderboard
         }}
       />
     </Tabs>

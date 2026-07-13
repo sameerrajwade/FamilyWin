@@ -14,9 +14,12 @@
  */
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
+const { getAuth } = require('firebase-admin/auth');
+const { getStorage } = require('firebase-admin/storage');
 
 initializeApp();
 
@@ -222,4 +225,54 @@ exports.dailyStreakCheck = onSchedule('0 1 * * *', async (event) => {
     }
   }
   return null;
+});
+
+// ─── DELETE ACCOUNT (Play policy: in-app account deletion) ────────────────────
+// Callable from the client. Server-authoritative so it can (a) cascade-delete a
+// family the last account-holder is leaving, (b) delete Storage photos, and
+// (c) delete the Auth user itself — none of which the client can/should do
+// under our security rules.
+//
+// Rules:
+//   • If the caller is the family's admin_parent AND no OTHER member has a
+//     linked account (userId), the whole family + its photos are deleted
+//     (this removes all managed-child data too — required for Play deletion).
+//   • Otherwise only the caller's own member doc, notif config, and photo are
+//     removed; the family and other members are left intact.
+//   • The caller's /users/{uid} doc and Firebase Auth user are always deleted.
+exports.deleteAccount = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'You must be signed in.');
+
+  const userRef = db.collection('users').doc(uid);
+  const userSnap = await userRef.get();
+  const { familyId, memberId } = userSnap.exists ? userSnap.data() : {};
+
+  if (familyId && memberId) {
+    const familyRef = db.collection('families').doc(familyId);
+    const membersSnap = await familyRef.collection('members').get();
+    const myMember = membersSnap.docs.find((d) => d.id === memberId);
+    const isAdmin = myMember && myMember.data().role === 'admin_parent';
+    const otherAccountHolders = membersSnap.docs.filter(
+      (d) => d.id !== memberId && d.data().userId,
+    );
+
+    const bucket = getStorage().bucket();
+    if (isAdmin && otherAccountHolders.length === 0) {
+      // Last account-holder → wipe the entire family and all its photos.
+      await bucket.deleteFiles({ prefix: `member-photos/${familyId}/` }).catch(() => {});
+      await db.recursiveDelete(familyRef);
+      console.log(`deleteAccount: full family wipe family=${familyId} by uid=${uid}`);
+    } else {
+      // Co-parents/others remain → remove only this member's footprint.
+      await bucket.file(`member-photos/${familyId}/${memberId}.jpg`).delete().catch(() => {});
+      await familyRef.collection('members').doc(memberId).delete().catch(() => {});
+      await familyRef.collection('notificationConfigs').doc(memberId).delete().catch(() => {});
+      console.log(`deleteAccount: member-only removal family=${familyId} member=${memberId}`);
+    }
+  }
+
+  await userRef.delete().catch(() => {});
+  await getAuth().deleteUser(uid);
+  return { ok: true };
 });

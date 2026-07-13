@@ -16,8 +16,10 @@ import { configureGoogleSignIn } from '@/lib/googleAuth';
 import { useAuthStore } from '@/store';
 import { setupNotificationListeners } from '@/lib/notifications';
 import { registerBackgroundTasks } from '@/lib/backgroundTasks';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 import { identifyUser } from '@/lib/analytics';
+import crashlytics from '@react-native-firebase/crashlytics';
 
 // ── Error Boundary — catches any unhandled JS errors to prevent white/red crash ──
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error?: Error }> {
@@ -28,8 +30,15 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
-  componentDidCatch(error: Error) {
-    if (__DEV__) console.error('[FamilyWin ErrorBoundary]', error);
+  componentDidCatch(error: Error, info: { componentStack: string }) {
+    if (__DEV__) console.error('[Lootboard ErrorBoundary]', error);
+    // Report to Crashlytics so we're not launching blind. Non-fatal record +
+    // the React component stack as context. Guarded so a missing native module
+    // (e.g. Expo Go / dev) never turns the error screen into a second crash.
+    try {
+      crashlytics().log(`ErrorBoundary: ${info?.componentStack ?? ''}`);
+      crashlytics().recordError(error);
+    } catch { /* crashlytics unavailable — swallow */ }
   }
   render() {
     if (this.state.hasError) {
@@ -37,7 +46,7 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
         <View style={ebStyles.container}>
           <Text style={ebStyles.emoji}>😕</Text>
           <Text style={ebStyles.title}>Something went wrong</Text>
-          <Text style={ebStyles.msg}>FamilyWin ran into an unexpected error. Please restart the app.</Text>
+          <Text style={ebStyles.msg}>Lootboard ran into an unexpected error. Please restart the app.</Text>
           <TouchableOpacity style={ebStyles.btn} onPress={() => this.setState({ hasError: false })}>
             <Text style={ebStyles.btnText}>Try Again</Text>
           </TouchableOpacity>
@@ -242,7 +251,8 @@ function AnimatedSplash({ isExiting }: { isExiting: boolean }) {
   }));
 
   return (
-    <Animated.View style={[splashStyles.container, containerStyle]}>
+    <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, containerStyle]}>
+    <LinearGradient colors={['#4A42CC', '#6C63FF', '#8B84FF']} style={splashStyles.container}>
       {/* Background floating orbs */}
       <FloatingOrb size={180} color="rgba(255,255,255,0.06)" top="5%"  left="-8%"  delay={0}   />
       <FloatingOrb size={130} color="rgba(255,101,132,0.18)" top="12%" left="65%"  delay={200} />
@@ -266,9 +276,9 @@ function AnimatedSplash({ isExiting }: { isExiting: boolean }) {
         <Animated.Text style={[splashStyles.trophy, trophyStyle]}>🏆</Animated.Text>
       </View>
 
-      {/* FamilyWin title */}
+      {/* Lootboard title */}
       <Animated.View style={titleStyle}>
-        <Text style={splashStyles.title}>FamilyWin</Text>
+        <Text style={splashStyles.title}>Lootboard</Text>
       </Animated.View>
 
       {/* Accent line */}
@@ -276,7 +286,7 @@ function AnimatedSplash({ isExiting }: { isExiting: boolean }) {
 
       {/* Tagline */}
       <Animated.View style={tagStyle}>
-        <Text style={splashStyles.tagline}>Who wins this week? 🎯</Text>
+        <Text style={splashStyles.tagline}>Your family's weekly showdown. 🎯</Text>
       </Animated.View>
 
       {/* Staggered bottom star row */}
@@ -285,14 +295,14 @@ function AnimatedSplash({ isExiting }: { isExiting: boolean }) {
           <StarItem key={i} emoji={s} delay={1000 + i * 90} />
         ))}
       </View>
+    </LinearGradient>
     </Animated.View>
   );
 }
 
 const splashStyles = StyleSheet.create({
   container: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: '#6C63FF',
+    flex: 1,
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
   },

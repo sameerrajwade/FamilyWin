@@ -1,7 +1,7 @@
 export const Strings = {
   app: {
-    name: 'FamilyWin',
-    tagline: 'Chores. Discipline. Champions.',
+    name: 'Lootboard',
+    tagline: 'Your family\'s weekly showdown.',
   },
 
   auth: {
