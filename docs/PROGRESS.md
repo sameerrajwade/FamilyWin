@@ -120,6 +120,23 @@
 - tsc app-src clean; functions node --check OK. Rebuild bg bcwuzgaoa (non-clean prebuild+assembleRelease, keystore restored).
 - ⚠️ DEPLOY GATES (production, need user go-ahead): `firebase deploy --only storage` (2.6 rules) + `firebase deploy --only functions` (2.9 deleteAccount). Account-deletion can't be device-tested until function deployed — and testing it DELETES real data.
 
+## Iteration 12 (2026-07-12) — PHASE 2 COMPLETE (deployed + pushed)
+- Rebuild SUCCESS after Gradle heap 2G→4G fix (prebuild had reset it → Jetifier OOM). Installed on Pixel.
+- ✅ DEVICE-VERIFIED: 2.5 external-storage perms stripped (dumpsys); 2.7 app launches clean w/ crashlytics+functions native modules; 2.9 "Delete My Account" renders in Danger Zone; version string now "Lootboard v1.0.0".
+- ✅ DEPLOYED to prod (familywin-35a97): storage.rules (family-only photos) + functions (deleteAccount created, weeklyReset/dailyStreakCheck updated).
+- ✅ deleteAccount E2E TESTED via throwaway REST account: callable→{ok:true}, auth user→USER_NOT_FOUND, user doc gone, family cascade executed. Real family untouched.
+- ✅ Committed + PUSHED origin/autonomous/phase-2-ship-blockers (commit 4af44c5).
+- Phase 2 status: 8/9 done+deployed. REMAINING: 2.1 package rename (authorized, do via firebase CLI).
+- Follow-ups noted: functions Node20 deprecation (upgrade to 22 by 2026-10-30); stale "try FamilyWin" string in settings Share row; add expo-build-properties to persist Gradle heap across prebuilds.
+- NEXT: Phase 3 (perf/security).
+
+## Iteration 13 (2026-07-12) — Phase 3 audit (branch autonomous/phase-3-perf-security)
+- ✅ 3.1 reads: getUserFamilyAndMember already Promise.all's family+member after the one dependent user read — optimal fan-out. (Remaining cold-start lever = persisted-cache instant render; TODO.)
+- ✅ 3.2 listener audit: index.tsx (unsubTasks+unsubCompletions) & leaderboard.tsx (.limit(1) ping) BOTH have return-cleanup. No leaks.
+- ✅ 3.11 cost guardrails: all queries bounded — getRecentCompletions (35d window), getWeeklyPoints (weekStart), history tx log (.limit(100)), leaderboard listener (.limit(1)). No unbounded reads.
+- NO app-source code changes this iter (audit only) → no rebuild needed. Phase 3 NOT complete → not pushed yet (per-phase push rule).
+- REMAINING Phase 3 (do next, batch 1 rebuild): 3.10 App Check (dep @react-native-firebase/app-check → wire client, verify, THEN enforce), 3.9 invite-code hardening (callable + expiry/size cap), 3.8 server-side point integrity (BIG: move completeTask/addPointTransaction writes to a Cloud Function, then tighten rules to block client-forged pointsAwarded/tx), 3.6 Hermes+R8 (risky, verify heavily), 3.3/3.4 FlatList+memo (check screens), 3.5 expo-image caching, 3.1 persisted-cache render.
+
 ## AUTHORIZATIONS (user-granted 2026-07-12, override earlier "staged" defaults)
 1. **Firebase prod deploys → APPROVED.** May `firebase deploy --only storage,functions` (authed sameerrajwade@gmail.com).
 2. **Package rename com.lootboard.app → APPROVED.** Do via firebase CLI (`firebase apps:create ANDROID com.lootboard.app` → `firebase apps:sdkconfig ANDROID <appId>` → write google-services.json) so NO manual console step needed. Then app.json package+bundleId, prebuild, rebuild, re-add debug SHA-1 for Google Sign-In. NOTE: needs expo-build-properties heap fix FIRST (prebuild resets gradle.properties to 2GB → Jetifier OOM; must be ≥4GB).
