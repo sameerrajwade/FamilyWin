@@ -22,7 +22,7 @@ async function pickImageFromGallerySAF(): Promise<string | null> {
   if (result.resultCode !== -1 /* Activity.RESULT_OK */ || !result.data) return null;
   return result.data;
 }
-import auth from '@react-native-firebase/auth';
+import { auth } from '@/lib/fb';
 import {
   createFamily, joinFamily, createMember, createManagedMember,
   getFamilyMembers, upsertNotifConfig, uploadMemberPhoto, type FamilyDoc,

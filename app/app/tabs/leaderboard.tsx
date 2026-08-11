@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
-import firestore from '@react-native-firebase/firestore';
+import { firestore } from '@/lib/fb';
 import { useAuthStore, useFamilyStore, usePointsStore } from '@/store';
 import { Col, getFamilyMembers, getCurrentWeekId, getWeekCompletions, getMemberPersonalBest } from '@/lib/firebase';
 import { buildLeaderboard, computeCrowns, getWeekLabel, getCurrentWeekRange, getRankEmoji } from '@/lib/pointsEngine';

@@ -10,7 +10,7 @@ import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import auth from '@react-native-firebase/auth';
+import { auth } from '@/lib/fb';
 import { getUserFamilyAndMember } from '@/lib/firebase';
 import { configureGoogleSignIn } from '@/lib/googleAuth';
 import { setupAppCheck } from '@/lib/appCheck';
@@ -20,7 +20,7 @@ import { registerBackgroundTasks } from '@/lib/backgroundTasks';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 import { identifyUser } from '@/lib/analytics';
-import crashlytics from '@react-native-firebase/crashlytics';
+import { crashlytics } from '@/lib/fb';
 
 // ── Error Boundary — catches any unhandled JS errors to prevent white/red crash ──
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error?: Error }> {

@@ -21,11 +21,12 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   getFamilyMembers, createManagedMember, updateMemberProfile, uploadMemberPhoto, removeMemberPhoto,
 } from '@/lib/firebase';
-import firestore from '@react-native-firebase/firestore';
+import { firestore } from '@/lib/fb';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { useTheme } from '@/lib/theme';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { APP_STORE_URL } from '@/constants/strings';
+import { pickPhotoUri as pickPhotoViaRNIP } from '@/lib/photoPicker';
 import { Avatar } from '@/components/ui';
 import type { MemberDoc } from '@/lib/firebase';
 
@@ -339,42 +340,9 @@ async function pickPhotoUri(source: 'library' | 'camera'): Promise<string | null
   if (pickerBusy) return null;
   pickerBusy = true;
   try {
-  // SAF's ACTION_GET_CONTENT chooser manages its own per-URI access grants —
-  // it doesn't need (and won't trigger) the READ_MEDIA_IMAGES permission
-  // prompt, so we skip the permission dance entirely for this path.
-  if (source === 'library' && Platform.OS === 'android') {
-    return await pickImageFromGallerySAF();
-  }
-
-  const permission = source === 'camera'
-    ? await ImagePicker.requestCameraPermissionsAsync()
-    : await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) {
-    if (permission.canAskAgain === false) {
-      Alert.alert('Permission Needed', 'Please enable photo access in Settings to choose a photo.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Open Settings', onPress: () => Linking.openSettings() },
-      ]);
-    } else {
-      Alert.alert('Permission Needed', 'Permission is required to select a photo.');
-    }
-    return null;
-  }
-  // See member/[id].tsx pickAndUpload for the full explanation: requesting
-  // permission ALSO opens a system dialog/activity, and once permission is
-  // already granted that await resolves almost instantly — launching the
-  // picker Activity immediately afterward collides with Android still
-  // settling from the previous transition (Alert dismiss), causing the
-  // launch to get silently queued until the app regains foreground. A short
-  // fixed delay is the documented workaround for this exact combination.
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  const result = source === 'camera'
-    ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 })
-    : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-  if (result.canceled) return null;
-  const asset = result.assets?.[0];
-  return asset?.uri ?? null;
+    // Delegates to react-native-image-picker (see lib/photoPicker) which returns
+    // an app-owned file:// — fixes the Android 13 content:// upload failure.
+    return await pickPhotoViaRNIP(source);
   } finally {
     pickerBusy = false;
   }

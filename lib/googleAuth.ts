@@ -18,7 +18,7 @@ import {
   statusCodes,
   isErrorWithCode,
 } from '@react-native-google-signin/google-signin';
-import auth from '@react-native-firebase/auth';
+import { auth } from '@/lib/fb';
 
 // ── Replace this with your actual Web Client ID from Firebase Console ─────────
 const WEB_CLIENT_ID = '939272773354-11lg42mo2i4uf42h2cga19ikrugd07mj.apps.googleusercontent.com';

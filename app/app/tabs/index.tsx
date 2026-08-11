@@ -8,7 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { Sounds } from '@/lib/sounds';
 import { router, useFocusEffect } from 'expo-router';
-import firestore from '@react-native-firebase/firestore';
+import { firestore } from '@/lib/fb';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence, withDelay, interpolateColor } from 'react-native-reanimated';
 import { useAuthStore, useTaskStore, useFamilyStore, usePointsStore } from '@/store';
 import {

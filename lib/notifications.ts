@@ -10,7 +10,7 @@
  */
 
 import * as Notifications from 'expo-notifications';
-import messaging from '@react-native-firebase/messaging';
+import { messaging } from '@/lib/fb';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
@@ -18,6 +18,9 @@ import { Platform } from 'react-native';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
+    // SDK 53+ split shouldShowAlert into shouldShowBanner + shouldShowList.
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,

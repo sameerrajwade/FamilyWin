@@ -6,7 +6,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import analytics from '@react-native-firebase/analytics';
+import { analytics } from '@/lib/fb';
 
 // ── Identify the logged-in user ───────────────────────────────────────────────
 

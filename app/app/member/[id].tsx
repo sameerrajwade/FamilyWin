@@ -3,8 +3,9 @@ import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity
 import * as IntentLauncher from 'expo-intent-launcher';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import firestore from '@react-native-firebase/firestore';
+import { firestore } from '@/lib/fb';
 import * as ImagePicker from 'expo-image-picker';
+import { pickPhotoUri } from '@/lib/photoPicker';
 import * as Haptics from 'expo-haptics';
 import { Col, getCurrentWeekId, getWeekStart, uploadMemberPhoto, removeMemberPhoto, setMemberWeeklyGoal } from '@/lib/firebase';
 import { useAuthStore } from '@/store';
@@ -74,78 +75,10 @@ export default function MemberProfileScreen() {
     if (pickerBusyRef.current) return;
     pickerBusyRef.current = true;
     try {
-      let uri: string | null | undefined;
-
-      // FACT, confirmed via on-device adb logcat: Android's new system Photo
-      // Picker (com.google.android.photopicker) launches as a TRANSLUCENT
-      // overlay activity that — on this device's OS build — fails to
-      // composite its own content. ActivityTaskManager logs it as genuinely
-      // "Displayed", yet nothing renders until the app is backgrounded and
-      // foregrounded (forcing Android to redraw the stack). This is an
-      // OS-level compositor bug outside our control, and expo-image-picker
-      // always prefers this Photo Picker on Android 13+ with no opt-out.
-      // Fix: bypass it on Android by firing a classic ACTION_GET_CONTENT
-      // intent — the pre-2023 Storage Access Framework chooser, an opaque
-      // full-screen activity that never touches the buggy code path. SAF
-      // manages its own per-URI access grants, so no READ_MEDIA_IMAGES
-      // permission dance is needed for this path.
-      if (source === 'library' && Platform.OS === 'android') {
-        // ACTION_OPEN_DOCUMENT, not GET_CONTENT — GET_CONTENT is hijacked by the
-        // Android 13+ Photo Picker, whose content://media/picker/… URIs are
-        // unopenable downstream ("No content provider"). OPEN_DOCUMENT opens
-        // DocumentsUI and returns a readable …/documents URI. flags:1 =
-        // FLAG_GRANT_READ_URI_PERMISSION.
-        const safResult = await IntentLauncher.startActivityAsync('android.intent.action.OPEN_DOCUMENT', {
-          type: 'image/*',
-          category: 'android.intent.category.OPENABLE',
-          flags: 1,
-        });
-        if (safResult.resultCode !== -1 /* Activity.RESULT_OK */ || !safResult.data) return;
-        uri = safResult.data;
-      } else {
-        let permission;
-        if (source === 'camera') {
-          permission = await ImagePicker.requestCameraPermissionsAsync();
-        } else {
-          permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        }
-        if (!permission.granted) {
-          if (permission.canAskAgain === false) {
-            Alert.alert('Permission Needed', 'Please enable access in Settings to change the photo.', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
-            ]);
-          } else {
-            Alert.alert('Permission Needed', 'Permission is required to select a photo.');
-          }
-          return;
-        }
-
-        // IMPORTANT — second transition gotcha: requestCameraPermissionsAsync /
-        // requestMediaLibraryPermissionsAsync ALSO opens a system dialog/activity.
-        // Once permission has already been granted (exactly the "it remembers"
-        // symptom — repeat taps skip the prompt), that await resolves almost
-        // immediately, and launching the picker Activity right after means
-        // Android is still mid-transition from the *previous* screen change
-        // (the Alert dismiss). InteractionManager.runAfterInteractions's
-        // "interaction complete" signal is known to be unreliable for this
-        // exact native transition timing on Android — a small fixed delay is
-        // the documented workaround for this specific expo-image-picker +
-        // Alert combination, so we wait briefly before actually launching.
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        const result = source === 'camera'
-          ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 })
-          : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-
-        if (result.canceled) return;
-        uri = result.assets?.[0]?.uri;
-      }
-
-      if (!uri) {
-        Alert.alert('No Photo', 'No photo was selected.');
-        return;
-      }
+      // react-native-image-picker returns an app-owned file:// (see lib/photoPicker),
+      // sidestepping the Android 13 content:// unreadable-URI problem entirely.
+      const uri = await pickPhotoUri(source);
+      if (!uri) return; // cancelled
 
       setIsUploadingPhoto(true);
       const url = await uploadMemberPhoto(uri, family!.id, member!.id);
@@ -191,7 +124,7 @@ export default function MemberProfileScreen() {
             .get(),
         ]);
 
-        if (memberSnap.exists) {
+        if (memberSnap.exists()) {
           setMember({ id: memberSnap.id, ...memberSnap.data() } as MemberDoc);
         }
 

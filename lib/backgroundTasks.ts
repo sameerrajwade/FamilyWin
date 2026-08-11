@@ -1,6 +1,6 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
-import firestore from '@react-native-firebase/firestore';
+import { firestore } from '@/lib/fb';
 import { getCurrentWeekId } from '@/lib/firebase';
 
 export const AUTO_FAIL_TASK_NAME = 'familywin-auto-fail';

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl, ActivityIndicator, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import firestore from '@react-native-firebase/firestore';
+import { firestore } from '@/lib/fb';
 import { Col, getFamilyMembers } from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
 import type { MemberDoc } from '@/lib/firebase';

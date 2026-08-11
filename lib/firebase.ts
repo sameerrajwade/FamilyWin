@@ -7,12 +7,10 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
-import storage from '@react-native-firebase/storage';
-import functions from '@react-native-firebase/functions';
+import { Timestamp } from '@react-native-firebase/firestore';
+import { firestore, auth, storage, functions } from '@/lib/fb';
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // ─── OFFLINE PERSISTENCE ──────────────────────────────────────────────────────
 // Enable Firestore disk cache so the app works offline (reads from local cache,
@@ -131,7 +129,7 @@ export interface FamilyDoc {
   name: string;
   inviteCode: string;
   weekStartDay: number;
-  createdAt: FirebaseFirestoreTypes.Timestamp;
+  createdAt: Timestamp;
 }
 
 export interface MemberDoc {
@@ -145,7 +143,7 @@ export interface MemberDoc {
   age?: number;
   isManaged?: boolean;      // true = parent-created profile, no Firebase Auth account
   weeklyGoal?: number | null; // personal weekly points target (🎯 Goal Crusher crown); null/absent = none
-  createdAt: FirebaseFirestoreTypes.Timestamp;
+  createdAt: Timestamp;
 }
 
 /** Create a new family and return the family doc */
@@ -477,7 +475,7 @@ export async function getUserFamilyAndMember(uid: string): Promise<{
   member: MemberDoc;
 } | null> {
   const userSnap = await Col.users().doc(uid).get();
-  if (!userSnap.exists) return null;
+  if (!userSnap.exists()) return null;
   const { familyId, memberId } = userSnap.data() as { familyId: string; memberId: string };
 
   const [familySnap, memberSnap] = await Promise.all([
@@ -485,7 +483,7 @@ export async function getUserFamilyAndMember(uid: string): Promise<{
     Col.members(familyId).doc(memberId).get(),
   ]);
 
-  if (!familySnap.exists || !memberSnap.exists) return null;
+  if (!familySnap.exists() || !memberSnap.exists()) return null;
 
   return {
     family: { id: familySnap.id, ...(familySnap.data() as Omit<FamilyDoc, 'id'>) },
@@ -509,7 +507,7 @@ export interface TaskDoc {
   taskEmoji?: string;
   isActive: boolean;
   createdBy: string;
-  createdAt: FirebaseFirestoreTypes.Timestamp;
+  createdAt: Timestamp;
 }
 
 export interface CompletionDoc {
@@ -521,7 +519,7 @@ export interface CompletionDoc {
   completedDate?: string;
   /** YYYY-MM in local time — used to detect monthly task resets */
   monthId?: string;
-  completedAt?: FirebaseFirestoreTypes.Timestamp | null;
+  completedAt?: Timestamp | null;
   wasAutoFailed: boolean;
   pointsAwarded: number;
 }
@@ -535,7 +533,7 @@ export interface TransactionDoc {
   /** 'redemption' = reward spend; excluded from leaderboard earned-points total */
   source: 'task' | 'discipline' | 'bonus' | 'manual' | 'redemption';
   referenceId?: string;
-  createdAt: FirebaseFirestoreTypes.Timestamp;
+  createdAt: Timestamp;
 }
 
 /** Fetch all active tasks for a family */
@@ -678,7 +676,7 @@ export interface RewardDoc {
   pointCost: number;
   isActive: boolean;
   createdBy: string;
-  createdAt: FirebaseFirestoreTypes.Timestamp;
+  createdAt: Timestamp;
 }
 
 export interface RedemptionDoc {
@@ -687,7 +685,7 @@ export interface RedemptionDoc {
   familyId: string;
   memberId: string;
   status: 'pending' | 'approved' | 'rejected';
-  redeemedAt: FirebaseFirestoreTypes.Timestamp;
+  redeemedAt: Timestamp;
   approvedBy?: string;
 }
 
@@ -803,7 +801,7 @@ export async function upsertNotifConfig(
 
 export async function getNotifConfig(familyId: string, memberId: string) {
   const snap = await Col.notifConfigs(familyId).doc(memberId).get();
-  return snap.exists ? snap.data() : null;
+  return snap.exists() ? snap.data() : null;
 }
 
 // ─── PASSWORD RESET ──────────────────────────────────────────────────────────

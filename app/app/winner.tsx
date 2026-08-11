@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Share, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import firestore from '@react-native-firebase/firestore';
+import { firestore } from '@/lib/fb';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/store';
 import { Col, getFamilyMembers } from '@/lib/firebase';

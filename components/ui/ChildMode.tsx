@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
 
   // Celebration overlay
   celebrationOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.75)',
     alignItems: 'center',
     justifyContent: 'center',

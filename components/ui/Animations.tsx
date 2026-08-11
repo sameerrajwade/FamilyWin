@@ -352,7 +352,7 @@ export function RankChangeBadge({ previousRank, currentRank }: RankChangeBadgePr
 
 const styles = StyleSheet.create({
   confettiContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 999,
   },
   particle: {

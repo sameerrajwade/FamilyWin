@@ -3,6 +3,7 @@
     "name": "Lootboard",
     "slug": "lootboard",
     "version": "1.0.0",
+    "newArchEnabled": true,
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -62,6 +63,19 @@
           "photosPermission": "Lootboard uses your photos to set profile pictures for family members.",
           "cameraPermission": "Lootboard uses your camera to take profile photos.",
           "microphonePermission": false
+        }
+      ],
+      "expo-sharing",
+      "expo-splash-screen",
+      "expo-status-bar",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraGradleProperties": {
+              "org.gradle.jvmargs": "-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
+            }
+          }
         }
       ]
     ],

@@ -10,7 +10,8 @@
  * real devices are producing valid tokens (and after registering a debug token
  * for debug builds), or the app locks itself out.
  */
-import appCheck from '@react-native-firebase/app-check';
+import { getApp } from '@react-native-firebase/app';
+import { initializeAppCheck, ReactNativeFirebaseAppCheckProvider } from '@react-native-firebase/app-check';
 
 let initialized = false;
 
@@ -18,7 +19,7 @@ export async function setupAppCheck(): Promise<void> {
   if (initialized) return;
   initialized = true;
   try {
-    const provider = appCheck().newReactNativeFirebaseAppCheckProvider();
+    const provider = new ReactNativeFirebaseAppCheckProvider();
     provider.configure({
       android: {
         // Debug builds can't pass Play Integrity (not installed from Play), so
@@ -29,7 +30,7 @@ export async function setupAppCheck(): Promise<void> {
         provider: __DEV__ ? 'debug' : 'appAttestWithDeviceCheckFallback',
       },
     });
-    await appCheck().initializeAppCheck({
+    await initializeAppCheck(getApp(), {
       provider,
       isTokenAutoRefreshEnabled: true,
     });

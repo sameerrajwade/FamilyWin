@@ -1,12 +1,16 @@
 /**
- * lib/sounds.ts — Sound effects for FamilyWin
+ * lib/sounds.ts — Sound effects for Lootboard
  * Tones generated with Python / sine waves; royalty-free.
  *
  * Usage:  import { Sounds } from '@/lib/sounds';
  *         Sounds.taskComplete();
+ *
+ * Migrated expo-av → expo-audio (SDK 54 removed expo-av). expo-audio's
+ * createAudioPlayer is synchronous and returns an AudioPlayer we play once and
+ * then release when playback finishes, so we never leak native players.
  */
 
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 const ASSETS: Record<string, any> = {
   task_complete: require('@/assets/sounds/task_complete.wav'),
@@ -16,16 +20,25 @@ const ASSETS: Record<string, any> = {
   penalty:       require('@/assets/sounds/penalty.wav'),
 };
 
-async function play(key: string, volume = 0.7) {
+// Set the audio mode once (best-effort) so effects still play with the ringer
+// muted is NOT desired — keep the default (respect the silent switch).
+let audioModeSet = false;
+
+function play(key: string, volume = 0.7) {
   try {
-    await Audio.setAudioModeAsync({ playsInSilentModeIOS: false });
-    const { sound } = await Audio.Sound.createAsync(ASSETS[key], {
-      shouldPlay: true,
-      volume,
+    if (!audioModeSet) {
+      audioModeSet = true;
+      setAudioModeAsync({ playsInSilentMode: false }).catch(() => {});
+    }
+    const player = createAudioPlayer(ASSETS[key]);
+    player.volume = volume;
+    const sub = player.addListener('playbackStatusUpdate', (status) => {
+      if (status?.didJustFinish) {
+        try { sub?.remove?.(); } catch { /* noop */ }
+        try { player.remove(); } catch { /* noop */ }
+      }
     });
-    sound.setOnPlaybackStatusUpdate((s) => {
-      if ('didJustFinish' in s && s.didJustFinish) sound.unloadAsync().catch(() => {});
-    });
+    player.play();
   } catch {
     // Non-critical — never crash over a sound
   }

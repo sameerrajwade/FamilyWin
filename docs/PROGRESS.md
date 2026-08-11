@@ -10,6 +10,16 @@
 
 ---
 
+## Iteration 20 (2026-08-10) — EXPO SDK 51 → 57 UPGRADE (app-src tsc clean; native build running)
+- WHY: user hit store-rejection uploading old SDK to Apple/Google. Branch `autonomous/sdk-57-upgrade` (off phase-3, carries parked photo pivot). iOS DEPRIORITIZED per user (far off); Android focus.
+- STACK: expo 51→57, RN 0.74→0.86, React 18→19.2, Firebase v20→**v26 (modular-only + requires New Arch)**, google-signin 13→16, reanimated 3→**4** (+react-native-worklets 0.10.1), expo-av→**expo-audio**.
+- BIG WIN: instead of rewriting ~hundreds of namespaced Firebase call sites, wrote **`lib/fb.ts` compat shim** (rebuilds `firestore()/auth()/storage()/functions()/analytics()/crashlytics()/messaging()` chainable API on v26 modular free-fns). Swapped imports across ~14 files. `.exists`→`.exists()` (method now, 4 sites), `FirebaseFirestoreTypes.Timestamp`→`Timestamp` (8 sites), appCheck.ts→modular `initializeAppCheck(getApp(),…)`.
+- OTHER FIXES: sounds.ts expo-av→expo-audio createAudioPlayer; babel `react-native-reanimated/plugin`→`react-native-worklets/plugin` (last); firebase.ts FileSystem→`expo-file-system/legacy`; notifications handler +shouldShowBanner/List; StyleSheet.absoluteFillObject→absoluteFill. app.json: `newArchEnabled:true` + expo-build-properties (gradle -Xmx4g, kills the recurring Jetifier OOM). expo-system-ui added.
+- STATUS: **app-source `tsc` CLEAN**; `prebuild --clean` OK. Native `assembleDebug` re-running after manifest fix (bg b1vzncw1e) — compiling New-Arch C++ (reanimated/gesture-handler CMake, arm64+x86), no errors, no APK yet.
+- USER DIRECTIVE (user now AWAY, phone stays connected): on build success → adb-install on Pixel → launch smoke-test (no crash + data loads = shim runtime OK) → screenshot proof → **commit + MERGE branch to main** (only if smoke-test passes; do NOT merge a crashing build) → then continue roadmap (auto-refresh fix #7, then gamify #2-5). Branch `autonomous/sdk-57-upgrade` carries phase-3 commits + all SDK-57 work (uncommitted).
+- BUILD BLOCKERS CLEARED (all environmental, NOT migration code): (a) TLS PKIX cert fail on dl.google.com/maven → TLS interceptor; curl(Windows) works, JDK17 truststore didn't → added `-Djavax.net.ssl.trustStoreType=Windows-ROOT` to android/gradle.properties jvmargs (+bumped heap 2g→4g there; NOTE expo-build-properties `extraGradleProperties` key did NOT apply — fix the key for persistence). (b) missing android/local.properties → wrote `sdk.dir=C:/Users/samee/AppData/Local/Android/Sdk` (fwd slashes). (c) manifest merger: expo-notifications vs rn-firebase_messaging both set `default_notification_color` → added `tools:replace="android:resource"` to generated AndroidManifest.xml line 21 (GENERATED — wiped on prebuild; needs a persistent config-plugin fix).
+- NEXT: (1) confirm build green, install+launch Pixel, verify no crash + data loads (shim runtime correctness). (2) FIX auto-refresh flicker (task #7: index.tsx onSnapshot→loadTasks sets isLoadingTasks=true every event → skeletons flash; make listener reloads silent). (3) GAMIFY HOME tasks #2-5. (4) Phase 3 finish + photo (Sofra uses react-native-image-picker file://). (5) PERSIST the 2 generated-file fixes (manifest tools:replace via config plugin; gradle jvmargs via correct expo-build-properties key) before any prebuild. react-native-image-picker DROPPED (TS-strip incompat). RN pinned 0.86.2 (expo wants 0.86.0, harmless).
+
 ## Current State (as of 2026-07-12)
 
 - **App:** Lootboard (was FamilyWin). Code at `C:\Users\samee\FW`. Firebase project `familywin-35a97`.
@@ -166,6 +176,21 @@ User gave 8 items. Branch autonomous/phase-3-perf-security (UI fixes piggyback h
 - ✅ (6) Insights Family view: NEW per-member contribution card — distinct color per member (MEMBER_COLORS), horizontal share bar + 4-week mini trend, sorted by total. history.tsx.
 - tsc clean. Rebuild bg b22vdxeit (JS-only, no prebuild). VERIFY on device when stable (wireless adb flaky).
 - STILL TODO (need native deps + rebuild 2): (2) PHOTO → switch to react-native-image-picker (file:// guaranteed; OPEN_DOCUMENT still failed per user); (4) champion share IMAGE card + (7) invite IMAGE card → react-native-view-shot + expo-sharing.
+
+## Iteration 19 (2026-07-13) — PHOTO pivot to expo-image-picker (build READY, awaiting device)
+- RNIP ABANDONED: react-native-image-picker (v7 & v8) ships raw TS (src/index.ts, no compiled JS); Expo SDK 51 build fails `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING` — first on JS import, then on its CONFIG PLUGIN load. Removed the app.json plugin (dep left installed, harmlessly autolinked/unused).
+- lib/photoPicker.ts now uses expo-image-picker launchImageLibraryAsync/launchCameraAsync (returns file:// → putFile works) WITHOUT allowsEditing (that crop-overlay was the real "blank picker" cause per commit 68cb27f). Theory to verify: plain launchImageLibraryAsync renders fine AND returns file://.
+- Build bt6s4fc5t SUCCESS (9m). APK ready at android/app/build/outputs/apk/release/app-release.apk. Contains: UI fixes (iter 17) + photo pivot.
+- ❌ BLOCKER: wireless adb keeps dropping (offline/no-devices/no-mDNS). Could NOT install/verify. NEED USB or wireless-debugging re-toggle. NOT committing photo until device-verified.
+- If expo-image-picker renders blank on device → RNIP is out (TS incompat), next option = expo-image-picker with a config to force legacy picker, or a metro transform to compile RNIP.
+
+## Iteration 18 (2026-07-13) — PHOTO fix via react-native-image-picker (building)
+- Installed react-native-image-picker@8.2.1 (+ react-native-view-shot 3.8.0 + expo-sharing 12.0.1 for upcoming share cards).
+- NEW lib/photoPicker.ts `pickPhotoUri(source)` — RNIP returns app-owned file:// (fixes Android 13 content:// unreadable-URI saga; the approach that works in the sibling app). Replaced SAF/OPEN_DOCUMENT+expo-image-picker logic in ALL 3 call sites: member/[id].tsx, settings.tsx (profile + child), family.tsx (local pickPhotoUri now delegates). Old pickImageFromGallerySAF left dead (harmless).
+- app.json: added react-native-image-picker config plugin (permission strings).
+- tsc clean. Rebuild bg bdb8ysnnk (prebuild + heap re-bumped to 4G post-prebuild + assembleRelease). NOT committing photo until DEVICE-VERIFIED (history of false fixes).
+- BLOCKER: wireless adb died (adb kill-server dropped pairing; mDNS finds nothing). NEED user to reconnect device (USB best) to install+verify. UI APK (iter 17) also waiting to install.
+- Share cards (items 4 champion + 7 invite) = NEXT, JS-only rebuild (deps already in).
 
 ## AUTHORIZATIONS (user-granted 2026-07-12, override earlier "staged" defaults)
 1. **Firebase prod deploys → APPROVED.** May `firebase deploy --only storage,functions` (authed sameerrajwade@gmail.com).

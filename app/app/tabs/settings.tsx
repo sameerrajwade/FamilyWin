@@ -46,6 +46,7 @@ import {
   createManagedMember, removeManagedMember,
   uploadMemberPhoto, removeMemberPhoto, deleteMyAccount,
 } from '@/lib/firebase';
+import { pickPhotoUri } from '@/lib/photoPicker';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { AppearanceSettings } from '@/components/ui/AppearanceSettings';
 import { Avatar } from '@/components/ui';
@@ -148,25 +149,8 @@ export default function SettingsScreen() {
         text: '📷 Camera',
         onPress: async () => {
           try {
-            const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
-            if (status !== 'granted') {
-              Alert.alert('Permission Required', 'Camera access is needed to take a photo.', [
-                { text: 'Cancel' },
-                canAskAgain
-                  ? { text: 'Try Again', onPress: handlePickProfilePhoto }
-                  : { text: 'Open Settings', onPress: () => Linking.openSettings() },
-              ]);
-              return;
-            }
-            const result = await ImagePicker.launchCameraAsync({
-              quality: 0.7,
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            });
-            if (!result.canceled && result.assets?.[0]?.uri) {
-              await doUploadPhoto(result.assets[0].uri);
-            } else if (!result.canceled) {
-              Alert.alert('No Photo', 'No image was returned from the camera. Please try again.');
-            }
+            const uri = await pickPhotoUri('camera');
+            if (uri) await doUploadPhoto(uri);
           } catch (err) {
             if (__DEV__) console.error('[Camera]', err);
             Alert.alert('Camera Error', 'Could not open the camera. Please try again.');
@@ -177,30 +161,8 @@ export default function SettingsScreen() {
         text: '🖼️ Photo Library',
         onPress: async () => {
           try {
-            if (Platform.OS === 'android') {
-              const uri = await pickImageFromGallerySAF();
-              if (uri) await doUploadPhoto(uri);
-              return;
-            }
-            const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== 'granted') {
-              Alert.alert('Permission Required', 'Photo library access is needed.', [
-                { text: 'Cancel' },
-                canAskAgain
-                  ? { text: 'Try Again', onPress: handlePickProfilePhoto }
-                  : { text: 'Open Settings', onPress: () => Linking.openSettings() },
-              ]);
-              return;
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({
-              quality: 0.7,
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            });
-            if (!result.canceled && result.assets?.[0]?.uri) {
-              await doUploadPhoto(result.assets[0].uri);
-            } else if (!result.canceled) {
-              Alert.alert('No Photo', 'No image was returned from the library. Please try again.');
-            }
+            const uri = await pickPhotoUri('library');
+            if (uri) await doUploadPhoto(uri);
           } catch (err) {
             if (__DEV__) console.error('[Photo Library]', err);
             Alert.alert('Library Error', 'Could not open your photo library. Please try again.');
@@ -756,26 +718,8 @@ export default function SettingsScreen() {
                   style={[styles.childPhotoBox, { backgroundColor: colors.background, borderColor: colors.border }]}
                   onPress={async () => {
                     try {
-                      if (Platform.OS === 'android') {
-                        const uri = await pickImageFromGallerySAF();
-                        if (uri) setChildPhotoUri(uri);
-                        return;
-                      }
-                      const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                      if (status !== 'granted') {
-                        Alert.alert('Permission Required', 'Photo library access is needed.', [
-                          { text: 'Cancel' },
-                          canAskAgain ? undefined : { text: 'Open Settings', onPress: () => Linking.openSettings() },
-                        ].filter(Boolean) as any);
-                        return;
-                      }
-                      const result = await ImagePicker.launchImageLibraryAsync({
-                        quality: 0.7,
-                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                      });
-                      if (!result.canceled && result.assets?.[0]?.uri) {
-                        setChildPhotoUri(result.assets[0].uri);
-                      }
+                      const uri = await pickPhotoUri('library');
+                      if (uri) setChildPhotoUri(uri);
                     } catch (err) {
                       if (__DEV__) console.error('[Child Photo Picker]', err);
                       Alert.alert('Error', 'Could not open your photo library. Please try again.');
