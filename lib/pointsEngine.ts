@@ -336,6 +336,49 @@ export function calculateStreak(completions: TaskCompletion[]): number {
   return streak;
 }
 
+/**
+ * Consecutive-day streak from a list of completion Dates.
+ *
+ * Unlike calculateStreak (which breaks unless *today* already has a completion),
+ * this keeps the streak lit through the current day: the streak is "alive" if
+ * the most recent completion was today OR yesterday, and counts back from there.
+ * This matches how streaks feel to users — you don't lose your 6-day streak the
+ * instant the clock rolls to a new day; you lose it only after a full day passes
+ * with nothing done.
+ *
+ * Pure + Firestore-agnostic: callers pass the completedAt Dates of their
+ * non-auto-failed completions. Returns 0 for an empty/broken streak.
+ */
+export function dailyStreak(completedDates: Date[], now: Date = new Date()): number {
+  if (!completedDates || completedDates.length === 0) return 0;
+
+  // Unique calendar days, most-recent first.
+  const days = completedDates
+    .filter(Boolean)
+    .map((d) => d.toDateString())
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  if (days.length === 0) return 0;
+
+  const today = new Date(now); today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+
+  // Anchor: the streak only counts if the latest day is today or yesterday.
+  let anchor: Date;
+  if (days[0] === today.toDateString()) anchor = today;
+  else if (days[0] === yesterday.toDateString()) anchor = yesterday;
+  else return 0; // most recent completion is >1 day old → streak broken
+
+  let streak = 0;
+  for (let i = 0; i < days.length; i++) {
+    const expected = new Date(anchor);
+    expected.setDate(anchor.getDate() - i);
+    if (days[i] === expected.toDateString()) streak++;
+    else break;
+  }
+  return streak;
+}
+
 // ─── WEEK HELPERS ─────────────────────────────────────────────────────────────
 
 /**

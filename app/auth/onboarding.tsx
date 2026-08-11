@@ -177,7 +177,7 @@ export default function OnboardingScreen() {
         setMembers(allMembers as any);
       }
     } catch { /* silently ignore — home screen will reload anyway */ }
-    router.replace('/app/tabs/');
+    router.replace('/app/tabs');
   }
 
   async function handleAddChild() {
@@ -244,7 +244,7 @@ export default function OnboardingScreen() {
       setFamily(family);
       setMember(member);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/app/tabs/');
+      router.replace('/app/tabs');
     } catch (error: any) {
       Alert.alert('Invalid Code', 'Could not find a family with that invite code.');
     } finally {

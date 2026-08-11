@@ -10,6 +10,16 @@
 
 ---
 
+## Iteration 21 (2026-08-11) — SDK57 MERGED TO MAIN + gamify batch 1 (branch autonomous/gamify-home)
+- ✅ SDK 57 build SUCCESS (assembleDebug), installed on Pixel, RUNTIME-VERIFIED: app launches, no native crash, Firebase v26 shim authenticates + runs compound Firestore query. **Merged to main + pushed (bce63f9)**. Caught+fixed during smoke-test: missing `promise` dep (v26 crashlytics needs it) + jest-expo 57 needs `@react-native/jest-preset` (installed, unblocks all tests).
+- ✅ Deployed Firestore indexes (`firebase deploy --only firestore:indexes`) — fixes the `transactions memberId+createdAt` "requires an index" error surfaced on-device (index was defined but never deployed).
+- GAMIFY BATCH 1 done on branch (tsc app-src CLEAN, NOT yet device-visual-verified — adb dropped, phone locked):
+  - #7 auto-refresh fix: `hasLoadedRef` → skeletons only on FIRST load per profile; listener reloads are silent (kills the "constantly refreshing" flicker).
+  - #2 streak: NEW pure `dailyStreak(dates, now)` in pointsEngine (today-OR-yesterday grace anchor; +6 unit tests) wired into Home via getRecentCompletions(35d); StreakFlame now lights up (was hardcoded 0).
+  - #3 level bar: getLevel(lifetimePoints) hero card above progress card (emoji + Lv/title + gold XP bar + "N pts to Lv+1"). Streak+lifetime fetched in a mount/profile effect (NOT snapshot loop → no flicker/cost).
+  - Fixed SDK57 typed-route errors: `/app/tabs/`→`/app/tabs` (_layout, onboarding).
+- NEXT: device-verify gamify visuals (needs phone unlock + adb) → then merge to main. Remaining gamify: #4 competitive nudge, #5 juicier rewards. Then Phase 3 (server point integrity, auto-fail CF) + photo.
+
 ## Iteration 20 (2026-08-10) — EXPO SDK 51 → 57 UPGRADE (app-src tsc clean; native build running)
 - WHY: user hit store-rejection uploading old SDK to Apple/Google. Branch `autonomous/sdk-57-upgrade` (off phase-3, carries parked photo pivot). iOS DEPRIORITIZED per user (far off); Android focus.
 - STACK: expo 51→57, RN 0.74→0.86, React 18→19.2, Firebase v20→**v26 (modular-only + requires New Arch)**, google-signin 13→16, reanimated 3→**4** (+react-native-worklets 0.10.1), expo-av→**expo-audio**.

@@ -369,7 +369,7 @@ function InnerLayout() {
             setMember(result.member);
             setLoading(false);
             setHydrated(true);
-            setPendingRoute('/app/tabs/');
+            setPendingRoute('/app/tabs');
             // Identify user in Analytics + Crashlytics
             identifyUser(firebaseUser.uid, result.member.displayName, result.family.id);
           } else {
@@ -405,7 +405,7 @@ function InnerLayout() {
       (response) => {
         const data = response.notification.request.content.data as Record<string, string>;
         if (data?.screen === 'leaderboard') router.push('/app/tabs/leaderboard');
-        if (data?.screen === 'tasks') router.push('/app/tabs/');
+        if (data?.screen === 'tasks') router.push('/app/tabs');
       },
     );
     return cleanup;

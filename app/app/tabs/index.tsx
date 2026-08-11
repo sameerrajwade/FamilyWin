@@ -15,9 +15,9 @@ import {
   getActiveTasks, getWeekCompletions, completeTask as fbCompleteTask,
   undoTaskCompletion,
   getCurrentWeekId, getTodayDateString, getCurrentMonthId,
-  Col, getFamilyMembers, deleteTask,
+  Col, getFamilyMembers, deleteTask, getRecentCompletions,
 } from '@/lib/firebase';
-import { getCurrentWeekRange } from '@/lib/pointsEngine';
+import { getCurrentWeekRange, dailyStreak, getLevel } from '@/lib/pointsEngine';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
@@ -52,10 +52,16 @@ export default function HomeScreen() {
   const [pointBurstVisible, setPointBurstVisible] = useState(false);
   const [pointBurstKey, setPointBurstKey] = useState(0);
   const [weeklyPoints, setWeeklyPoints] = useState(0);
-  const [streak] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [lifetimePoints, setLifetimePoints] = useState(0);
   // Undo state — cleared after 5 seconds
   const [undoTask, setUndoTask] = useState<{ id: string; title: string; txId: string; points: number } | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guards the loading skeleton so it only shows on the FIRST load for a
+  // profile — background reloads driven by the onSnapshot listeners must not
+  // blank the task list into skeletons (that flicker read as the app
+  // "constantly refreshing").
+  const hasLoadedRef = useRef(false);
 
   const weekId = getCurrentWeekId();
   const dateString = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -66,7 +72,9 @@ export default function HomeScreen() {
   const loadTasks = useCallback(async () => {
     if (!family?.id || !effectiveMember?.id) return;
     try {
-      setLoadingTasks(true);
+      // Only show the full-screen skeleton on the very first load for this
+      // profile. Listener-driven reloads refresh in place (no blank flash).
+      if (!hasLoadedRef.current) setLoadingTasks(true);
 
       // Fetch tasks + this week's completions.
       // getWeekCompletions uses a single .where('weekId') — no composite index needed.
@@ -154,11 +162,41 @@ export default function HomeScreen() {
     } catch (error) {
       if (__DEV__) console.error('Failed to load tasks:', error);
     } finally {
+      hasLoadedRef.current = true;
       setLoadingTasks(false);
     }
   }, [family?.id, effectiveMember?.id, weekId]);
 
+  // Switching profiles should show the skeleton once for the new profile.
+  useEffect(() => { hasLoadedRef.current = false; }, [effectiveMember?.id]);
+
   useEffect(() => { loadTasks(); }, [loadTasks]);
+
+  // Streak + lifetime level — fetched on profile/week change only (NOT on every
+  // snapshot tick), so the live listeners stay cheap and flicker-free. Streak
+  // reads a 35-day completion window; level reads the member's lifetime points.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!family?.id || !effectiveMember?.id) return;
+      try {
+        const [recent, txSnap] = await Promise.all([
+          getRecentCompletions(family.id, effectiveMember.id, 35),
+          Col.transactions(family.id).where('memberId', '==', effectiveMember.id).get(),
+        ]);
+        if (cancelled) return;
+        const dates = recent
+          .filter((c) => !c.wasAutoFailed && c.completedAt)
+          .map((c) => c.completedAt!.toDate());
+        setStreak(dailyStreak(dates));
+        const lifetime = txSnap.docs.reduce((sum, d) => sum + ((d.data().delta as number) || 0), 0);
+        setLifetimePoints(lifetime);
+      } catch (e) {
+        if (__DEV__) console.error('streak/level load failed:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [family?.id, effectiveMember?.id, weekId, weeklyPoints]);
 
   // Live updates: subscribe to task + completion changes so new/edited tasks and
   // completions (by this member or others in the family) appear instantly without
@@ -293,6 +331,7 @@ export default function HomeScreen() {
   const totalCount = todaysTasks.length;
   const allDone = completedCount === totalCount && totalCount > 0;
   const progressPct = totalCount > 0 ? completedCount / totalCount : 0;
+  const level = getLevel(lifetimePoints);
 
   const getMascotMood = (): 'celebrating' | 'happy' | 'waiting' => {
     if (allDone) return 'celebrating';
@@ -412,6 +451,24 @@ export default function HomeScreen() {
             </View>
           </SlideIn>
         )}
+        <SlideIn delay={130}>
+          <View style={[styles.levelCard, { backgroundColor: colors.surface }, Shadow.sm]}>
+            <Text style={styles.levelEmoji}>{level.emoji}</Text>
+            <View style={styles.levelInfo}>
+              <View style={styles.levelTopRow}>
+                <Text style={[styles.levelTitle, { color: colors.text }]} numberOfLines={1}>
+                  Lv {level.level} · {level.title}
+                </Text>
+                <Text style={[styles.levelNext, { color: colors.textSecondary }]}>
+                  {level.next != null ? `${level.next} pts to Lv ${level.level + 1}` : '⭐ Max level'}
+                </Text>
+              </View>
+              <View style={styles.levelBarBg}>
+                <View style={[styles.levelBarFill, { width: `${Math.round(level.progress * 100)}%`, backgroundColor: colors.gold ?? colors.primary }]} />
+              </View>
+            </View>
+          </View>
+        </SlideIn>
         <SlideIn delay={150}>
           <View style={[styles.progressCard, { backgroundColor: colors.surface }, Shadow.sm]}>
             <View style={styles.progressHeader}>
@@ -629,6 +686,14 @@ const styles = StyleSheet.create({
   penaltyButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
   penaltyButtonText: { fontSize: 20, lineHeight: 24 },
   mascotSection: { alignItems: 'center', paddingVertical: Spacing.md },
+  levelCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: Spacing.lg, marginTop: Spacing.sm, borderRadius: BorderRadius.lg, padding: Spacing.md, gap: Spacing.sm },
+  levelEmoji: { fontSize: 30 },
+  levelInfo: { flex: 1 },
+  levelTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 },
+  levelTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, flexShrink: 1 },
+  levelNext: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, marginLeft: Spacing.sm },
+  levelBarBg: { height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(128,128,128,0.2)' },
+  levelBarFill: { height: '100%', borderRadius: 4 },
   progressCard: { marginHorizontal: Spacing.lg, marginVertical: Spacing.sm, borderRadius: BorderRadius.lg, padding: Spacing.md },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
   progressTitle: { fontFamily: FontFamily.semiBold, flex: 1 },

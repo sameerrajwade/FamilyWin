@@ -15,6 +15,7 @@ import {
   computeInsights,
   getLevel,
   calculateStreak,
+  dailyStreak,
   getCurrentWeekRange,
   getWeekLabel,
   isCurrentWeek,
@@ -233,6 +234,38 @@ describe('calculateStreak', () => {
 });
 
 // ─── getCurrentWeekRange ──────────────────────────────────────────────────────
+describe('dailyStreak', () => {
+  const NOW = new Date('2026-08-10T12:00:00'); // a Monday noon
+  const dayBefore = (n: number) => { const d = new Date(NOW); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - n); return d; };
+
+  it('returns 0 for no completions', () => {
+    expect(dailyStreak([], NOW)).toBe(0);
+  });
+
+  it('counts consecutive days ending today', () => {
+    // today, yesterday, 2 days ago
+    expect(dailyStreak([dayBefore(0), dayBefore(1), dayBefore(2)], NOW)).toBe(3);
+  });
+
+  it('stays lit when today has nothing yet but yesterday does (grace day)', () => {
+    // yesterday + day before — streak of 2, still alive today
+    expect(dailyStreak([dayBefore(1), dayBefore(2)], NOW)).toBe(2);
+  });
+
+  it('is broken when the most recent completion is older than yesterday', () => {
+    expect(dailyStreak([dayBefore(2), dayBefore(3)], NOW)).toBe(0);
+  });
+
+  it('stops at the first gap', () => {
+    // today, yesterday, then skip, then 3 days ago → streak is 2
+    expect(dailyStreak([dayBefore(0), dayBefore(1), dayBefore(3), dayBefore(4)], NOW)).toBe(2);
+  });
+
+  it('dedupes multiple completions on the same day', () => {
+    expect(dailyStreak([dayBefore(0), dayBefore(0), dayBefore(1)], NOW)).toBe(2);
+  });
+});
+
 describe('getCurrentWeekRange', () => {
   it('returns start on Monday and end 6 days later', () => {
     const { start, end } = getCurrentWeekRange();
