@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Appearance } from 'react-native';
+import { Appearance, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─── THEME TOKENS ─────────────────────────────────────────────────────────────
@@ -147,6 +147,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [uiMode, setUIModeState] = useState<UIMode>('adult');
+  // Gate the first paint on the persisted preference so the app never renders
+  // one theme and then flips to another (the cold-start dark→light FOUC). Until
+  // AsyncStorage resolves (a few ms) we hold a brand-purple placeholder that
+  // matches the animated splash gradient, so the hold is invisible.
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     // Load persisted preferences
@@ -156,7 +161,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     ]).then(([savedTheme, savedUI]) => {
       if (savedTheme) setThemeModeState(savedTheme as ThemeMode);
       if (savedUI) setUIModeState(savedUI as UIMode);
-    });
+    }).finally(() => setHydrated(true));
   }, []);
 
   async function setThemeMode(mode: ThemeMode) {
@@ -191,7 +196,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       colors, themeMode, uiMode, isDark, isChildMode,
       setThemeMode, setUIMode, fontSize, spacing, iconSize,
     }}>
-      {children}
+      {hydrated
+        ? children
+        : <View style={{ flex: 1, backgroundColor: '#6C63FF' }} />}
     </ThemeContext.Provider>
   );
 }
