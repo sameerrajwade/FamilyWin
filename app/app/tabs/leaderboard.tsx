@@ -215,7 +215,7 @@ export default function LeaderboardScreen() {
                       accessibilityLabel={`${entry.displayName}, rank ${entry.rank}, ${entry.points} points`}
                     >
                       {entry.rank <= 3 ? (
-                        <View style={[styles.rankMedal, { backgroundColor: entry.rank === 1 ? Colors.gold : entry.rank === 2 ? '#B0BEC5' : Colors.bronze }]}>
+                        <View style={[styles.rankMedal, { backgroundColor: entry.rank === 1 ? Colors.gold : entry.rank === 2 ? '#8595AC' : Colors.bronze }]}>
                           <Text style={styles.rankMedalText}>{entry.rank}</Text>
                         </View>
                       ) : (
