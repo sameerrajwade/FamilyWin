@@ -11,6 +11,7 @@ import { addPointTransaction, getFamilyMembers } from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
+import { Icon } from '@/components/ui/Icon';
 import type { MemberDoc } from '@/lib/firebase';
 
 const QUICK_REASONS = [
@@ -57,7 +58,7 @@ export default function DisciplineLogScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={styles.blocked}>
-          <Text style={styles.blockedEmoji}>🔒</Text>
+          <Icon name="lock-closed" size={56} color={colors.textMuted} style={{ marginBottom: Spacing.md }} />
           <Text style={[styles.blockedTitle, { color: colors.text }]}>Parents Only</Text>
           <Text style={[styles.blockedSubtitle, { color: colors.textSecondary }]}>Only parents can log discipline events.</Text>
           <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.primary }]} onPress={() => router.back()}>
@@ -167,13 +168,13 @@ export default function DisciplineLogScreen() {
                 <TouchableOpacity style={[styles.typeChip, { backgroundColor: colors.surface, borderColor: colors.border },
                   !isBonus && { backgroundColor: colors.danger, borderColor: colors.danger }]}
                   onPress={() => setIsBonus(false)}>
-                  <Text style={styles.typeEmoji}>⚠️</Text>
+                  <Icon name="alert-circle" size={20} color={!isBonus ? '#FFF' : colors.danger} />
                   <Text style={[styles.typeLabel, { color: !isBonus ? '#FFF' : colors.text }]}>Penalty</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.typeChip, { backgroundColor: colors.surface, borderColor: colors.border },
                   isBonus && { backgroundColor: colors.success, borderColor: colors.success }]}
                   onPress={() => setIsBonus(true)}>
-                  <Text style={styles.typeEmoji}>⭐</Text>
+                  <Icon name="star" size={20} color={isBonus ? '#FFF' : colors.success} />
                   <Text style={[styles.typeLabel, { color: isBonus ? '#FFF' : colors.text }]}>Bonus</Text>
                 </TouchableOpacity>
               </View>
@@ -264,7 +265,12 @@ export default function DisciplineLogScreen() {
             >
               {isLoading
                 ? <ActivityIndicator color="#FFF" />
-                : <Text style={styles.submitBtnText}>{isBonus ? '⭐ Award Bonus' : '⚠️ Apply Penalty'}</Text>
+                : (
+                  <View style={styles.submitBtnInner}>
+                    <Icon name={isBonus ? 'star' : 'alert-circle'} size={18} color="#FFF" />
+                    <Text style={styles.submitBtnText}>{isBonus ? 'Award Bonus' : 'Apply Penalty'}</Text>
+                  </View>
+                )
               }
             </TouchableOpacity>
           </View>
@@ -301,6 +307,7 @@ const styles = StyleSheet.create({
   preview: { marginTop: Spacing.sm, padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1.5 },
   previewText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, lineHeight: 22 },
   submitBtn: { borderRadius: BorderRadius.md, paddingVertical: 18, alignItems: 'center', marginTop: Spacing.sm, ...Shadow.md },
+  submitBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   submitBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFF', letterSpacing: 0.5 },
   blocked: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
   blockedEmoji: { fontSize: 64, marginBottom: Spacing.md },

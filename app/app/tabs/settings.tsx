@@ -50,6 +50,7 @@ import { pickPhotoUri } from '@/lib/photoPicker';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { AppearanceSettings } from '@/components/ui/AppearanceSettings';
 import { Avatar } from '@/components/ui';
+import { Icon } from '@/components/ui/Icon';
 import { requestNotificationPermissions, scheduleDailyReminder } from '@/lib/notifications';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
@@ -381,7 +382,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>⚙️ Settings</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
         </View>
 
         {/* ── My Profile ── */}
@@ -409,7 +410,7 @@ export default function SettingsScreen() {
                   </View>
                 ) : (
                   <View style={[styles.editBadge, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.editBadgeText}>{profilePhotoURL ? '📷' : '✏️'}</Text>
+                    <Icon name={profilePhotoURL ? 'camera' : 'pencil'} size={13} color="#FFF" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -421,7 +422,10 @@ export default function SettingsScreen() {
                   accessibilityLabel="Change profile photo"
                   accessibilityRole="button"
                 >
-                  <Text style={[styles.avatarActionText, { color: colors.text }]}>📷 Photo</Text>
+                  <View style={styles.avatarActionInner}>
+                    <Icon name="camera" size={14} color={colors.text} />
+                    <Text style={[styles.avatarActionText, { color: colors.text }]}>Photo</Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setShowEmojiModal(true)}
@@ -429,7 +433,10 @@ export default function SettingsScreen() {
                   accessibilityLabel="Change emoji avatar"
                   accessibilityRole="button"
                 >
-                  <Text style={[styles.avatarActionText, { color: colors.text }]}>😀 Emoji</Text>
+                  <View style={styles.avatarActionInner}>
+                    <Icon name="happy-outline" size={14} color={colors.text} />
+                    <Text style={[styles.avatarActionText, { color: colors.text }]}>Emoji</Text>
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -520,9 +527,9 @@ export default function SettingsScreen() {
               accessibilityLabel="Add a child profile"
               accessibilityRole="button"
             >
-              <Text style={styles.addChildIcon}>➕</Text>
+              <Icon name="add-circle" size={24} color={colors.primary} style={styles.addChildIcon} />
               <Text style={[styles.addChildLabel, { color: colors.primary }]}>Add a Child Profile</Text>
-              <Text style={[styles.actionArrow, { color: colors.textMuted }]}>→</Text>
+              <Icon name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </SettingsSection>
         )}
@@ -545,7 +552,7 @@ export default function SettingsScreen() {
                 accessibilityRole="button"
               >
                 <Text style={[styles.codeBtnText, { color: colors.primary }]}>{family?.inviteCode}</Text>
-                <Text style={styles.codeCopyIcon}>📋</Text>
+                <Icon name="copy-outline" size={15} color={colors.primary} style={styles.codeCopyIcon} />
               </TouchableOpacity>
             }
           />
@@ -608,12 +615,12 @@ export default function SettingsScreen() {
               style={styles.actionRow}
               onPress={() => router.push('/app/discipline/log')}
             >
-              <Text style={styles.actionEmoji}>⚠️</Text>
+              <Icon name="alert-circle" size={24} color={colors.primary} style={styles.actionIcon} />
               <View style={styles.actionInfo}>
                 <Text style={[styles.actionLabel, { color: colors.text }]}>Log Discipline Event</Text>
                 <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Award bonuses or apply penalties</Text>
               </View>
-              <Text style={styles.actionArrow}>→</Text>
+              <Icon name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </SettingsSection>
         )}
@@ -630,19 +637,19 @@ export default function SettingsScreen() {
               })
             }
           >
-            <Text style={styles.actionEmoji}>📲</Text>
+            <Icon name="share-social" size={24} color={colors.primary} style={styles.actionIcon} />
             <View style={styles.actionInfo}>
               <Text style={[styles.actionLabel, { color: colors.text }]}>Share This App</Text>
-              <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Invite friends & family to try FamilyWin</Text>
+              <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Invite friends & family to try Lootboard</Text>
             </View>
-            <Text style={[styles.actionArrow, { color: colors.textMuted }]}>→</Text>
+            <Icon name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </SettingsSection>
 
         {/* ── Account ── */}
         <SettingsSection title="Account">
           <TouchableOpacity style={[styles.actionRow, { borderTopColor: colors.border }]} onPress={handleLogout}>
-            <Text style={styles.actionEmoji}>🚪</Text>
+            <Icon name="log-out-outline" size={24} color={colors.danger} style={styles.actionIcon} />
             <Text style={[styles.actionLabel, { color: colors.danger }]}>Log Out</Text>
           </TouchableOpacity>
         </SettingsSection>
@@ -654,7 +661,7 @@ export default function SettingsScreen() {
             disabled={isDeletingAccount}
             onPress={confirmDeleteAccount}
           >
-            <Text style={styles.actionEmoji}>🗑️</Text>
+            <Icon name="trash-outline" size={24} color={colors.danger} style={styles.actionIcon} />
             <View style={styles.actionInfo}>
               <Text style={[styles.actionLabel, { color: colors.danger }]}>
                 {isDeletingAccount ? 'Deleting…' : 'Delete My Account'}
@@ -888,6 +895,7 @@ const styles = StyleSheet.create({
   editBadgeText: { fontSize: 11 },
   avatarActions: { flexDirection: 'row', gap: 6 },
   avatarActionBtn: { borderRadius: BorderRadius.sm, paddingHorizontal: 8, paddingVertical: 5, borderWidth: 1 },
+  avatarActionInner: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   avatarActionText: { fontSize: FontSize.xs - 1, fontFamily: FontFamily.semiBold },
   profileInfo: { flex: 1 },
   profileName: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold },
@@ -913,14 +921,14 @@ const styles = StyleSheet.create({
   removeBtn: { borderRadius: BorderRadius.sm, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
   removeBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold },
   addChildRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderTopWidth: 1 },
-  addChildIcon: { fontSize: 20 },
+  addChildIcon: { width: 26, textAlign: 'center' },
   addChildLabel: { flex: 1, fontSize: FontSize.md, fontFamily: FontFamily.semiBold },
   // Buttons
   timeBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.sm, paddingVertical: 6 },
   timeBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
   codeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.sm, paddingVertical: 6 },
   codeBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.black, letterSpacing: 2 },
-  codeCopyIcon: { fontSize: 16 },
+  codeCopyIcon: { marginLeft: 6 },
   // Member list
   memberListHeader: { padding: Spacing.md, paddingBottom: 4, borderTopWidth: 1 },
   memberListTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
@@ -934,6 +942,7 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, gap: Spacing.sm },
   dangerRow: { borderTopWidth: 1 },
   actionEmoji: { fontSize: 24 },
+  actionIcon: { width: 26, textAlign: 'center' },
   actionInfo: { flex: 1 },
   actionLabel: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold },
   actionSubtitle: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2 },

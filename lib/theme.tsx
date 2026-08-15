@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useColorScheme, Appearance } from 'react-native';
+import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─── THEME TOKENS ─────────────────────────────────────────────────────────────
@@ -85,7 +85,10 @@ const darkColors: ThemeColors = {
   bronze: '#D4853B',
 };
 
-// Child mode uses bigger, more colorful, playful design
+// Child mode uses bigger, more colorful, playful design. It comes in a light
+// and a dark variant so toggling the theme still applies in child mode — the
+// old single (light-only) child palette ignored dark mode and left the screen
+// bright while Settings reported "dark mode".
 const childColors: ThemeColors = {
   ...lightColors,
   primary: '#FF6B2C',
@@ -94,6 +97,14 @@ const childColors: ThemeColors = {
   accent: '#6C63FF',
   background: '#FFF5FF',
   surface: '#FFFFFF',
+};
+
+const childDarkColors: ThemeColors = {
+  ...darkColors,
+  primary: '#FF6B2C',
+  primaryLight: '#FFB088',
+  primaryDark: '#CC4F1A',
+  accent: '#6C63FF',
 };
 
 // ─── THEME CONTEXT ────────────────────────────────────────────────────────────
@@ -118,7 +129,22 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useColorScheme();
+  // Drive off Appearance directly (with a live listener) rather than
+  // useColorScheme(): on the New Architecture (RN 0.86 / Fabric) useColorScheme
+  // can latch a stale 'light' and never update, which made "Auto" never follow
+  // the system into dark mode. getColorScheme() + addChangeListener is reliable.
+  const normScheme = (s: unknown): 'light' | 'dark' | null =>
+    s === 'dark' ? 'dark' : s === 'light' ? 'light' : null;
+  const [systemScheme, setSystemScheme] = useState<'light' | 'dark' | null>(
+    () => normScheme(Appearance.getColorScheme()),
+  );
+  useEffect(() => {
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      setSystemScheme(normScheme(colorScheme));
+    });
+    return () => sub.remove();
+  }, []);
+
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [uiMode, setUIModeState] = useState<UIMode>('adult');
 
@@ -150,7 +176,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const isChildMode = uiMode === 'child';
 
   const colors = isChildMode
-    ? childColors
+    ? (isDark ? childDarkColors : childColors)
     : isDark
     ? darkColors
     : lightColors;
