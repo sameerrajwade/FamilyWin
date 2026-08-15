@@ -16,8 +16,10 @@ import {
   undoTaskCompletion,
   getCurrentWeekId, getTodayDateString, getCurrentMonthId,
   Col, getFamilyMembers, deleteTask, getRecentCompletions,
+  getMissedCatchUpTasks, applyMissedTaskPenalty, completeTaskForDate,
+  type CatchUpItem,
 } from '@/lib/firebase';
-import { getCurrentWeekRange, dailyStreak, getLevel } from '@/lib/pointsEngine';
+import { getCurrentWeekRange, dailyStreak, getLevel, graceWindowDays, missedTaskPenaltyAmount } from '@/lib/pointsEngine';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
@@ -27,6 +29,16 @@ import { BrandBar } from '@/components/ui/Brand';
 import { LinearGradient } from 'expo-linear-gradient';
 // ProfileSwitcherBanner replaced by inline ProfileTabBar below
 import { CATEGORY_COLORS, CATEGORY_ICONS, FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
+
+/** "Yesterday" for the most recent past day, otherwise the weekday name. */
+function dayLabel(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((today.getTime() - date.getTime()) / 86_400_000);
+  if (diff === 1) return 'Yesterday';
+  return date.toLocaleDateString('en-US', { weekday: 'long' });
+}
 
 type TaskWithCompletion = {
   id: string; familyId: string; title: string; category: string;
@@ -58,6 +70,10 @@ export default function HomeScreen() {
   const [lifetimePoints, setLifetimePoints] = useState(0);
   // Undo state — cleared after 5 seconds
   const [undoTask, setUndoTask] = useState<{ id: string; title: string; txId: string; completionId: string; points: number } | null>(null);
+  // Optional missed-task penalty: daily tasks missed within the 2-day grace
+  // window, catch-up-able to win the points back. Empty unless the feature is on.
+  const [catchUpItems, setCatchUpItems] = useState<CatchUpItem[]>([]);
+  const [catchingUpId, setCatchingUpId] = useState<string | null>(null);
   // Guards against undoing the same completion twice (rapid taps, or toast+card
   // both firing) — the double-fire that produced phantom −pts. Keyed by completionId.
   const undoInFlightRef = useRef<Set<string>>(new Set());
@@ -202,6 +218,58 @@ export default function HomeScreen() {
     })();
     return () => { cancelled = true; };
   }, [family?.id, effectiveMember?.id, weekId, weeklyPoints]);
+
+  // Missed-task penalty (optional): on profile/feature change, find daily tasks
+  // missed within the grace window, lazily apply the half-point penalty for any
+  // not yet penalized (idempotent), and surface the rest as catch-up-able. Kept
+  // OFF the snapshot tick — it does writes — so it settles rather than loops.
+  const syncCatchUp = useCallback(async () => {
+    if (!family?.id || !effectiveMember?.id || !family?.missedTaskPenalty) {
+      setCatchUpItems([]);
+      return;
+    }
+    try {
+      const days = graceWindowDays();
+      let items = await getMissedCatchUpTasks({ familyId: family.id, memberId: effectiveMember.id, graceDays: days });
+      const toPenalize = items.filter((i) => !i.penalized);
+      if (toPenalize.length) {
+        await Promise.all(toPenalize.map((i) => applyMissedTaskPenalty({
+          familyId: family.id, memberId: effectiveMember.id,
+          taskId: i.task.id, pointValue: i.task.pointValue, taskTitle: i.task.title,
+          penaltyAmount: missedTaskPenaltyAmount(i.task.pointValue), dateKey: i.dateKey,
+        })));
+        items = await getMissedCatchUpTasks({ familyId: family.id, memberId: effectiveMember.id, graceDays: days });
+      }
+      setCatchUpItems(items);
+    } catch (e) {
+      if (__DEV__) console.error('catch-up sync failed:', e);
+    }
+  }, [family?.id, family?.missedTaskPenalty, effectiveMember?.id]);
+
+  useEffect(() => { syncCatchUp(); }, [syncCatchUp, weekId]);
+
+  const handleCatchUp = useCallback(async (item: CatchUpItem) => {
+    if (!family?.id || !effectiveMember?.id) return;
+    const key = `${item.task.id}::${item.dateKey}`;
+    if (catchingUpId) return;
+    setCatchingUpId(key);
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await completeTaskForDate({
+        familyId: family.id, memberId: effectiveMember.id,
+        taskId: item.task.id, pointValue: item.task.pointValue,
+        taskTitle: item.task.title, dateKey: item.dateKey,
+      });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setCatchUpItems((prev) => prev.filter((i) => !(i.task.id === item.task.id && i.dateKey === item.dateKey)));
+      await Promise.all([loadTasks(), syncCatchUp()]);
+    } catch (e) {
+      if (__DEV__) console.error('catch-up failed:', e);
+      Alert.alert('Could not update', 'Please try again.');
+    } finally {
+      setCatchingUpId(null);
+    }
+  }, [family?.id, effectiveMember?.id, catchingUpId, loadTasks, syncCatchUp]);
 
   // Live updates: subscribe to task + completion changes so new/edited tasks and
   // completions (by this member or others in the family) appear instantly without
@@ -490,6 +558,47 @@ export default function HomeScreen() {
             allDone={allDone}
           />
         </SlideIn>
+
+        {catchUpItems.length > 0 && (
+          <View style={styles.section}>
+            <SlideIn delay={150}>
+              <View style={[styles.catchUpCard, { backgroundColor: colors.warning + '14', borderColor: colors.warning + '55' }]}>
+                <View style={styles.catchUpHeader}>
+                  <Icon name="time-outline" size={18} color={colors.warning} />
+                  <Text style={[styles.catchUpTitle, { color: colors.text }]}>Catch up — win points back</Text>
+                </View>
+                <Text style={[styles.catchUpSub, { color: colors.textSecondary }]}>
+                  Missed a task? Mark it done within 2 days to reverse the penalty.
+                </Text>
+                {catchUpItems.map((item) => {
+                  const key = `${item.task.id}::${item.dateKey}`;
+                  const penalty = missedTaskPenaltyAmount(item.task.pointValue);
+                  return (
+                    <View key={key} style={[styles.catchUpRow, { borderTopColor: colors.warning + '33' }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.catchUpTask, { color: colors.text }]} numberOfLines={1}>{item.task.title}</Text>
+                        <Text style={[styles.catchUpMeta, { color: colors.textMuted }]}>
+                          {dayLabel(item.dateKey)}{item.penalized ? `  ·  −${penalty} pts` : ''}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.catchUpBtn, { backgroundColor: colors.success }]}
+                        onPress={() => handleCatchUp(item)}
+                        disabled={!!catchingUpId}
+                        activeOpacity={0.85}
+                      >
+                        {catchingUpId === key
+                          ? <ActivityIndicator color="#FFF" size="small" />
+                          : <Text style={styles.catchUpBtnText}>Mark done</Text>}
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            </SlideIn>
+          </View>
+        )}
+
         <View style={styles.section}>
           <SlideIn delay={200}>
             <View style={styles.tasksHeader}>
@@ -836,6 +945,16 @@ const styles = StyleSheet.create({
   undoText: { flex: 1, fontSize: FontSize.sm, fontFamily: FontFamily.semiBold },
   undoBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 8, marginLeft: Spacing.sm },
   undoBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: '#FFF' },
+  // Missed-task catch-up card
+  catchUpCard: { borderRadius: BorderRadius.lg, borderWidth: 1.5, padding: Spacing.md },
+  catchUpHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  catchUpTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md },
+  catchUpSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, marginTop: 2, marginBottom: 4 },
+  catchUpRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: 10, borderTopWidth: 1, marginTop: 6 },
+  catchUpTask: { fontFamily: FontFamily.bold, fontSize: FontSize.sm },
+  catchUpMeta: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, marginTop: 2 },
+  catchUpBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: BorderRadius.md, minWidth: 96, alignItems: 'center' },
+  catchUpBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: '#FFFFFF' },
   // Today's Tasks section header
   tasksHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm, marginTop: Spacing.xs },
   tasksHeaderTitle: { fontFamily: FontFamily.black, fontSize: FontSize.xl },

@@ -737,9 +737,12 @@ export async function applyMissedTaskPenalty(params: {
     .get();
   if (!existing.empty) return; // already completed or already penalized that day
 
+  // Deterministic doc IDs keyed on (task, member, day) so a race between two
+  // devices that both pass the guard above writes the SAME two docs (one
+  // penalty) instead of duplicating the -half transaction.
+  const key = `${taskId}__${memberId}__${dateKey}`;
   const batch = firestore().batch();
-  const completionRef = Col.completions(familyId).doc();
-  batch.set(completionRef, {
+  batch.set(Col.completions(familyId).doc(`miss__${key}`), {
     taskId,
     memberId,
     weekId,
@@ -749,8 +752,7 @@ export async function applyMissedTaskPenalty(params: {
     wasAutoFailed: true,
     pointsAwarded: -penaltyAmount,
   });
-  const txRef = Col.transactions(familyId).doc();
-  batch.set(txRef, {
+  batch.set(Col.transactions(familyId).doc(`misstx__${key}`), {
     familyId,
     memberId,
     delta: -penaltyAmount,

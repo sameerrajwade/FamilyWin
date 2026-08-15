@@ -45,6 +45,7 @@ import {
   upsertNotifConfig, getNotifConfig, updateFamilyWeekStartDay,
   createManagedMember, removeManagedMember,
   uploadMemberPhoto, removeMemberPhoto, deleteMyAccount,
+  setMissedTaskPenalty,
 } from '@/lib/firebase';
 import { pickPhotoUri } from '@/lib/photoPicker';
 import { useAuthStore, useFamilyStore } from '@/store';
@@ -293,6 +294,19 @@ export default function SettingsScreen() {
   }
 
   // ── Weekly reset day ───────────────────────────────────────────────────────
+
+  async function handleToggleMissedPenalty(value: boolean) {
+    if (!family?.id) return;
+    await Haptics.selectionAsync();
+    // Optimistic — reflect immediately, roll back on failure
+    setFamily({ ...family, missedTaskPenalty: value });
+    try {
+      await setMissedTaskPenalty(family.id, value);
+    } catch {
+      setFamily({ ...family, missedTaskPenalty: !value });
+      Alert.alert('Error', 'Could not update the missed-task penalty setting.');
+    }
+  }
 
   async function handleWeekStartDayChange(day: number) {
     if (!family?.id) return;
@@ -622,6 +636,18 @@ export default function SettingsScreen() {
               </View>
               <Icon name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
+            <SettingsRow
+              label="Deduct points for missed tasks"
+              subtitle="Half a task's points come off if it's not done that day. You can still mark it done up to 2 days later to win them back."
+              right={
+                <Switch
+                  value={!!family?.missedTaskPenalty}
+                  onValueChange={handleToggleMissedPenalty}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor="#FFF"
+                />
+              }
+            />
           </SettingsSection>
         )}
 
