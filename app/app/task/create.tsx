@@ -19,6 +19,7 @@ import { detectTaskEmoji } from '@/lib/taskEmoji';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, CATEGORY_ICONS, DIFFICULTY_POINTS } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
+import { Icon } from '@/components/ui/Icon';
 import type { TaskCategory, TaskDifficulty, TaskRecurrence } from '@/types';
 
 const CATEGORIES: TaskCategory[] = ['chores', 'homework', 'hygiene', 'behavior', 'extras'];
@@ -224,9 +225,14 @@ export default function CreateTaskScreen() {
                 accessibilityLabel="Delete this task"
                 accessibilityRole="button"
               >
-                <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.danger }}>
-                  {isDeleting ? '…' : '🗑️ Delete'}
-                </Text>
+                {isDeleting ? (
+                  <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.danger }}>…</Text>
+                ) : (
+                  <View style={styles.headerLink}>
+                    <Icon name="trash-outline" size={16} color={colors.danger} />
+                    <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.danger }}>Delete</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -235,7 +241,10 @@ export default function CreateTaskScreen() {
                 accessibilityLabel="Browse starter task packs"
                 accessibilityRole="button"
               >
-                <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary }}>📦 Packs</Text>
+                <View style={styles.headerLink}>
+                  <Icon name="cube" size={16} color={colors.primary} />
+                  <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary }}>Packs</Text>
+                </View>
               </TouchableOpacity>
             )}
           </View>
@@ -414,9 +423,12 @@ export default function CreateTaskScreen() {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
                 <Text style={styles.label}>Points Value</Text>
                 <TouchableOpacity onPress={() => setCustomPoints(!customPoints)}>
-                  <Text style={{ fontSize: FontSize.xs, color: colors.primary, fontFamily: FontFamily.bold }}>
-                    {customPoints ? '↩ Use difficulty preset' : '✏️ Customise'}
-                  </Text>
+                  <View style={styles.headerLink}>
+                    <Icon name={customPoints ? 'arrow-undo' : 'pencil'} size={13} color={colors.primary} />
+                    <Text style={{ fontSize: FontSize.xs, color: colors.primary, fontFamily: FontFamily.bold }}>
+                      {customPoints ? 'Use difficulty preset' : 'Customise'}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               </View>
               {customPoints ? (
@@ -483,6 +495,7 @@ export default function CreateTaskScreen() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  headerLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -28,6 +28,7 @@ import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMO
 import { APP_STORE_URL } from '@/constants/strings';
 import { pickPhotoUri as pickPhotoViaRNIP } from '@/lib/photoPicker';
 import { Avatar } from '@/components/ui';
+import { Icon } from '@/components/ui/Icon';
 import type { MemberDoc } from '@/lib/firebase';
 
 export default function FamilyScreen() {
@@ -140,10 +141,10 @@ export default function FamilyScreen() {
           </View>
           <View style={styles.inviteBtns}>
             <TouchableOpacity style={styles.inviteIconBtn} onPress={handleCopyCode}>
-              <Text style={styles.inviteIconText}>📋</Text>
+              <Icon name="copy-outline" size={20} color="#FFF" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.inviteIconBtn} onPress={handleShareInvite}>
-              <Text style={styles.inviteIconText}>📤</Text>
+              <Icon name="share-social" size={20} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -186,7 +187,7 @@ export default function FamilyScreen() {
                   <Text style={[styles.emptyChildTitle, { color: colors.primary }]}>Add a child profile</Text>
                   <Text style={[styles.emptyChildSub, { color: colors.textSecondary }]}>Kids don't need a phone — switch to their profile on the Tasks tab</Text>
                 </View>
-                <Text style={{ color: colors.primary, fontSize: 18 }}>→</Text>
+                <Icon name="chevron-forward" size={20} color={colors.primary} />
               </TouchableOpacity>
             </View>
           ) : (
@@ -209,7 +210,8 @@ export default function FamilyScreen() {
                   style={[styles.addAnotherRow, { borderTopColor: colors.border }]}
                   onPress={() => setShowAddChild(true)}
                 >
-                  <Text style={[styles.addAnotherText, { color: colors.primary }]}>➕ Add Another Child</Text>
+                  <Icon name="add-circle" size={18} color={colors.primary} />
+                  <Text style={[styles.addAnotherText, { color: colors.primary }]}>Add Another Child</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -440,7 +442,7 @@ function AddChildModal({ familyId, onClose, onAdded }: {
               ) : (
                 <View style={styles.photoPreviewEmpty}><Text style={{ fontSize: 26 }}>{emoji}</Text></View>
               )}
-              <View style={styles.photoPreviewBadge}><Text style={{ fontSize: 12 }}>✏️</Text></View>
+              <View style={styles.photoPreviewBadge}><Icon name="pencil" size={11} color="#FFF" /></View>
             </TouchableOpacity>
             <TouchableOpacity onPress={handlePickPhoto}>
               <Text style={[styles.addChildLink, { color: Colors.primary }]}>{photoUri ? 'Change Photo' : 'Add Photo'}</Text>
@@ -597,7 +599,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
                 <View style={styles.photoPreviewEmpty}><Text style={{ fontSize: 26 }}>{emoji}</Text></View>
               )}
               <View style={styles.photoPreviewBadge}>
-                {isPhotoBusy ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={{ fontSize: 12 }}>✏️</Text>}
+                {isPhotoBusy ? <ActivityIndicator size="small" color="#FFF" /> : <Icon name="pencil" size={11} color="#FFF" />}
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleChangePhotoPress} disabled={isPhotoBusy}>
@@ -723,7 +725,7 @@ const styles = StyleSheet.create({
   emptyChildEmoji: { fontSize: 32 },
   emptyChildTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold },
   emptyChildSub: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2 },
-  addAnotherRow: { borderTopWidth: 1, padding: Spacing.md, alignItems: 'center' },
+  addAnotherRow: { borderTopWidth: 1, padding: Spacing.md, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
   addAnotherText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
   // Modals
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
