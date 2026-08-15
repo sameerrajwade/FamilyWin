@@ -241,37 +241,55 @@ function cleanReason(reason: string): string {
   return reason.replace(/^(missed|auto-?failed|failed|penalty|deducted)\s*[:\-–]\s*/i, '').trim() || reason;
 }
 
+// A reversal (task "Undo") is bookkeeping — it cancels an earlier completion and
+// nets to zero. It is NOT a behavioural signal, so it must be excluded from the
+// per-transaction analyses (best-day, most-dodged) or it shows up as e.g.
+// "Most-dodged: Undo: Workout ×2", which is nonsense. (The weekly point SUMS in
+// `weeklyData` legitimately include it — undo correctly zeroes out the points.)
+function isReversal(t: InsightTxn): boolean {
+  return /^undo\s*[:\-–]/i.test(t.reason ?? '');
+}
+
 export function computeInsights(
   txns: InsightTxn[],
   weeklyData: { week: string; points: number }[],
   weekStart?: Date,
 ): InsightCard[] {
   const cards: InsightCard[] = [];
-  const positives = txns.filter((t) => t.delta > 0);
+  const positives = txns.filter((t) => t.delta > 0 && !isReversal(t));
 
   // 📈 Trend — this week vs last, from the trailing two chart columns.
   if (weeklyData.length >= 2) {
     const cur = weeklyData[weeklyData.length - 1].points;
     const prev = weeklyData[weeklyData.length - 2].points;
     if (!(cur === 0 && prev === 0)) {
+      const fmt = (n: number) => `${n >= 0 ? '+' : ''}${n}`;
+      const detail = `${fmt(cur)} pts vs ${fmt(prev)} last week`;
       if (cur === prev) {
-        cards.push({ key: 'trend', emoji: '➡️', title: 'Holding steady', detail: `${cur} pts, same as last week`, tone: 'neutral' });
+        cards.push({ key: 'trend', emoji: '➡️', title: 'Holding steady', detail: `${fmt(cur)} pts, same as last week`, tone: 'neutral' });
+      } else if (cur < 0) {
+        // In the red — a "Down X%" framing is meaningless once you go negative.
+        cards.push({ key: 'trend', emoji: '📉', title: 'In the red this week', detail, tone: 'bad' });
       } else if (cur > prev) {
-        const pct = prev > 0 ? Math.round(((cur - prev) / prev) * 100) : 100;
-        cards.push({ key: 'trend', emoji: '📈', title: `Up ${pct}% this week`, detail: `${cur} pts vs ${prev} last week`, tone: 'good' });
+        // A percentage only means something when last week was positive.
+        const pct = prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null;
+        cards.push({ key: 'trend', emoji: '📈', title: pct != null ? `Up ${pct}% this week` : `Up to ${cur} pts`, detail, tone: 'good' });
       } else {
-        const pct = prev > 0 ? Math.round(((prev - cur) / prev) * 100) : 0;
-        cards.push({ key: 'trend', emoji: '📉', title: `Down ${pct}% this week`, detail: `${cur} pts vs ${prev} last week`, tone: 'bad' });
+        const pct = prev > 0 ? Math.round(((prev - cur) / prev) * 100) : null;
+        cards.push({ key: 'trend', emoji: '📉', title: pct != null ? `Down ${pct}% this week` : `Down to ${cur} pts`, detail, tone: 'bad' });
       }
     }
   }
 
-  // 🗓️ Best day of week — where the most points get earned.
-  if (positives.length > 0) {
+  // 🗓️ Best day of week — where the most points get earned. Gated: needs enough
+  // data across at least two days, or "your strongest day" from a single entry
+  // is meaningless.
+  if (positives.length >= 3) {
     const byDay = new Array(7).fill(0);
     for (const t of positives) byDay[t.date.getDay()] += t.delta;
+    const activeDays = byDay.filter((v) => v > 0).length;
     const best = byDay.indexOf(Math.max(...byDay));
-    if (byDay[best] > 0) {
+    if (activeDays >= 2 && byDay[best] > 0) {
       cards.push({ key: 'bestday', emoji: '💪', title: `${WEEKDAY_PLURAL[best]} are your strongest`, detail: `${byDay[best]} pts earned on ${WEEKDAY_PLURAL[best].toLowerCase()}`, tone: 'good' });
     }
   }
@@ -284,8 +302,9 @@ export function computeInsights(
     }
   }
 
-  // 🙈 Most-dodged — the reason behind the most point losses.
-  const negs = txns.filter((t) => t.delta < 0 && t.reason);
+  // 🙈 Most-dodged — the reason behind the most point losses. Excludes undo
+  // reversals (bookkeeping) and redemptions (a deliberate spend, not a dodge).
+  const negs = txns.filter((t) => t.delta < 0 && t.reason && t.source !== 'redemption' && !isReversal(t));
   if (negs.length > 0) {
     const counts: Record<string, number> = {};
     for (const t of negs) counts[t.reason!] = (counts[t.reason!] ?? 0) + 1;
@@ -297,7 +316,7 @@ export function computeInsights(
 
   // ✅ Tasks logged this week — momentum counter.
   if (weekStart) {
-    const done = txns.filter((t) => t.source === 'task' && t.delta > 0 && t.date >= weekStart).length;
+    const done = txns.filter((t) => t.source === 'task' && t.delta > 0 && !isReversal(t) && t.date >= weekStart).length;
     if (done > 0) {
       cards.push({ key: 'tasks', emoji: '✅', title: `${done} task${done > 1 ? 's' : ''} done this week`, detail: 'Keep the streak alive!', tone: 'good' });
     }

@@ -543,6 +543,46 @@ describe('computeInsights', () => {
     expect(computeInsights(txns, []).find((c) => c.key === 'dodged')).toBeUndefined();
   });
 
+  it('does not count undo reversals as most-dodged', () => {
+    // A completion followed by two undos must NOT read as "Undo: Workout ×2" —
+    // undos are bookkeeping, not a behavioural dodge.
+    const txns = [
+      { delta: 10, source: 'task', reason: 'Completed: Workout', date: D(1) },
+      { delta: -10, source: 'task', reason: 'Undo: Workout', date: D(1) },
+      { delta: -10, source: 'task', reason: 'Undo: Workout', date: D(2) },
+    ];
+    expect(computeInsights(txns, []).find((c) => c.key === 'dodged')).toBeUndefined();
+  });
+
+  it('does not count undo reversals toward the best day or tasks-done', () => {
+    const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay()); weekStart.setHours(0, 0, 0, 0);
+    const txns = [
+      { delta: 10, source: 'task', reason: 'Completed: A', date: D(1) },
+      { delta: -10, source: 'task', reason: 'Undo: A', date: D(1) },
+    ];
+    const cards = computeInsights(txns, [], weekStart);
+    // only one real completion counts; the reversal is excluded
+    expect(cards.find((c) => c.key === 'tasks')!.title).toContain('1 task');
+  });
+
+  it('never reports a bogus "Down 0%" when last week was not positive', () => {
+    // cur negative, prev zero → old code produced "Down 0% this week".
+    const cards = computeInsights([], [{ week: 'Jun 1', points: 0 }, { week: 'Jun 8', points: -10 }]);
+    const trend = cards.find((c) => c.key === 'trend')!;
+    expect(trend.title).not.toMatch(/0%/);
+    expect(trend.title).toBe('In the red this week');
+    expect(trend.tone).toBe('bad');
+  });
+
+  it('does not surface a best-day card from a single day of activity', () => {
+    const txns = [
+      { delta: 10, source: 'task', date: D(3) },
+      { delta: 25, source: 'task', date: D(3) },
+      { delta: 50, source: 'task', date: D(3) },
+    ];
+    expect(computeInsights(txns, []).find((c) => c.key === 'bestday')).toBeUndefined();
+  });
+
   it('counts tasks done this week when a weekStart is given', () => {
     const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay()); weekStart.setHours(0, 0, 0, 0);
     const txns = [
