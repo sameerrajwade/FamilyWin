@@ -19,7 +19,13 @@ User chose "more UI polish first, THEN one build." Worked the Iter-23 NEXT FIXES
 - **chrome→icons** (DONE): Penalty (type toggle/submit/lock), Settings (header/avatar photo+emoji/copy/add-child/discipline/share/logout/delete + chevrons), Family (invite copy+share/chevron/add-child/photo badges), Create Task (Delete/Packs/Customise). Content emoji kept. Also fixed stale "try FamilyWin"→"Lootboard" share string.
 - **O child-mode dark** (DONE): added `childDarkColors` so child mode honours dark theme (was always light-pink, contradicting the "dark mode" label). Vibrant child task cards stay bright (dark text on pastel, self-contained).
 - **STILL TODO**: E FOUC (cold-start dark flash — SKIPPED, risky + needs device test); Rewards/Insights "juicy language" pass (vague, low-pri); Sameer −10 test data.
-- **NEXT: ONE arm64 build** to device-verify everything (esp. undo −10 fix from Iter-23 A/B/C, still unverified on device). `GRADLE_OPTS="-Djavax.net.ssl.trustStoreType=Windows-ROOT" ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon`. Device adb: `adb-57150DLCH002E1-swDe4l._adb-tls-connect._tcp` (port rotates). Needs user's phone connected. Then negative-reward-points feature.
+- **BUILD bwu4dmuat (arm64 release, 6m10s, 55MB) INSTALLED + DEVICE-VERIFIED (Pixel 10 Pro, 2026-08-15).** Built from commit 59c8bcd (main polish batch). App launches, PID stable, NO FATAL/crash.
+  - ✅ INSIGHTS REWORK confirmed on device (screenshot v24_home): "**In the red this week** · −40 pts vs +0 last week" (the "Down 0%" bug is GONE); "Undo: Workout" shows in Recent Activity but is correctly EXCLUDED from Most-dodged; "2 tasks done this week" correct; 6-week chart labels current week "−40" (negative handled). Tab bar = clean single-line Ionicons.
+  - ✅ REWARDS afford-bar clamp (H) confirmed: "70 pts to go" bar NOT full despite −40 balance.
+  - NOT captured (avoided blind tapping — focus-steal hazard, backed to launcher): silver podium, dark mode, chrome swaps on Penalty/Settings/Family. Ask USER to eyeball Scores (podium) + toggle dark.
+  - TEST DATA: this account now at −40 (leftover undo testing). Not a bug.
+- **COMMITTED AFTER the build (NOT in installed APK — need next build): FOUC fix (theme.tsx hydration gate), ProfileSwitcher dark-mode, family.tsx dark-mode modals.** All tsc-clean.
+- NEXT: next build picks up the 3 post-build dark-mode/FOUC commits. Then negative-reward-points feature (user wanted a check-in first). Build cmd: `GRADLE_OPTS="-Djavax.net.ssl.trustStoreType=Windows-ROOT" ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon` from android/. adb: `adb-57150DLCH002E1-swDe4l._adb-tls-connect._tcp` (Pixel 10 Pro, port rotates).
 
 ## Iteration 23 (2026-08-11) — ROOT-CAUSE: undeployed rules; UI hero card; release build
 - USER reported 3 issues, said NOT SDK-related (broken since day 1): (a) build "looks like a debugging window", (b) photo upload fails, (c) undo errors "can't undo".
