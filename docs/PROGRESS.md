@@ -135,16 +135,14 @@ User chose "more UI polish first, THEN one build." Worked the Iter-23 NEXT FIXES
 - BUILD BLOCKERS CLEARED (all environmental, NOT migration code): (a) TLS PKIX cert fail on dl.google.com/maven → TLS interceptor; curl(Windows) works, JDK17 truststore didn't → added `-Djavax.net.ssl.trustStoreType=Windows-ROOT` to android/gradle.properties jvmargs (+bumped heap 2g→4g there; NOTE expo-build-properties `extraGradleProperties` key did NOT apply — fix the key for persistence). (b) missing android/local.properties → wrote `sdk.dir=C:/Users/samee/AppData/Local/Android/Sdk` (fwd slashes). (c) manifest merger: expo-notifications vs rn-firebase_messaging both set `default_notification_color` → added `tools:replace="android:resource"` to generated AndroidManifest.xml line 21 (GENERATED — wiped on prebuild; needs a persistent config-plugin fix).
 - NEXT: (1) confirm build green, install+launch Pixel, verify no crash + data loads (shim runtime correctness). (2) FIX auto-refresh flicker (task #7: index.tsx onSnapshot→loadTasks sets isLoadingTasks=true every event → skeletons flash; make listener reloads silent). (3) GAMIFY HOME tasks #2-5. (4) Phase 3 finish + photo (Sofra uses react-native-image-picker file://). (5) PERSIST the 2 generated-file fixes (manifest tools:replace via config plugin; gradle jvmargs via correct expo-build-properties key) before any prebuild. react-native-image-picker DROPPED (TS-strip incompat). RN pinned 0.86.2 (expo wants 0.86.0, harmless).
 
-## Current State (as of 2026-07-12)
+## Current State (as of 2026-08-15) — see Iteration 26 (top) for detail
 
-- **App:** Lootboard (was FamilyWin). Code at `C:\Users\samee\FW`. Firebase project `familywin-35a97`.
-- **Build:** Release APK builds and installs via adb. Signing done by user only (never handle keystore passwords).
-- **Photo upload:** STILL the one blocking bug — fetch-blob fix in build `bydbwo9g3` awaits a real device photo-pick (see Iteration 7).
-- **Splash:** Full branded animated splash landed (commits c5c7874, fd6811e) — NOT yet device-verified.
-- **Active focus:** Phase 2 (Brand/UI) pulled to the FRONT at user's request — brand invisible outside auth screens is the top pain (matches Roadmap 2.1). Direction chosen: **Champion/trophy** (keep gold+purple, replace 🏆 emoji with a real vector mark).
-- **Known open issue:** cold-start lag (Roadmap 1.1, not yet investigated).
-- **Tests:** Jest infra; pointsEngine/store covered; NO rules/functions tests yet.
-- **Roadmap:** full plan in `docs/LAUNCH_ROADMAP.md` (Phases 0–6).
+- **App:** Lootboard. Code `C:\Users\samee\FW`. Firebase `familywin-35a97`. Branch `autonomous/gamify-home`.
+- **Build:** arm64 release build **bllo1t1or** INSTALLED on Pixel 10 Pro (launches clean, no crash). Signing by user only.
+- **Just shipped (this window):** UI polish pass (light-lock→dark, chrome→Ionicons, silver podium, FOUC, dark ProfileSwitcher/Family modals) + Insights logic fixes + **missed-task penalty feature** (optional Off/Half/Full, 2-day grace catch-up on a dedicated screen) + **undo 2-tap bug FIXED** + leaderboard crown-card restyle.
+- **Awaiting user:** device verification of build bllo1t1or + user is about to list "small UI glitches" (agreed: fix UI glitches FIRST, then next phases).
+- **Tests:** 102 jest pass (pointsEngine incl. missed-penalty + insights). firebase.test.ts suite still fails to LOAD (native module) — pre-existing.
+- **Roadmap:** `docs/LAUNCH_ROADMAP.md` (Phases 0–6). Photo upload was fixed+verified earlier (Iter 23).
 
 ## Constraints (permanent)
 1. Never handle keystore passwords (FAMILYWIN_KEYSTORE_PASSWORD / FAMILYWIN_KEY_PASSWORD).
@@ -315,7 +313,14 @@ User gave 8 items. Branch autonomous/phase-3-perf-security (UI fixes piggyback h
 5. **Phase 5 paywalls → BUILD UI/entitlement scaffolding, keep everything FREE** (plan defaults to full access; paywalls built but not triggered). No RevenueCat account wiring yet.
 6. **Git: PUSH after EACH phase** (not one bundled push). Commit + push per phase once device-verified.
 
-## Next Up
+## Next Up (2026-08-15)
+1. **User is listing small UI glitches** → fix them in ONE batch (agreed: UI glitches BEFORE next phases), tsc + one build to device-verify.
+2. Device-verify build bllo1t1or: undo single-tap (same session), Off/Half/Full penalty, catch-up screen, assign a daily task to Vian to test child catch-up, crown-card look.
+3. THEN next phase (launch prep: Play Store assets/screenshots from real screens, release signing by user, backend/CF hardening incl. timezone-aware missed-penalty sweep for members who never open the app).
+4. Device hazard: notification shade steals focus → `adb shell cmd statusbar collapse`; wireless adb `adb-57150DLCH002E1-swDe4l` (192.168.86.121, port rotates).
+
+<details><summary>Older Next Up (pre-2026-08, historical)</summary>
+
 1. **Retest PHOTO** on build bydbwo9g3 (drive SAF pick; read granular alert if it still fails — tells fetch vs copy outcome).
 2. **Device-verify the new animated splash** (cold start: no flash, animation plays, exits to correct route).
 3. Photo verify order once device is on: pick → alert now shows fetch|copy|putFile(content) outcomes. If Strategy 3 succeeds, photo is DONE. If all 3 fail → pivot to react-native-image-picker (native file://, needs 1 rebuild).
@@ -326,3 +331,4 @@ User gave 8 items. Branch autonomous/phase-3-perf-security (UI fixes piggyback h
 3. Phase 1: Leaderboard 3-crowns + countdown, Rewards progress-to-afford bars, Insights (OUR metrics, Sofra layout), Winner Board + share card.
 4. Pre-existing test errors (`__tests__/pointsEngine`, `home.test`) — Phase 6.
 - Metro currently running (bg); relaunch with `npx expo start --dev-client` if stopped.
+</details>
