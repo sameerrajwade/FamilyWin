@@ -323,7 +323,7 @@ export default function HomeScreen() {
         taskTitle: task.title,
       });
 
-      markTaskComplete(task.id, task.pointValue);
+      markTaskComplete(task.id, task.pointValue, tx.completionId);
       updateMemberPoints(effectiveMember!.id, task.pointValue);
       addTransaction(tx as any);
 
@@ -370,7 +370,7 @@ export default function HomeScreen() {
       (t) => t.id === p.taskId ? { ...t, completion: null } : t,
     ) as any);
     try {
-      await undoTaskCompletion({
+      const res = await undoTaskCompletion({
         familyId: family.id,
         completionId: p.completionId,
         taskId: p.taskId,
@@ -378,8 +378,12 @@ export default function HomeScreen() {
         pointsAwarded: p.points,
         taskTitle: p.title,
       });
-      setWeeklyPoints((w) => w - p.points);
-      updateMemberPoints(effectiveMember.id, -p.points);
+      // Only adjust points if a completion was actually reversed — guards against
+      // phantom-negative points when there was nothing live to undo.
+      if (res.undone) {
+        setWeeklyPoints((w) => w - res.pointsReversed);
+        updateMemberPoints(effectiveMember.id, -res.pointsReversed);
+      }
       await loadTasks();
     } catch (e) {
       if (__DEV__) console.error('[Undo]', e);

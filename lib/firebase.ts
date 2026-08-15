@@ -618,31 +618,53 @@ export async function undoTaskCompletion(params: {
   memberId: string;
   pointsAwarded: number;
   taskTitle: string;
-}): Promise<void> {
-  const completionRef = Col.completions(params.familyId).doc(params.completionId);
+}): Promise<{ undone: boolean; pointsReversed: number }> {
+  const { familyId, completionId, taskId, memberId, taskTitle } = params;
 
-  // IDEMPOTENT GUARD: if the completion is already gone (undo already ran, or a
-  // second/concurrent tap), do nothing. Without this, calling undo twice on the
-  // same completion wrote TWO reversing -pts transactions against a single +pts
-  // completion → phantom negative points (verified −10 bug on device).
-  const existing = await completionRef.get();
-  if (!existing.exists()) return;
+  // Resolve the LIVE positive completion to reverse. The passed completionId can
+  // be empty (optimistic store value) or a stale/cached id, in which case a
+  // direct get() misses and the undo silently no-ops — the "undo needs 2 taps"
+  // bug. Fall back to querying today's positive completion for this task+member.
+  let ref = Col.completions(familyId).doc(completionId || '__none__');
+  let snap = completionId ? await ref.get() : null;
+  let data: any = snap && snap.exists() ? snap.data() : null;
 
+  if (!data || data.wasAutoFailed || (data.pointsAwarded ?? 0) <= 0) {
+    const todayKey = getTodayDateString();
+    const q = await Col.completions(familyId)
+      .where('taskId', '==', taskId)
+      .where('memberId', '==', memberId)
+      .where('completedDate', '==', todayKey)
+      .get();
+    const live = q.docs.find((d) => {
+      const dd = d.data() as any;
+      return !dd.wasAutoFailed && (dd.pointsAwarded ?? 0) > 0;
+    });
+    // IDEMPOTENT GUARD: nothing live to undo (already undone / concurrent tap).
+    // Prevents the phantom-negative-points bug (writing a reversal with no
+    // matching completion).
+    if (!live) return { undone: false, pointsReversed: 0 };
+    ref = Col.completions(familyId).doc(live.id);
+    data = live.data();
+  }
+
+  const reversed = data.pointsAwarded ?? 0; // the actual points to hand back
   const batch = firestore().batch();
-  batch.delete(completionRef);
+  batch.delete(ref);
 
-  const txRef = Col.transactions(params.familyId).doc();
+  const txRef = Col.transactions(familyId).doc();
   batch.set(txRef, {
-    familyId: params.familyId,
-    memberId: params.memberId,
-    delta: -params.pointsAwarded,
-    reason: `Undo: ${params.taskTitle}`,
+    familyId,
+    memberId,
+    delta: -reversed,
+    reason: `Undo: ${taskTitle}`,
     source: 'task' as const,
-    referenceId: params.taskId,
+    referenceId: taskId,
     createdAt: firestore.Timestamp.now(),
   });
 
   await batch.commit();
+  return { undone: true, pointsReversed: reversed };
 }
 
 // ─── MISSED-TASK PENALTY + GRACE-WINDOW CATCH-UP (optional feature) ───────────

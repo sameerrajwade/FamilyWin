@@ -100,7 +100,7 @@ interface TaskState {
   currentWeekId: string;
   setTodaysTasks: (tasks: TaskDoc_WithCompletion[]) => void;
   setLoadingTasks: (loading: boolean) => void;
-  markTaskComplete: (taskId: string, pointValue: number) => void;
+  markTaskComplete: (taskId: string, pointValue: number, completionId?: string) => void;
   refreshWeekId: () => void;
 }
 
@@ -118,11 +118,14 @@ export const useTaskStore = create<TaskState>()((set) => ({
   currentWeekId: calcWeekId(),
   setTodaysTasks: (todaysTasks) => set({ todaysTasks }),
   setLoadingTasks: (isLoadingTasks) => set({ isLoadingTasks }),
-  markTaskComplete: (taskId, pointValue) =>
+  markTaskComplete: (taskId, pointValue, completionId = '') =>
     set((state) => ({
       todaysTasks: state.todaysTasks.map((t) =>
         t.id === taskId
-          ? { ...t, completion: { id: '', wasAutoFailed: false, pointsAwarded: pointValue } }
+          // Store the REAL completion id so a same-session card "tap to undo"
+          // targets the live doc. An empty id used to make undo a no-op until a
+          // reload refreshed it (the "undo needs 2 taps" bug).
+          ? { ...t, completion: { id: completionId, wasAutoFailed: false, pointsAwarded: pointValue } }
           : t,
       ),
     })),
