@@ -449,6 +449,7 @@ function InnerLayout() {
         <Stack.Screen name="app/task/create" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="app/discipline/log" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="app/member/[id]" />
+        <Stack.Screen name="app/catch-up" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       </Stack>
       {/* Branded animated splash overlay — shown until exit animation completes */}
       {showSplash && <AnimatedSplash isExiting={hasNavigated} />}

@@ -9,6 +9,7 @@
 
 import { Timestamp } from '@react-native-firebase/firestore';
 import { firestore, auth, storage, functions } from '@/lib/fb';
+import { missedTaskPenaltyAmount, graceWindowDays, type MissedPenaltyMode } from '@/lib/pointsEngine';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -704,8 +705,15 @@ export async function getMissedCatchUpTasks(params: {
   const { familyId, memberId, graceDays } = params;
   if (!graceDays.length) return [];
 
+  // Only daily tasks EXPLICITLY assigned to this member. Unassigned "family"
+  // tasks aren't auto-penalized (it's unclear who owed them, and penalizing every
+  // member for one shared task would be wrong) — assign a task to a member to
+  // bring it into their missed-task accounting.
   const dailyTasks = (await getActiveTasks(familyId)).filter(
-    (t) => t.recurrence === 'daily' && (!t.assignedTo || t.assignedTo === memberId),
+    (t) => t.recurrence === 'daily' && (
+      t.assignedTo === memberId ||
+      (Array.isArray(t.assignedTo) && (t.assignedTo as string[]).includes(memberId))
+    ),
   );
   if (!dailyTasks.length) return [];
 
@@ -868,6 +876,32 @@ export async function completeTaskForDate(params: {
   });
 
   await batch.commit();
+}
+
+/**
+ * Apply any pending miss penalties for a member across the grace window and
+ * return the current catch-up-able items. Shared by the Home lazy sweep and the
+ * dedicated Catch-up screen so both apply + list consistently. No-op when off.
+ */
+export async function syncMissedPenalties(params: {
+  familyId: string;
+  memberId: string;
+  mode: MissedPenaltyMode;
+}): Promise<CatchUpItem[]> {
+  const { familyId, memberId, mode } = params;
+  if (mode === 'off') return [];
+  const graceDays = graceWindowDays();
+  let items = await getMissedCatchUpTasks({ familyId, memberId, graceDays });
+  const toPenalize = items.filter((i) => !i.penalized);
+  if (toPenalize.length) {
+    await Promise.all(toPenalize.map((i) => applyMissedTaskPenalty({
+      familyId, memberId,
+      taskId: i.task.id, pointValue: i.task.pointValue, taskTitle: i.task.title,
+      penaltyAmount: missedTaskPenaltyAmount(i.task.pointValue, mode), dateKey: i.dateKey,
+    })));
+    items = await getMissedCatchUpTasks({ familyId, memberId, graceDays });
+  }
+  return items;
 }
 
 /** Get all transactions for a member this week */
