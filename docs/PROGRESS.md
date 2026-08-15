@@ -10,6 +10,16 @@
 
 ---
 
+## Iteration 25 (2026-08-15) — Missed-task penalty feature + undo bug diagnosis
+- FEATURE (built, tsc-clean, 100 jest pass; NOT yet built to APK): optional per-family **missed-task penalty + 2-day grace catch-up**. User-scoped: applies to ALL daily tasks (half points, `missedTaskPenaltyAmount`=round(pv/2),min1); anyone can back-date within 2 days, no approval. Default OFF (`FamilyDoc.missedTaskPenalty`).
+  - Data: pointsEngine helpers (missedTaskPenaltyAmount/graceWindowDays/toDateKey +6 tests). firebase: getWeekIdForDate, setMissedTaskPenalty, getMissedCatchUpTasks (per-day equality queries, no index), applyMissedTaskPenalty (DETERMINISTIC doc IDs `miss__/misstx__{task}__{member}__{date}` → cross-device race writes one penalty; loser's set-on-existing=update=denied by immutable rules, fails safe), completeTaskForDate (reverses miss penalty then awards).
+  - Delivery = CLIENT-SIDE LAZY on Home load (syncCatchUp), local-tz correct + device-testable. NOT a UTC Cloud Function (would fire mid-afternoon local). CF hardening for never-opens-app members = FUTURE.
+  - UI: Settings parent toggle "Deduct points for missed tasks"; Home "Catch up — win points back" card (per-task Mark done → completeTaskForDate, in-flight guarded).
+  - NO firestore.rules change needed (all writes pass existing member/parent rules; verified).
+  - NOTE: earlier mis-built a "penalty shop" (user's first pick) → user clarified real intent → reverted cleanly.
+- 🐞 UNDO BUG (user repro on build bk6nwt8g5, NOT yet fixed — user said note it, don't derail feature): card "tap to undo" needs 2 taps / fails; TOAST undo works. DIAGNOSIS: toast uses fresh `tx.completionId` (live); card uses `task.completion.id` from getWeekCompletions which under RN Firebase offline cache can be a stale/just-deleted id → idempotent undoTaskCompletion no-ops (server says gone) → no delete, points unchanged. 2nd tap after loadTasks resync uses live id → works. FIX (next, with test + device verify): undoTaskCompletion should re-resolve live completion by (taskId,memberId,todayKey) when passed id missing/stale + return bool so performUndo only adjusts points on a real delete.
+- NEXT: build APK with missed-task feature → device-verify (toggle on, miss a task, see penalty + catch-up, mark done late → points restored). THEN undo fix.
+
 ## Iteration 24 (2026-08-15) — UI polish batch 2 (branch autonomous/gamify-home; tsc clean, 94 jest pass; NOT yet built)
 User chose "more UI polish first, THEN one build." Worked the Iter-23 NEXT FIXES list. 5 commits on branch:
 - **L light-lock → useTheme** (DONE): member/[id], add-child, auth/login, auth/register, auth/onboarding converted to memoized `createStyles(colors)` factories (were hardcoded light `Colors` → white-on-white in dark). Nested StatBox/WeekStat (member) + StepHeader (onboarding) inside components to capture themed styles. Splash left as-is (intentional full-color carousel, theme-independent).
