@@ -16,7 +16,15 @@ User feedback batch (4 items), all committed + tsc-clean + 102 jest pass; buildi
 - ✅ **Penalty amount = user choice Off/Half/Full** (was hardcoded half). `missedTaskPenaltyAmount(pv,mode)`; FamilyDoc.missedTaskPenalty now 'off'|'half'|'full' (legacy bool→'half' via missedPenaltyMode). Settings: Switch→segmented Off/Half/Full.
 - ✅ **Catch-up redesign** (feedback: child profile got nothing; 20 rows stacked on Home). (a) getMissedCatchUpTasks now scopes to tasks EXPLICITLY assigned to the member (was pulling unassigned family tasks for all → phantom penalties + inconsistent w/ Home per-member list; user's daily tasks are assigned to Sameer so Vian correctly empty — assign to child to include). (b) NEW dedicated `app/app/catch-up.tsx` screen (grouped by day, per-task Mark done, works for any active profile, NOT parent-gated); Home shows compact "Catch up N missed tasks →" entry instead of inline rows. (c) shared `syncMissedPenalties(familyId,memberId,mode)` used by Home + screen.
 - ✅ **Leaderboard crown cards** (feedback: outer border crowds label, colors off): soft same-hue translucent border (was hard contrasting ink), +padding, centered text; accent title/detail now theme-aware (bright tint in dark mode — dark ink read muddy on dark-tinted card).
-- NEXT: install bllo1t1or → device-verify all 4 (esp. undo single-tap, catch-up screen, assign a task to Vian to test child catch-up). adb: 192.168.86.121:34257 (mDNS `adb-57150DLCH002E1-swDe4l`). Notification shade steals focus badly right now → device screenshots unreliable; `adb shell cmd statusbar collapse` to recover.
+- ✅ bllo1t1or INSTALLED + launches clean (PID ok, no FATAL). All 4 fixes on device; user verifying.
+- 📋 NEW UI BACKLOG (user, 2026-08-15) — chose "finish UI glitches BEFORE next phases". 5 items:
+  1. 6 bottom tabs feels squeezed → move **Family tab into Settings** (opens as a screen) → 5 tabs. [my rec: yes]
+  2. Leaderboard **top-3 crown cards** still not fitting in LIGHT mode (dark = perfect). Need light-mode screenshot to fix.
+  3. **Insights** screen too cluttered — simplify (too many blocks on one screen).
+  4. **Rewards** card: right-side element not using full width — looks unbalanced. Need screenshot.
+  5. **Settings** → split one giant screen into a hub + focused sub-screens (also need to add Privacy, Terms, FAQ). [my rec: yes — Settings becomes a hub; Family + About(Privacy/Terms/FAQ) as sub-screens]
+- BLOCKER: wireless adb dropped/offline again (port rotated, mDNS empty) → can't screenshot #2/#4. Ask user to re-toggle Wireless debugging or USB.
+- NEXT: confirm IA direction (5 tabs + Settings hub) → implement structural (#1,#5) + simplify (#3), then screenshot-driven fixes (#2,#4) → one build → verify. THEN next phases (Play Store assets, release signing).
 
 ## Iteration 25 (2026-08-15) — Missed-task penalty feature + undo bug diagnosis
 - FEATURE (built, tsc-clean, 100 jest pass; NOT yet built to APK): optional per-family **missed-task penalty + 2-day grace catch-up**. User-scoped: applies to ALL daily tasks (half points, `missedTaskPenaltyAmount`=round(pv/2),min1); anyone can back-date within 2 days, no approval. Default OFF (`FamilyDoc.missedTaskPenalty`).
