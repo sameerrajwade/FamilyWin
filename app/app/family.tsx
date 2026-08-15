@@ -1,8 +1,9 @@
 /**
- * app/app/tabs/family.tsx
+ * app/app/family.tsx
  * ─────────────────────────────────────────────────────────────────────────────
- * Family management screen — members, add/remove kids, roles, invite code,
- * discipline log shortcut. Replaces the buried Settings > Family section.
+ * Family management screen — members, add/remove kids, roles, invite code.
+ * Pushed from the Settings hub (Settings → Family & Members); no longer a bottom
+ * tab, so it carries its own back button.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -125,6 +126,14 @@ export default function FamilyScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
+        {/* Back bar — this is a pushed screen (from Settings), not a tab */}
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.backBtn}>
+            <Icon name="chevron-back" size={22} color={colors.primary} />
+            <Text style={[styles.backText, { color: colors.primary }]}>Settings</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -701,7 +710,10 @@ function RoleModal({ target, onClose, onSelect, colors }: {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg },
+  topBar: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  backBtn: { flexDirection: 'row', alignItems: 'center' },
+  backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.lg },
   headerTitle: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold },
   headerSub: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, marginTop: 2 },
   disciplineBtn: { borderWidth: 1.5, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.sm, paddingVertical: 8 },

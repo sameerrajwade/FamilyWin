@@ -308,16 +308,19 @@ function CrownsRow({ crowns, colors, isDark }: { crowns: CrownSlot[]; colors: an
             key={c.kind}
             style={[
               crownStyles.card,
+              // ALL three cards share ONE structure: a clean opaque surface card.
+              // The award colour lives in the emoji badge + title + border only —
+              // never a full tinted fill (that muddy wash read as a box-in-a-box).
+              { backgroundColor: colors.surface },
               awarded
-                // Soft SAME-HUE edge (not a hard contrasting ink line) so the
-                // card reads as one tinted chip and the label isn't crowded onto
-                // a clashing border.
-                ? { backgroundColor: accent.tint + '20', borderColor: accent.tint + '55', borderStyle: 'solid' }
-                : { backgroundColor: colors.surface, borderColor: colors.primary + '2E', borderStyle: 'dashed' },
-              awarded && Shadow.sm,
+                ? { borderColor: accent.tint + (isDark ? '99' : '80'), borderStyle: 'solid' }
+                : { borderColor: colors.border, borderStyle: 'dashed' },
+              Shadow.sm,
             ]}
           >
-            <Text style={[crownStyles.emoji, !awarded && { opacity: 0.8 }]}>{c.emoji}</Text>
+            <View style={[crownStyles.badge, { backgroundColor: awarded ? accent.tint + '26' : colors.textMuted + '1A' }]}>
+              <Text style={[crownStyles.emoji, !awarded && { opacity: 0.75 }]}>{c.emoji}</Text>
+            </View>
             <Text
               style={[crownStyles.title, { color: awarded ? accentText : colors.textSecondary }]}
               numberOfLines={1}
@@ -328,7 +331,7 @@ function CrownsRow({ crowns, colors, isDark }: { crowns: CrownSlot[]; colors: an
                 <Text style={[crownStyles.detail, { color: accentText }]} numberOfLines={1}>{c.detail}</Text>
               </>
             ) : (
-              <Text style={[crownStyles.upForGrabs, { color: colors.primary }]} numberOfLines={1}>up for grabs</Text>
+              <Text style={[crownStyles.upForGrabs, { color: colors.textMuted }]} numberOfLines={1}>up for grabs</Text>
             )}
           </View>
         );
@@ -338,8 +341,9 @@ function CrownsRow({ crowns, colors, isDark }: { crowns: CrownSlot[]; colors: an
 }
 const crownStyles = StyleSheet.create({
   row: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md },
-  card: { flex: 1, borderRadius: BorderRadius.lg, borderWidth: 1, paddingVertical: 11, paddingHorizontal: 10, alignItems: 'center' },
-  emoji: { fontSize: 22, marginBottom: 3 },
+  card: { flex: 1, borderRadius: BorderRadius.lg, borderWidth: 1.5, paddingVertical: 12, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'flex-start', minHeight: 118 },
+  badge: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 7 },
+  emoji: { fontSize: 21 },
   title: { fontSize: 9.5, fontFamily: FontFamily.bold, textTransform: 'uppercase', letterSpacing: 0.2, textAlign: 'center' },
   name: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginTop: 4, textAlign: 'center' },
   detail: { fontSize: 10, fontFamily: FontFamily.bold, marginTop: 2, textAlign: 'center' },

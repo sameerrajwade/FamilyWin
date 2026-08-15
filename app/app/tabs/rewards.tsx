@@ -279,10 +279,21 @@ export default function RewardsScreen() {
       >
         {/* Header — points summary */}
         <View style={styles.header}>
-          <View style={{ flex: 1 }}>
+          <View style={styles.headerTopRow}>
             <Text style={[styles.headerTitle, { color: colors.text }]}>Rewards</Text>
-            {/* Primary: all-time bank balance (for spending) */}
-            <View style={[styles.pointsCard, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '44' }]}>
+            {isParent && (
+              <TouchableOpacity
+                style={[styles.addBtn, { backgroundColor: colors.primary }]}
+                onPress={() => setShowCreateModal(true)}
+                accessibilityLabel="Add a reward"
+                accessibilityRole="button"
+              >
+                <Text style={styles.addBtnText}>＋ Add</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {/* Primary: all-time bank balance (for spending) — full width */}
+          <View style={[styles.pointsCard, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '44' }]}>
               <View style={styles.pointsRow}>
                 <View>
                   <Text style={[styles.pointsLabel, { color: colors.textSecondary }]}>
@@ -310,15 +321,6 @@ export default function RewardsScreen() {
                 </View>
               </View>
             </View>
-          </View>
-          {isParent && (
-            <TouchableOpacity
-              style={[styles.addBtn, { backgroundColor: colors.primary }]}
-              onPress={() => setShowCreateModal(true)}
-            >
-              <Text style={styles.addBtnText}>＋ Add</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {isLoading ? (
@@ -766,8 +768,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
 
   brandRow: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
-  header: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: Spacing.lg, paddingTop: Spacing.xs, paddingBottom: Spacing.lg, gap: Spacing.sm },
-  headerTitle: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, marginBottom: Spacing.sm },
+  header: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.xs, paddingBottom: Spacing.lg },
+  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm },
+  headerTitle: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold },
   pointsCard: { borderRadius: BorderRadius.lg, padding: Spacing.md, borderWidth: 1.5 },
   pointsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   pointsLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, marginBottom: 2 },
@@ -777,7 +780,7 @@ const styles = StyleSheet.create({
   pointsBreakdown: { alignItems: 'flex-end', gap: 4 },
   pointsBreakdownItem: { fontSize: FontSize.xs, fontFamily: FontFamily.regular },
 
-  addBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, alignSelf: 'flex-start', marginTop: Spacing.xl + 4 },
+  addBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 9 },
   addBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFF' },
 
   section: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },

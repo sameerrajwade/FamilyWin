@@ -187,43 +187,45 @@ export default function HistoryScreen() {
           <ActivityIndicator color={colors.primary} style={{ marginTop: Spacing.xxl }} />
         ) : (
           <>
+            {/* Calm KPI row — one hairline border, colour carried by the values */}
             <View style={styles.statsRow}>
-              <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.primary + '44' }]}>
+              <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={styles.statEmoji}>⭐</Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>{formatPoints(totalPoints)}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>All Time</Text>
               </View>
-              <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.success + '44' }]}>
+              <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={styles.statEmoji}>📅</Text>
                 <Text style={[styles.statValue, { color: thisWeekPoints >= 0 ? colors.success : colors.danger }]}>
                   {thisWeekPoints >= 0 ? '+' : ''}{formatPoints(thisWeekPoints)}
                 </Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>This Week</Text>
               </View>
-              <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.warning + '44' }]}>
+              <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={styles.statEmoji}>📝</Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>{transactions.length}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Events</Text>
               </View>
             </View>
 
-            {/* Plain-language insight cards — the signature of this screen */}
-            {insights.length > 0 && (
-              <View style={styles.insightsWrap}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.insightsScroll}>
-                  {insights.map((c) => {
-                    const toneColor = c.tone === 'good' ? colors.success : c.tone === 'bad' ? colors.danger : colors.textSecondary;
-                    return (
-                      <View key={c.key} style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: toneColor + '44' }]}>
-                        <Text style={styles.insightEmoji}>{c.emoji}</Text>
-                        <Text style={[styles.insightTitle, { color: colors.text }]} numberOfLines={2}>{c.title}</Text>
-                        <Text style={[styles.insightDetail, { color: colors.textSecondary }]} numberOfLines={2}>{c.detail}</Text>
-                      </View>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            )}
+            {/* ONE lead highlight instead of a 3-card strip — the single most
+                relevant plain-language insight, full-width so the screen reads
+                as fewer, clearer modules (chart + activity carry the rest). */}
+            {insights.length > 0 && (() => {
+              const c = insights[0];
+              const toneColor = c.tone === 'good' ? colors.success : c.tone === 'bad' ? colors.danger : colors.primary;
+              return (
+                <View style={styles.highlightWrap}>
+                  <View style={[styles.highlightCard, { backgroundColor: toneColor + '12', borderColor: toneColor + '33' }]}>
+                    <Text style={styles.highlightEmoji}>{c.emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.highlightTitle, { color: colors.text }]} numberOfLines={2}>{c.title}</Text>
+                      <Text style={[styles.highlightDetail, { color: colors.textSecondary }]} numberOfLines={2}>{c.detail}</Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })()}
 
             <View style={[styles.chartCard, { backgroundColor: colors.surface }]}>
               <Text style={[styles.chartTitle, { color: colors.text }]}>6-Week Points Trend</Text>
@@ -347,16 +349,15 @@ const styles = StyleSheet.create({
   toggleBtn: { paddingHorizontal: Spacing.md, paddingVertical: 6, borderRadius: 20 },
   toggleText: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold },
   statsRow: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md },
-  statCard: { flex: 1, borderRadius: BorderRadius.lg, padding: Spacing.md, alignItems: 'center', borderWidth: 1.5, ...Shadow.sm },
+  statCard: { flex: 1, borderRadius: BorderRadius.lg, padding: Spacing.md, alignItems: 'center', borderWidth: 1, ...Shadow.sm },
   statEmoji: { fontSize: 24, marginBottom: 4 },
   statValue: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold },
   statLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2 },
-  insightsWrap: { marginBottom: Spacing.lg },
-  insightsScroll: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },
-  insightCard: { width: 150, borderRadius: BorderRadius.lg, borderWidth: 1.5, padding: Spacing.md, ...Shadow.sm },
-  insightEmoji: { fontSize: 22, marginBottom: 6 },
-  insightTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginBottom: 3 },
-  insightDetail: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, lineHeight: 15 },
+  highlightWrap: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },
+  highlightCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: BorderRadius.lg, borderWidth: 1, padding: Spacing.md },
+  highlightEmoji: { fontSize: 26 },
+  highlightTitle: { fontSize: FontSize.md, fontFamily: FontFamily.extraBold, marginBottom: 2 },
+  highlightDetail: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, lineHeight: 16 },
   chartCard: { marginHorizontal: Spacing.lg, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.lg, ...Shadow.sm },
   contribRow: { marginBottom: Spacing.md },
   contribHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },

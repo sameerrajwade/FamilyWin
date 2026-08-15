@@ -66,14 +66,6 @@ export default function AppTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="family"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="people-outline" iconActive="people" label="Family" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="settings"
         options={{
           tabBarIcon: ({ focused }) => (
