@@ -25,7 +25,7 @@ export default function LeaderboardScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [personalBest, setPersonalBest] = useState<number>(0);
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const weekId = getCurrentWeekId();
   const { start } = getCurrentWeekRange(family?.weekStartDay ?? 1);
@@ -192,7 +192,7 @@ export default function LeaderboardScreen() {
             {/* Three-crowns row — rewards more than raw points (Roadmap 1.1/4.2) */}
             {leaderboard.length >= 2 && (
               <SlideIn delay={80} from="bottom">
-                <CrownsRow crowns={crowns} colors={colors} />
+                <CrownsRow crowns={crowns} colors={colors} isDark={isDark} />
               </SlideIn>
             )}
 
@@ -294,32 +294,38 @@ const CROWN_ACCENT: Record<CrownSlot['kind'], { tint: string; ink: string }> = {
   goal:     { tint: '#6C63FF', ink: '#5A4FD6' },
 };
 
-function CrownsRow({ crowns, colors }: { crowns: CrownSlot[]; colors: any }) {
+function CrownsRow({ crowns, colors, isDark }: { crowns: CrownSlot[]; colors: any; isDark: boolean }) {
   return (
     <View style={crownStyles.row}>
       {crowns.map((c) => {
         const awarded = !!c.awardeeMemberId;
         const accent = CROWN_ACCENT[c.kind];
+        // Accent text: the bright tint reads well on the dark-tinted card in dark
+        // mode; the darker ink reads well on the light tint in light mode.
+        const accentText = isDark ? accent.tint : accent.ink;
         return (
           <View
             key={c.kind}
             style={[
               crownStyles.card,
               awarded
-                ? { backgroundColor: accent.tint + '24', borderColor: accent.ink, borderStyle: 'solid' }
-                : { backgroundColor: colors.surface, borderColor: colors.primary + '33', borderStyle: 'dashed' },
+                // Soft SAME-HUE edge (not a hard contrasting ink line) so the
+                // card reads as one tinted chip and the label isn't crowded onto
+                // a clashing border.
+                ? { backgroundColor: accent.tint + '20', borderColor: accent.tint + '55', borderStyle: 'solid' }
+                : { backgroundColor: colors.surface, borderColor: colors.primary + '2E', borderStyle: 'dashed' },
               awarded && Shadow.sm,
             ]}
           >
             <Text style={[crownStyles.emoji, !awarded && { opacity: 0.8 }]}>{c.emoji}</Text>
             <Text
-              style={[crownStyles.title, { color: awarded ? accent.ink : colors.textSecondary }]}
+              style={[crownStyles.title, { color: awarded ? accentText : colors.textSecondary }]}
               numberOfLines={1}
             >{c.title}</Text>
             {awarded ? (
               <>
                 <Text style={[crownStyles.name, { color: colors.text }]} numberOfLines={1}>{c.awardeeName}</Text>
-                <Text style={[crownStyles.detail, { color: accent.ink }]} numberOfLines={1}>{c.detail}</Text>
+                <Text style={[crownStyles.detail, { color: accentText }]} numberOfLines={1}>{c.detail}</Text>
               </>
             ) : (
               <Text style={[crownStyles.upForGrabs, { color: colors.primary }]} numberOfLines={1}>up for grabs</Text>
@@ -332,12 +338,12 @@ function CrownsRow({ crowns, colors }: { crowns: CrownSlot[]; colors: any }) {
 }
 const crownStyles = StyleSheet.create({
   row: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md },
-  card: { flex: 1, borderRadius: BorderRadius.lg, borderWidth: 1.5, paddingVertical: Spacing.sm, paddingHorizontal: 6, alignItems: 'center' },
-  emoji: { fontSize: 22, marginBottom: 2 },
-  title: { fontSize: 9.5, fontFamily: FontFamily.bold, textTransform: 'uppercase', letterSpacing: 0.3 },
-  name: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginTop: 3 },
-  detail: { fontSize: 10, fontFamily: FontFamily.bold, marginTop: 1 },
-  upForGrabs: { fontSize: 10, fontFamily: FontFamily.regular, marginTop: 5, fontStyle: 'italic' },
+  card: { flex: 1, borderRadius: BorderRadius.lg, borderWidth: 1, paddingVertical: 11, paddingHorizontal: 10, alignItems: 'center' },
+  emoji: { fontSize: 22, marginBottom: 3 },
+  title: { fontSize: 9.5, fontFamily: FontFamily.bold, textTransform: 'uppercase', letterSpacing: 0.2, textAlign: 'center' },
+  name: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginTop: 4, textAlign: 'center' },
+  detail: { fontSize: 10, fontFamily: FontFamily.bold, marginTop: 2, textAlign: 'center' },
+  upForGrabs: { fontSize: 10, fontFamily: FontFamily.regular, marginTop: 6, fontStyle: 'italic' },
 });
 
 const styles = StyleSheet.create({
