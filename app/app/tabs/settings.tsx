@@ -941,12 +941,10 @@ const styles = StyleSheet.create({
   // Action rows
   actionRow: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, gap: Spacing.sm },
   dangerRow: { borderTopWidth: 1 },
-  actionEmoji: { fontSize: 24 },
   actionIcon: { width: 26, textAlign: 'center' },
   actionInfo: { flex: 1 },
   actionLabel: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold },
   actionSubtitle: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2 },
-  actionArrow: { fontSize: FontSize.lg },
   version: { textAlign: 'center', fontSize: FontSize.xs, fontFamily: FontFamily.regular, paddingVertical: Spacing.xl },
   sectionHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginBottom: Spacing.md, lineHeight: 18 },
   dayGrid: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },

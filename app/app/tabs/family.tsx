@@ -713,7 +713,6 @@ function createStyles(colors: ThemeColors) {
   inviteHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: 'rgba(255,255,255,0.65)', marginTop: 4 },
   inviteBtns: { gap: Spacing.sm },
   inviteIconBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  inviteIconText: { fontSize: 20 },
   // Sections
   section: { marginBottom: Spacing.md, paddingHorizontal: Spacing.lg },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
