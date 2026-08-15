@@ -64,12 +64,15 @@ export const Col = {
 
 // ─── WEEK HELPERS (unchanged from supabase.ts) ───────────────────────────────
 
-export function getCurrentWeekId(): string {
-  const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86_400_000);
+export function getWeekIdForDate(date: Date): string {
+  const startOfYear = new Date(date.getFullYear(), 0, 1);
+  const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / 86_400_000);
   const weekNum = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
-  return `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  return `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+export function getCurrentWeekId(): string {
+  return getWeekIdForDate(new Date());
 }
 
 export function getWeekStart(weekId: string): Date {
@@ -129,6 +132,7 @@ export interface FamilyDoc {
   name: string;
   inviteCode: string;
   weekStartDay: number;
+  missedTaskPenalty?: boolean; // opt-in: a missed daily task deducts half its points (reversible within a 2-day grace window). Absent/false = off.
   createdAt: Timestamp;
 }
 
@@ -635,6 +639,196 @@ export async function undoTaskCompletion(params: {
     reason: `Undo: ${params.taskTitle}`,
     source: 'task' as const,
     referenceId: params.taskId,
+    createdAt: firestore.Timestamp.now(),
+  });
+
+  await batch.commit();
+}
+
+// ─── MISSED-TASK PENALTY + GRACE-WINDOW CATCH-UP (optional feature) ───────────
+
+/** Toggle the optional missed-task penalty for a family (parents only via rules). */
+export async function setMissedTaskPenalty(familyId: string, enabled: boolean): Promise<void> {
+  await Col.families().doc(familyId).update({ missedTaskPenalty: enabled });
+}
+
+export interface CatchUpItem {
+  task: TaskDoc;
+  dateKey: string;   // YYYY-MM-DD the task was missed
+  penalized: boolean; // true if the half-point miss penalty has already been applied for that day
+}
+
+/**
+ * Daily tasks a member missed within the grace window (still catch-up-able).
+ * `graceDays` comes from graceWindowDays() (≤2 recent days, excluding today).
+ * Uses per-day equality queries so no composite index is needed.
+ */
+export async function getMissedCatchUpTasks(params: {
+  familyId: string;
+  memberId: string;
+  graceDays: string[];
+}): Promise<CatchUpItem[]> {
+  const { familyId, memberId, graceDays } = params;
+  if (!graceDays.length) return [];
+
+  const dailyTasks = (await getActiveTasks(familyId)).filter(
+    (t) => t.recurrence === 'daily' && (!t.assignedTo || t.assignedTo === memberId),
+  );
+  if (!dailyTasks.length) return [];
+
+  const items: CatchUpItem[] = [];
+  for (const dateKey of graceDays) {
+    const snap = await Col.completions(familyId)
+      .where('memberId', '==', memberId)
+      .where('completedDate', '==', dateKey)
+      .get();
+    const dayComps = snap.docs.map((d) => d.data() as CompletionDoc);
+
+    for (const task of dailyTasks) {
+      // A task can't be "missed" on a day before it existed.
+      const createdKey = task.createdAt ? isoDateKey(task.createdAt.toDate()) : '0000-00-00';
+      if (createdKey > dateKey) continue;
+
+      const forTask = dayComps.filter((c) => c.taskId === task.id);
+      const donePositive = forTask.some((c) => !c.wasAutoFailed && (c.pointsAwarded ?? 0) > 0);
+      if (donePositive) continue; // already completed that day
+
+      const penalized = forTask.some((c) => c.wasAutoFailed || (c.pointsAwarded ?? 0) < 0);
+      items.push({ task, dateKey, penalized });
+    }
+  }
+  return items;
+}
+
+function isoDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Apply the half-point miss penalty for one daily task on one past day. Writes a
+ * missed-completion marker + a negative transaction. Idempotent: a no-op if ANY
+ * completion (positive or penalty) already exists for that task+member+day, so
+ * calling it from multiple devices/loads can't double-penalize.
+ *
+ * Client-side + lazy (on Home load, in the viewer's local timezone) rather than
+ * a UTC Cloud Function, which would fire mid-afternoon for non-UTC users and
+ * penalize a day that isn't over locally. FUTURE: a timezone-aware CF sweep to
+ * also cover members who never open the app.
+ */
+export async function applyMissedTaskPenalty(params: {
+  familyId: string;
+  memberId: string;
+  taskId: string;
+  pointValue: number;
+  taskTitle: string;
+  penaltyAmount: number; // positive magnitude; stored as a negative delta
+  dateKey: string; // YYYY-MM-DD
+}): Promise<void> {
+  const { familyId, memberId, taskId, pointValue, taskTitle, penaltyAmount, dateKey } = params;
+  if (penaltyAmount <= 0) return;
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const weekId = getWeekIdForDate(new Date(y, m - 1, d, 12, 0, 0));
+
+  const existing = await Col.completions(familyId)
+    .where('taskId', '==', taskId)
+    .where('memberId', '==', memberId)
+    .where('completedDate', '==', dateKey)
+    .limit(1)
+    .get();
+  if (!existing.empty) return; // already completed or already penalized that day
+
+  const batch = firestore().batch();
+  const completionRef = Col.completions(familyId).doc();
+  batch.set(completionRef, {
+    taskId,
+    memberId,
+    weekId,
+    completedDate: dateKey,
+    monthId: `${y}-${String(m).padStart(2, '0')}`,
+    completedAt: null,
+    wasAutoFailed: true,
+    pointsAwarded: -penaltyAmount,
+  });
+  const txRef = Col.transactions(familyId).doc();
+  batch.set(txRef, {
+    familyId,
+    memberId,
+    delta: -penaltyAmount,
+    reason: `Missed: ${taskTitle}`,
+    source: 'task' as const,
+    referenceId: taskId,
+    createdAt: firestore.Timestamp.now(),
+  });
+  await batch.commit();
+}
+
+/**
+ * Retroactively mark a daily task complete for a past (grace-window) day. If a
+ * miss penalty was already applied for that day, it is reversed (points added
+ * back) before awarding the task's points. Idempotent: a no-op if the task is
+ * already positively completed for that day.
+ */
+export async function completeTaskForDate(params: {
+  familyId: string;
+  taskId: string;
+  memberId: string;
+  pointValue: number;
+  taskTitle: string;
+  dateKey: string; // YYYY-MM-DD
+}): Promise<void> {
+  const { familyId, taskId, memberId, pointValue, taskTitle, dateKey } = params;
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d, 12, 0, 0);
+  const weekId = getWeekIdForDate(dateObj);
+  const monthId = `${y}-${String(m).padStart(2, '0')}`;
+
+  const snap = await Col.completions(familyId)
+    .where('taskId', '==', taskId)
+    .where('memberId', '==', memberId)
+    .where('completedDate', '==', dateKey)
+    .get();
+  const docs = snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<CompletionDoc, 'id'>) }));
+
+  // Idempotent: already positively completed for that day.
+  if (docs.some((c) => !c.wasAutoFailed && (c.pointsAwarded ?? 0) > 0)) return;
+
+  const batch = firestore().batch();
+
+  // Reverse any miss penalty for that day (adds back the deducted points).
+  const missed = docs.find((c) => c.wasAutoFailed || (c.pointsAwarded ?? 0) < 0);
+  if (missed) {
+    batch.delete(Col.completions(familyId).doc(missed.id));
+    const revRef = Col.transactions(familyId).doc();
+    batch.set(revRef, {
+      familyId,
+      memberId,
+      delta: -(missed.pointsAwarded ?? 0), // pointsAwarded is negative → adds it back
+      reason: `Restored: ${taskTitle}`,
+      source: 'task' as const,
+      referenceId: taskId,
+      createdAt: firestore.Timestamp.now(),
+    });
+  }
+
+  const completionRef = Col.completions(familyId).doc();
+  batch.set(completionRef, {
+    taskId,
+    memberId,
+    weekId,
+    completedDate: dateKey,
+    monthId,
+    completedAt: firestore.Timestamp.now(),
+    wasAutoFailed: false,
+    pointsAwarded: pointValue,
+  });
+  const txRef = Col.transactions(familyId).doc();
+  batch.set(txRef, {
+    familyId,
+    memberId,
+    delta: pointValue,
+    reason: `Completed (late): ${taskTitle}`,
+    source: 'task' as const,
+    referenceId: taskId,
     createdAt: firestore.Timestamp.now(),
   });
 

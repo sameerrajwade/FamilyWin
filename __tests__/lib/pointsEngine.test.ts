@@ -23,8 +23,43 @@ import {
   getRankEmoji,
   getPointsColor,
   formatPoints,
+  missedTaskPenaltyAmount,
+  toDateKey,
+  graceWindowDays,
+  MISSED_TASK_GRACE_DAYS,
 } from '@/lib/pointsEngine';
 import type { PointTransaction } from '@/types';
+
+// ─── missed-task penalty helpers ──────────────────────────────────────────────
+describe('missedTaskPenaltyAmount', () => {
+  it('is half the point value, rounded', () => {
+    expect(missedTaskPenaltyAmount(10)).toBe(5);
+    expect(missedTaskPenaltyAmount(50)).toBe(25);
+    expect(missedTaskPenaltyAmount(25)).toBe(13); // 12.5 → 13
+  });
+  it('is at least 1 for any positive task', () => {
+    expect(missedTaskPenaltyAmount(1)).toBe(1);
+  });
+  it('is 0 for a zero or negative value task', () => {
+    expect(missedTaskPenaltyAmount(0)).toBe(0);
+    expect(missedTaskPenaltyAmount(-10)).toBe(0);
+  });
+});
+
+describe('graceWindowDays / toDateKey', () => {
+  it('returns the past N days most-recent first, excluding today', () => {
+    const now = new Date(2026, 7, 15); // Sat Aug 15 2026
+    expect(graceWindowDays(now, 2)).toEqual(['2026-08-14', '2026-08-13']);
+  });
+  it('defaults to the 2-day grace window', () => {
+    const now = new Date(2026, 0, 1); // Jan 1 → crosses year boundary
+    expect(MISSED_TASK_GRACE_DAYS).toBe(2);
+    expect(graceWindowDays(now)).toEqual(['2025-12-31', '2025-12-30']);
+  });
+  it('toDateKey formats local Y-M-D zero-padded', () => {
+    expect(toDateKey(new Date(2026, 2, 5))).toBe('2026-03-05');
+  });
+});
 
 // ─── calculateTaskPoints ──────────────────────────────────────────────────────
 describe('calculateTaskPoints', () => {

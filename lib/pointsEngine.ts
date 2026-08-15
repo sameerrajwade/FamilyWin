@@ -11,6 +11,44 @@ export function calculateAutoFailPenalty(task: Task): number {
   return -task.point_value;
 }
 
+// ─── MISSED-TASK PENALTY (optional per-family feature) ───────────────────────
+// How many days back a missed task can still be "caught up" (marked done),
+// which restores its points and reverses the half-penalty.
+export const MISSED_TASK_GRACE_DAYS = 2;
+
+/**
+ * The penalty (a POSITIVE magnitude) deducted when a daily task is missed, when
+ * the optional missed-task penalty is enabled: half the task's point value,
+ * rounded, and at least 1 for any positive-value task. Zero-value tasks never
+ * penalize.
+ */
+export function missedTaskPenaltyAmount(pointValue: number): number {
+  if (!pointValue || pointValue <= 0) return 0;
+  return Math.max(1, Math.round(pointValue / 2));
+}
+
+/**
+ * Local YYYY-MM-DD for a date (matches CompletionDoc.completedDate). Kept here
+ * (pure) so both the grace-window UI and its tests agree on day bucketing.
+ */
+export function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * The catch-up-able past days (most-recent first), excluding today, within the
+ * grace window. e.g. on Wed with a 2-day window → [Tue, Mon].
+ */
+export function graceWindowDays(now: Date = new Date(), graceDays: number = MISSED_TASK_GRACE_DAYS): string[] {
+  const days: string[] = [];
+  for (let i = 1; i <= graceDays; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    days.push(toDateKey(d));
+  }
+  return days;
+}
+
 export function calculateStreakBonus(streakDays: number): number {
   if (streakDays === 7) return 50; // Perfect week bonus
   if (streakDays === 14) return 100; // Two week bonus
