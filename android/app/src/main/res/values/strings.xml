@@ -1,3 +1,9 @@
 <resources>
   <string name="app_name">Lootboard</string>
+  <!-- Overrides expo-system-ui's default of "light", which was forcing the whole
+       app to light mode (Auto never followed system dark). "automatic" =>
+       AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM. NOTE: generated file — a future
+       `expo prebuild` should regenerate this from app.json's userInterfaceStyle
+       ("automatic"); if it doesn't, re-add this line. -->
+  <string name="expo_system_ui_user_interface_style" translatable="false">automatic</string>
 </resources>

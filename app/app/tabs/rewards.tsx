@@ -559,7 +559,9 @@ function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, colors }: 
 }) {
   const canAfford = spendablePoints >= reward.pointCost;
   const remaining = Math.max(0, reward.pointCost - spendablePoints);
-  const progress = reward.pointCost > 0 ? Math.min(1, spendablePoints / reward.pointCost) : 1;
+  // Clamp to 0–1: a negative balance (e.g. after a penalty) must not render as a
+  // full or overflowing bar.
+  const progress = reward.pointCost > 0 ? Math.max(0, Math.min(1, spendablePoints / reward.pointCost)) : 1;
   return (
     <View style={[styles.rewardCard, { backgroundColor: colors.surface }, !canAfford && styles.rewardCardDisabled]}>
       <View style={styles.rewardTop}>

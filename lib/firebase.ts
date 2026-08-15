@@ -571,7 +571,7 @@ export async function completeTask(params: {
   weekId: string;
   pointValue: number;
   taskTitle: string;
-}): Promise<TransactionDoc> {
+}): Promise<TransactionDoc & { completionId: string }> {
   const batch = firestore().batch();
 
   const completionRef = Col.completions(params.familyId).doc();
@@ -599,7 +599,7 @@ export async function completeTask(params: {
   batch.set(txRef, txData);
 
   await batch.commit();
-  return { id: txRef.id, ...txData };
+  return { id: txRef.id, completionId: completionRef.id, ...txData };
 }
 
 /**
@@ -615,9 +615,16 @@ export async function undoTaskCompletion(params: {
   pointsAwarded: number;
   taskTitle: string;
 }): Promise<void> {
-  const batch = firestore().batch();
-
   const completionRef = Col.completions(params.familyId).doc(params.completionId);
+
+  // IDEMPOTENT GUARD: if the completion is already gone (undo already ran, or a
+  // second/concurrent tap), do nothing. Without this, calling undo twice on the
+  // same completion wrote TWO reversing -pts transactions against a single +pts
+  // completion → phantom negative points (verified −10 bug on device).
+  const existing = await completionRef.get();
+  if (!existing.exists()) return;
+
+  const batch = firestore().batch();
   batch.delete(completionRef);
 
   const txRef = Col.transactions(params.familyId).doc();

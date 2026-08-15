@@ -21,10 +21,12 @@ import { getCurrentWeekRange, dailyStreak, getLevel } from '@/lib/pointsEngine';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
-import { EmptyState, SectionHeader, PointsChip, Avatar } from '@/components/ui/index';
+import { EmptyState, Avatar } from '@/components/ui/index';
+import { Icon } from '@/components/ui/Icon';
 import { BrandBar } from '@/components/ui/Brand';
+import { LinearGradient } from 'expo-linear-gradient';
 // ProfileSwitcherBanner replaced by inline ProfileTabBar below
-import { CATEGORY_COLORS, CATEGORY_ICONS, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { CATEGORY_COLORS, CATEGORY_ICONS, FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 
 type TaskWithCompletion = {
   id: string; familyId: string; title: string; category: string;
@@ -55,7 +57,10 @@ export default function HomeScreen() {
   const [streak, setStreak] = useState(0);
   const [lifetimePoints, setLifetimePoints] = useState(0);
   // Undo state — cleared after 5 seconds
-  const [undoTask, setUndoTask] = useState<{ id: string; title: string; txId: string; points: number } | null>(null);
+  const [undoTask, setUndoTask] = useState<{ id: string; title: string; txId: string; completionId: string; points: number } | null>(null);
+  // Guards against undoing the same completion twice (rapid taps, or toast+card
+  // both firing) — the double-fire that produced phantom −pts. Keyed by completionId.
+  const undoInFlightRef = useRef<Set<string>>(new Set());
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guards the loading skeleton so it only shows on the FIRST load for a
   // profile — background reloads driven by the onSnapshot listeners must not
@@ -262,7 +267,7 @@ export default function HomeScreen() {
 
       // Show undo toast for 5 seconds
       if (undoTimer.current) clearTimeout(undoTimer.current);
-      setUndoTask({ id: task.id, title: task.title, txId: tx.id, points: task.pointValue });
+      setUndoTask({ id: task.id, title: task.title, txId: tx.id, completionId: tx.completionId, points: task.pointValue });
       undoTimer.current = setTimeout(() => setUndoTask(null), 5000);
 
       const remaining = todaysTasks.filter((t: any) => !t.completion && t.id !== task.id);
@@ -280,6 +285,40 @@ export default function HomeScreen() {
       Alert.alert('Error', 'Could not complete task. Please try again.');
     } finally {
       setCompletingTaskId(null);
+    }
+  }
+
+  // Shared undo used by BOTH the card "tap to undo" and the toast. Guarded against
+  // double-fire, optimistically clears the card, and relies on the idempotent
+  // undoTaskCompletion (which no-ops if the completion is already gone). Together
+  // these kill the phantom-negative-points bug.
+  async function performUndo(p: { taskId: string; completionId: string; points: number; title: string }) {
+    if (!family || !effectiveMember) return;
+    if (undoInFlightRef.current.has(p.completionId)) return;
+    undoInFlightRef.current.add(p.completionId);
+    // Optimistic: drop the completion locally so the card flips to incomplete
+    // immediately and can't be re-undone while the write is in flight.
+    setTodaysTasks((useTaskStore.getState().todaysTasks as any[]).map(
+      (t) => t.id === p.taskId ? { ...t, completion: null } : t,
+    ) as any);
+    try {
+      await undoTaskCompletion({
+        familyId: family.id,
+        completionId: p.completionId,
+        taskId: p.taskId,
+        memberId: effectiveMember.id,
+        pointsAwarded: p.points,
+        taskTitle: p.title,
+      });
+      setWeeklyPoints((w) => w - p.points);
+      updateMemberPoints(effectiveMember.id, -p.points);
+      await loadTasks();
+    } catch (e) {
+      if (__DEV__) console.error('[Undo]', e);
+      Alert.alert('Error', 'Could not undo this completion. Please try again.');
+      await loadTasks(); // restore true state after a failed optimistic clear
+    } finally {
+      undoInFlightRef.current.delete(p.completionId);
     }
   }
 
@@ -305,23 +344,13 @@ export default function HomeScreen() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Undo', style: 'destructive', onPress: async () => {
-          try {
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            await undoTaskCompletion({
-              familyId: family.id,
-              completionId: task.completion!.id,
-              taskId: task.id,
-              memberId: effectiveMember.id,
-              pointsAwarded: task.completion!.pointsAwarded,
-              taskTitle: task.title,
-            });
-            setWeeklyPoints((p) => p - task.completion!.pointsAwarded);
-            updateMemberPoints(effectiveMember.id, -task.completion!.pointsAwarded);
-            await loadTasks();
-          } catch (e) {
-            if (__DEV__) console.error('[Undo Task]', e);
-            Alert.alert('Error', 'Could not undo this completion. Please try again.');
-          }
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+          await performUndo({
+            taskId: task.id,
+            completionId: task.completion!.id,
+            points: task.completion!.pointsAwarded,
+            title: task.title,
+          });
         },
       },
     ]);
@@ -348,6 +377,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      <LinearGradient colors={[colors.primary + '14', 'transparent']} style={styles.topWash} pointerEvents="none" />
       <Confetti visible={showConfetti} count={80} />
       <View style={styles.pointBurstContainer} pointerEvents="none">
         <PointBurst key={pointBurstKey} points={lastCompletedPoints} visible={pointBurstVisible} />
@@ -360,18 +390,15 @@ export default function HomeScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.undoBtn, { backgroundColor: colors.primary }]}
-            onPress={async () => {
+            onPress={() => {
               if (!family?.id) return;
               clearTimeout(undoTimer.current!);
+              const u = undoTask;
               setUndoTask(null);
-              // Reverse: delete the transaction and completion — simple soft undo
-              try {
-                await Col.transactions(family.id).doc(undoTask.txId).delete();
-                // Reload tasks to show the task as incomplete again
-                setWeeklyPoints((p) => p - undoTask.points);
-                updateMemberPoints(effectiveMember!.id, -undoTask.points);
-                loadTasks();
-              } catch { /* silent — task stays complete if undo fails */ }
+              // Route through the same guarded, idempotent undo as the card. The
+              // old path deleted the transaction directly, which the security
+              // rules block (transactions are immutable) — so it silently failed.
+              performUndo({ taskId: u.id, completionId: u.completionId, points: u.points, title: u.title });
             }}
             accessibilityLabel="Undo task completion"
             accessibilityRole="button"
@@ -428,7 +455,8 @@ export default function HomeScreen() {
                     accessibilityRole="button"
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.actionPillText}>📋 Task</Text>
+                    <Icon name="add-circle" size={15} color="#FFFFFF" />
+                    <Text style={styles.actionPillText}>Task</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionPill, { backgroundColor: colors.danger + '18', borderWidth: 1.5, borderColor: colors.danger }]}
@@ -437,7 +465,8 @@ export default function HomeScreen() {
                     accessibilityRole="button"
                     activeOpacity={0.85}
                   >
-                    <Text style={[styles.actionPillText, { color: colors.danger }]}>⚠️ Penalty</Text>
+                    <Icon name="warning" size={15} color={colors.danger} />
+                    <Text style={[styles.actionPillText, { color: colors.danger }]}>Penalty</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -452,39 +481,28 @@ export default function HomeScreen() {
           </SlideIn>
         )}
         <SlideIn delay={130}>
-          <View style={[styles.levelCard, { backgroundColor: colors.surface }, Shadow.sm]}>
-            <Text style={styles.levelEmoji}>{level.emoji}</Text>
-            <View style={styles.levelInfo}>
-              <View style={styles.levelTopRow}>
-                <Text style={[styles.levelTitle, { color: colors.text }]} numberOfLines={1}>
-                  Lv {level.level} · {level.title}
-                </Text>
-                <Text style={[styles.levelNext, { color: colors.textSecondary }]}>
-                  {level.next != null ? `${level.next} pts to Lv ${level.level + 1}` : '⭐ Max level'}
-                </Text>
-              </View>
-              <View style={styles.levelBarBg}>
-                <View style={[styles.levelBarFill, { width: `${Math.round(level.progress * 100)}%`, backgroundColor: colors.gold ?? colors.primary }]} />
-              </View>
-            </View>
-          </View>
-        </SlideIn>
-        <SlideIn delay={150}>
-          <View style={[styles.progressCard, { backgroundColor: colors.surface }, Shadow.sm]}>
-            <View style={styles.progressHeader}>
-              <Text style={[styles.progressTitle, { color: colors.text, fontSize: fontSize(FontSize.sm) }]}>
-                {allDone ? '🎉 All tasks done!' : `${completedCount} of ${totalCount} tasks done`}
-              </Text>
-              <View style={styles.progressRight}>
-                <Text style={[styles.progressPercent, { color: colors.primary }]}>{Math.round(progressPct * 100)}%</Text>
-                <PointsChip points={weeklyPoints} size="sm" />
-              </View>
-            </View>
-            <AnimatedProgressBar progress={progressPct} color={colors.primary} />
-          </View>
+          <StatsHero
+            level={level}
+            weeklyPoints={weeklyPoints}
+            completedCount={completedCount}
+            totalCount={totalCount}
+            progressPct={progressPct}
+            allDone={allDone}
+          />
         </SlideIn>
         <View style={styles.section}>
-          <SlideIn delay={200}><SectionHeader title="Today's Tasks" /></SlideIn>
+          <SlideIn delay={200}>
+            <View style={styles.tasksHeader}>
+              <Text style={[styles.tasksHeaderTitle, { color: colors.text }]}>Today's Tasks</Text>
+              {totalCount > 0 && (
+                <View style={[styles.tasksCountChip, { backgroundColor: allDone ? colors.success : colors.primary + '18' }]}>
+                  <Text style={[styles.tasksCountText, { color: allDone ? '#FFFFFF' : colors.primary }]}>
+                    {allDone ? '🎉 all done' : `${completedCount}/${totalCount} done`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </SlideIn>
           {isLoadingTasks ? <LoadingSkeletons /> :
             todaysTasks.length === 0 ? (
               <SlideIn delay={250}>
@@ -519,6 +537,73 @@ function AnimatedProgressBar({ progress, color }: { progress: number; color: str
   return <View style={styles.progressBarBg}><Animated.View style={[styles.progressBarFill, { backgroundColor: color }, animStyle]} /></View>;
 }
 
+// ── Hero card — one cohesive gradient panel fusing points, level, and today's ──
+// progress. Replaces the two flat stacked cards for a designed, branded anchor.
+function StatsHero({ level, weeklyPoints, completedCount, totalCount, progressPct, allDone }: {
+  level: { level: number; title: string; emoji: string; progress: number; next: number | null };
+  weeklyPoints: number;
+  completedCount: number;
+  totalCount: number;
+  progressPct: number;
+  allDone: boolean;
+}) {
+  const levelWidth = useSharedValue(0);
+  const taskWidth = useSharedValue(0);
+  useEffect(() => { levelWidth.value = withTiming(Math.round(level.progress * 100), { duration: 800 }); }, [level.progress]);
+  useEffect(() => { taskWidth.value = withTiming(Math.round(progressPct * 100), { duration: 800 }); }, [progressPct]);
+  const levelBarStyle = useAnimatedStyle(() => ({ width: `${levelWidth.value}%` as any }));
+  const taskBarStyle = useAnimatedStyle(() => ({ width: `${taskWidth.value}%` as any }));
+
+  return (
+    <LinearGradient
+      colors={[...Gradients.primary]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.hero, Shadow.md]}
+    >
+      {/* Top row — weekly points headline + today's tally */}
+      <View style={styles.heroTopRow}>
+        <View style={styles.heroPointsBlock}>
+          <View style={styles.heroPointsRow}>
+            <Text style={styles.heroPointsNum}>{weeklyPoints}</Text>
+            <Text style={styles.heroPointsUnit}>pts</Text>
+          </View>
+          <Text style={styles.heroPointsLabel}>this week</Text>
+        </View>
+        <View style={styles.heroTodayChip}>
+          <Text style={styles.heroTodayNum}>{allDone ? '✓' : `${completedCount}/${totalCount}`}</Text>
+          <Text style={styles.heroTodayLabel}>{allDone ? 'all done' : 'today'}</Text>
+        </View>
+      </View>
+
+      {/* Today's task progress bar */}
+      <View style={styles.heroBarRow}>
+        <View style={styles.heroBarTrack}>
+          <Animated.View style={[styles.heroBarFill, { backgroundColor: '#FFFFFF' }, taskBarStyle]} />
+        </View>
+        <Text style={styles.heroBarPct}>{Math.round(progressPct * 100)}%</Text>
+      </View>
+
+      {/* Divider */}
+      <View style={styles.heroDivider} />
+
+      {/* Level row — emoji + title + XP bar to next level */}
+      <View style={styles.heroLevelRow}>
+        <Text style={styles.heroLevelEmoji}>{level.emoji}</Text>
+        <View style={styles.heroLevelInfo}>
+          <View style={styles.heroLevelTop}>
+            <Text style={styles.heroLevelTitle} numberOfLines={1}>Lv {level.level} · {level.title}</Text>
+            <Text style={styles.heroLevelNext}>{level.next != null ? `${level.next} to Lv ${level.level + 1}` : '⭐ Max'}</Text>
+          </View>
+          <View style={styles.heroLevelTrack}>
+            <Animated.View style={[styles.heroLevelFill, { backgroundColor: Gradients.gold[0] }, levelBarStyle]} />
+          </View>
+        </View>
+      </View>
+    </LinearGradient>
+  );
+}
+
 function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSize, isReadOnly, isParent }: any) {
   const isDone = !!task.completion && !task.completion.wasAutoFailed;
   const isFailed = task.completion?.wasAutoFailed;
@@ -526,11 +611,20 @@ function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSiz
   const cardAnim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const canTapToUndo = isDone && !isReadOnly && !isCompleting;
   const isDisabled = (isDone && !canTapToUndo) || isFailed || isCompleting || isReadOnly;
+  const catColor = CATEGORY_COLORS[task.category] ?? colors.primary;
+  const diffColor = task.difficulty === 'easy' ? colors.success : task.difficulty === 'medium' ? colors.warning : colors.danger;
   return (
     <Animated.View style={cardAnim}>
       <Pressable
         android_disableSound
-        style={[styles.taskCard, { backgroundColor: colors.surface }, isDone && styles.taskCardDone, isFailed && { borderWidth: 1.5, borderColor: colors.danger }, isReadOnly && { opacity: 0.75 }, Shadow.sm]}
+        style={[
+          styles.taskCard,
+          { backgroundColor: colors.surface },
+          isDone && { backgroundColor: (colors.successLight ?? colors.surface) },
+          isFailed && { borderWidth: 1.5, borderColor: colors.danger, backgroundColor: (colors.dangerLight ?? colors.surface) },
+          isReadOnly && { opacity: 0.8 },
+          Shadow.sm,
+        ]}
         onPress={() => {
           if (isDisabled) return;
           if (isDone && canTapToUndo) onUndo?.(task);
@@ -563,39 +657,42 @@ function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSiz
         accessibilityRole="button"
         accessibilityState={{ disabled: isDisabled, checked: isDone }}
       >
-        <View style={[styles.taskCategoryBar, { backgroundColor: CATEGORY_COLORS[task.category] ?? colors.primary }]} />
         {isParent && !isDone && !isFailed && (
-          <View style={[styles.editHint, { backgroundColor: colors.background + 'AA' }]} pointerEvents="none">
-            <Text style={[styles.editHintText, { color: colors.textMuted }]}>hold to edit</Text>
+          <View style={[styles.editHint, { backgroundColor: colors.background + 'DD' }]} pointerEvents="none">
+            <Text style={[styles.editHintText, { color: colors.textMuted }]}>✎ hold to edit</Text>
           </View>
         )}
         {canTapToUndo && (
-          <View style={[styles.editHint, { backgroundColor: colors.background + 'AA' }]} pointerEvents="none">
-            <Text style={[styles.editHintText, { color: colors.textMuted }]}>tap to undo</Text>
+          <View style={[styles.editHint, { backgroundColor: colors.background + 'DD' }]} pointerEvents="none">
+            <Text style={[styles.editHintText, { color: colors.textMuted }]}>↩ tap to undo</Text>
           </View>
         )}
         <View style={styles.taskContent}>
-          <Text style={styles.taskEmoji}>{task.taskEmoji ?? CATEGORY_ICONS[task.category] ?? '📌'}</Text>
+          <View style={[styles.taskEmojiBubble, { backgroundColor: catColor + '22' }]}>
+            <Text style={styles.taskEmoji}>{task.taskEmoji ?? CATEGORY_ICONS[task.category] ?? '📌'}</Text>
+          </View>
           <View style={styles.taskInfo}>
-            <Text style={[styles.taskTitle, { color: colors.text, fontSize: fontSize(FontSize.md) }, (isDone || isFailed) && { opacity: 0.5, textDecorationLine: 'line-through' }]}>{task.title}</Text>
+            <Text numberOfLines={1} style={[styles.taskTitle, { color: colors.text, fontSize: fontSize(FontSize.md) }, (isDone || isFailed) && { opacity: 0.55, textDecorationLine: 'line-through' }]}>{task.title}</Text>
             <View style={styles.taskMeta}>
-              <Text style={[styles.taskDifficulty, { color: colors.textSecondary }]}>
-                {task.difficulty === 'easy' ? '🟢' : task.difficulty === 'medium' ? '🟡' : '🔴'} {task.difficulty}
-              </Text>
-              <Text style={[styles.recurrenceBadge, { color: colors.textMuted }]}>
-                {'  ·  '}
-                {task.recurrence === 'daily' ? '🔄 daily' : task.recurrence === 'weekly' ? '📅 weekly' : task.recurrence === 'monthly' ? '🗓️ monthly' : '1️⃣ once'}
-              </Text>
+              <View style={[styles.diffPill, { backgroundColor: diffColor + '20' }]}>
+                <View style={[styles.diffDot, { backgroundColor: diffColor }]} />
+                <Text style={[styles.diffPillText, { color: diffColor }]}>{task.difficulty}</Text>
+              </View>
+              <View style={[styles.recPill, { backgroundColor: colors.background }]}>
+                <Text style={[styles.recPillText, { color: colors.textMuted }]}>
+                  {task.recurrence === 'daily' ? '🔄 daily' : task.recurrence === 'weekly' ? '📅 weekly' : task.recurrence === 'monthly' ? '🗓️ monthly' : '1️⃣ once'}
+                </Text>
+              </View>
             </View>
           </View>
           <View style={styles.taskRight}>
             {isCompleting ? <ActivityIndicator color={colors.primary} size="small" /> :
-              isDone ? <View style={[styles.statusIcon, { backgroundColor: colors.success }]}><Text style={styles.statusIconText}>✓</Text></View> :
+              isDone ? <View style={[styles.statusIcon, { backgroundColor: colors.success }, Shadow.sm]}><Text style={styles.statusIconText}>✓</Text></View> :
               isFailed ? <View style={[styles.statusIcon, { backgroundColor: colors.danger }]}><Text style={styles.statusIconText}>✗</Text></View> :
               isReadOnly ? <View style={[styles.statusIcon, { backgroundColor: colors.border }]}><Text style={{ fontSize: 16 }}>👁</Text></View> :
-              <View style={[styles.pointsBadge, { backgroundColor: colors.primary + '22' }]}>
-                <Text style={[styles.pointsText, { color: colors.primary, fontSize: fontSize(FontSize.md) }]}>+{task.pointValue}</Text>
-                <Text style={[styles.pointsLabel, { color: colors.primary }]}>pts</Text>
+              <View style={[styles.rewardChip, { backgroundColor: colors.primary }, Shadow.sm]}>
+                <Text style={styles.rewardChipText}>+{task.pointValue}</Text>
+                <Text style={styles.rewardChipUnit}>pts</Text>
               </View>
             }
           </View>
@@ -672,9 +769,10 @@ function LoadingSkeletons() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  topWash: { position: 'absolute', top: 0, left: 0, right: 0, height: 280 },
   pointBurstContainer: { position: 'absolute', top: 120, left: 0, right: 0, alignItems: 'center', zIndex: 100 },
   brandRow: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
-  actionPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingVertical: 8, borderRadius: BorderRadius.full, ...Shadow.sm },
+  actionPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: BorderRadius.full, ...Shadow.sm },
   actionPillText: { color: '#FFFFFF', fontFamily: FontFamily.extraBold, fontSize: FontSize.xs },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
   headerLeft: { flex: 1 },
@@ -686,46 +784,63 @@ const styles = StyleSheet.create({
   penaltyButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
   penaltyButtonText: { fontSize: 20, lineHeight: 24 },
   mascotSection: { alignItems: 'center', paddingVertical: Spacing.md },
-  levelCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: Spacing.lg, marginTop: Spacing.sm, borderRadius: BorderRadius.lg, padding: Spacing.md, gap: Spacing.sm },
-  levelEmoji: { fontSize: 30 },
-  levelInfo: { flex: 1 },
-  levelTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 },
-  levelTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, flexShrink: 1 },
-  levelNext: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, marginLeft: Spacing.sm },
-  levelBarBg: { height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(128,128,128,0.2)' },
-  levelBarFill: { height: '100%', borderRadius: 4 },
-  progressCard: { marginHorizontal: Spacing.lg, marginVertical: Spacing.sm, borderRadius: BorderRadius.lg, padding: Spacing.md },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
-  progressTitle: { fontFamily: FontFamily.semiBold, flex: 1 },
-  progressRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  progressPercent: { fontFamily: FontFamily.extraBold, fontSize: FontSize.sm },
+  // Hero card — unified gradient stats panel
+  hero: { marginHorizontal: Spacing.lg, marginTop: Spacing.sm, marginBottom: Spacing.sm, borderRadius: BorderRadius.xl ?? BorderRadius.lg, padding: Spacing.lg },
+  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  heroPointsBlock: { flex: 1 },
+  heroPointsRow: { flexDirection: 'row', alignItems: 'baseline' },
+  heroPointsNum: { fontFamily: FontFamily.black ?? FontFamily.extraBold, fontSize: 40, color: '#FFFFFF', lineHeight: 44 },
+  heroPointsUnit: { fontFamily: FontFamily.extraBold, fontSize: FontSize.lg, color: 'rgba(255,255,255,0.85)', marginLeft: 6 },
+  heroPointsLabel: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: 'rgba(255,255,255,0.85)', marginTop: -2 },
+  heroTodayChip: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, minWidth: 66 },
+  heroTodayNum: { fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, color: '#FFFFFF' },
+  heroTodayLabel: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
+  heroBarRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.md },
+  heroBarTrack: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.25)' },
+  heroBarFill: { height: '100%', borderRadius: 4 },
+  heroBarPct: { fontFamily: FontFamily.extraBold, fontSize: FontSize.xs, color: '#FFFFFF', minWidth: 34, textAlign: 'right' },
+  heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginVertical: Spacing.md },
+  heroLevelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  heroLevelEmoji: { fontSize: 26 },
+  heroLevelInfo: { flex: 1 },
+  heroLevelTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 },
+  heroLevelTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.sm, color: '#FFFFFF', flexShrink: 1 },
+  heroLevelNext: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: 'rgba(255,255,255,0.85)', marginLeft: Spacing.sm },
+  heroLevelTrack: { height: 6, borderRadius: 3, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.25)' },
+  heroLevelFill: { height: '100%', borderRadius: 3 },
   progressBarBg: { height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(128,128,128,0.2)' },
   progressBarFill: { height: '100%', borderRadius: 4 },
   section: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
   emptyAltBtn: { alignItems: 'center', paddingVertical: Spacing.sm, marginTop: -Spacing.sm },
   emptyAltBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
-  taskCard: { borderRadius: BorderRadius.lg, marginBottom: Spacing.sm, flexDirection: 'row', overflow: 'hidden' },
-  taskCardDone: { opacity: 0.65 },
-  taskCategoryBar: { width: 5 },
-  taskContent: { flex: 1, flexDirection: 'row', alignItems: 'center', padding: Spacing.md },
-  taskEmoji: { fontSize: 28, marginRight: Spacing.sm },
+  taskCard: { borderRadius: 20, marginBottom: Spacing.sm, flexDirection: 'row', overflow: 'hidden' },
+  taskContent: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm + 2, paddingHorizontal: Spacing.md },
+  taskEmojiBubble: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.sm },
+  taskEmoji: { fontSize: 26 },
   taskInfo: { flex: 1 },
-  taskTitle: { fontFamily: FontFamily.bold },
-  taskMeta: { flexDirection: 'row', marginTop: 4 },
-  taskDifficulty: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, textTransform: 'capitalize' },
-  taskRight: { marginLeft: Spacing.sm, alignItems: 'center', minWidth: 55 },
-  pointsBadge: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, alignItems: 'center' },
-  pointsText: { fontFamily: FontFamily.extraBold },
-  pointsLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold },
-  statusIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  statusIconText: { fontSize: FontSize.lg, color: '#FFFFFF', fontFamily: FontFamily.bold },
+  taskTitle: { fontFamily: FontFamily.extraBold },
+  taskMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6 },
+  diffPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.full },
+  diffDot: { width: 6, height: 6, borderRadius: 3 },
+  diffPillText: { fontSize: FontSize.xs, fontFamily: FontFamily.extraBold, textTransform: 'capitalize' },
+  recPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.full },
+  recPillText: { fontSize: 10, fontFamily: FontFamily.bold, textTransform: 'capitalize' },
+  taskRight: { marginLeft: Spacing.sm, alignItems: 'center', minWidth: 56 },
+  rewardChip: { borderRadius: BorderRadius.full, paddingHorizontal: 14, paddingVertical: 7, alignItems: 'center', minWidth: 52 },
+  rewardChipText: { fontFamily: FontFamily.black, fontSize: FontSize.md, color: '#FFFFFF', lineHeight: 20 },
+  rewardChipUnit: { fontSize: 9, fontFamily: FontFamily.bold, color: 'rgba(255,255,255,0.9)', marginTop: -2 },
+  statusIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  statusIconText: { fontSize: FontSize.lg, color: '#FFFFFF', fontFamily: FontFamily.black },
   // Undo toast
   undoToast: { position: 'absolute', bottom: 16, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', borderRadius: BorderRadius.lg, padding: Spacing.sm, borderWidth: 1, zIndex: 200, ...Shadow.md },
   undoText: { flex: 1, fontSize: FontSize.sm, fontFamily: FontFamily.semiBold },
   undoBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 8, marginLeft: Spacing.sm },
   undoBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: '#FFF' },
-  // Recurrence badge
-  recurrenceBadge: { fontSize: 9, fontFamily: FontFamily.semiBold, marginTop: 3, textTransform: 'capitalize' },
+  // Today's Tasks section header
+  tasksHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm, marginTop: Spacing.xs },
+  tasksHeaderTitle: { fontFamily: FontFamily.black, fontSize: FontSize.xl },
+  tasksCountChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: BorderRadius.full },
+  tasksCountText: { fontFamily: FontFamily.extraBold, fontSize: FontSize.xs },
   // Edit hint (long press)
   editHint: { position: 'absolute', top: 4, right: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   editHintText: { fontSize: 8, fontFamily: FontFamily.regular },
