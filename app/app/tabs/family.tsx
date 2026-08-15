@@ -6,7 +6,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   RefreshControl, Alert, Modal, TextInput, Share, ActivityIndicator, Image, Linking,
@@ -23,8 +23,8 @@ import {
 } from '@/lib/firebase';
 import { firestore } from '@/lib/fb';
 import { useAuthStore, useFamilyStore } from '@/store';
-import { useTheme } from '@/lib/theme';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
+import { useTheme, type ThemeColors } from '@/lib/theme';
+import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { APP_STORE_URL } from '@/constants/strings';
 import { pickPhotoUri as pickPhotoViaRNIP } from '@/lib/photoPicker';
 import { Avatar } from '@/components/ui';
@@ -35,6 +35,7 @@ export default function FamilyScreen() {
   const { member, family } = useAuthStore();
   const { members, setMembers, updateMember } = useFamilyStore();
   const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState<MemberDoc | null>(null);
@@ -262,6 +263,7 @@ function MemberRow({ member, isSelf, isAdmin, isLast, onRolePress, onRemove, onE
   member: MemberDoc; isSelf: boolean; isAdmin: boolean; isLast: boolean;
   onRolePress: (() => void) | null; onRemove: () => void; onEdit?: (() => void); colors: any;
 }) {
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const roleLabel = member.isManaged ? '👶 Managed child' : member.role.replace('_', ' ');
   const roleColor = member.role === 'admin_parent' ? colors.primary : member.role === 'parent' ? colors.success : colors.textMuted;
 
@@ -291,8 +293,8 @@ function MemberRow({ member, isSelf, isAdmin, isLast, onRolePress, onRemove, onE
           </TouchableOpacity>
         )}
         {isAdmin && !isSelf && (
-          <TouchableOpacity style={[styles.actionChip, { backgroundColor: Colors.danger + '15', borderColor: Colors.danger + '44' }]} onPress={onRemove}>
-            <Text style={[styles.actionChipText, { color: Colors.danger }]}>Remove</Text>
+          <TouchableOpacity style={[styles.actionChip, { backgroundColor: colors.danger + '15', borderColor: colors.danger + '44' }]} onPress={onRemove}>
+            <Text style={[styles.actionChipText, { color: colors.danger }]}>Remove</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -370,6 +372,8 @@ function choosePhotoSource(title: string, cb: (source: 'library' | 'camera') => 
 function AddChildModal({ familyId, onClose, onAdded }: {
   familyId: string; onClose: () => void; onAdded: (child: MemberDoc) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [emoji, setEmoji] = useState('🐼');
@@ -429,7 +433,7 @@ function AddChildModal({ familyId, onClose, onAdded }: {
   return (
     <Modal visible={modalVisible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalSheet, { backgroundColor: Colors.surface }]}>
+        <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>Add Child Profile 👶</Text>
           <Text style={styles.modalSub}>No phone needed — you switch to their profile to complete tasks on their behalf.</Text>
@@ -445,11 +449,11 @@ function AddChildModal({ familyId, onClose, onAdded }: {
               <View style={styles.photoPreviewBadge}><Icon name="pencil" size={11} color="#FFF" /></View>
             </TouchableOpacity>
             <TouchableOpacity onPress={handlePickPhoto}>
-              <Text style={[styles.addChildLink, { color: Colors.primary }]}>{photoUri ? 'Change Photo' : 'Add Photo'}</Text>
+              <Text style={[styles.addChildLink, { color: colors.primary }]}>{photoUri ? 'Change Photo' : 'Add Photo'}</Text>
             </TouchableOpacity>
             {photoUri && (
               <TouchableOpacity onPress={() => setPhotoUri(null)}>
-                <Text style={[styles.addChildLink, { color: Colors.danger }]}>Remove</Text>
+                <Text style={[styles.addChildLink, { color: colors.danger }]}>Remove</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -474,7 +478,7 @@ function AddChildModal({ familyId, onClose, onAdded }: {
             style={styles.modalInput}
             value={name} onChangeText={setName}
             placeholder="e.g. Tommy, Emma..."
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             maxLength={20} autoFocus
           />
           <Text style={styles.fieldLabel}>Age (optional)</Text>
@@ -482,7 +486,7 @@ function AddChildModal({ familyId, onClose, onAdded }: {
             style={styles.modalInput}
             value={age} onChangeText={setAge}
             placeholder="e.g. 8"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             keyboardType="number-pad" maxLength={2}
           />
           <View style={styles.modalBtns}>
@@ -503,6 +507,8 @@ function AddChildModal({ familyId, onClose, onAdded }: {
 function EditMemberModal({ familyId, member, onClose, onSaved }: {
   familyId: string; member: MemberDoc; onClose: () => void; onSaved: (updates: Partial<MemberDoc>) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [name, setName] = useState(member.displayName);
   const [age, setAge] = useState(member.age != null ? String(member.age) : '');
   const [emoji, setEmoji] = useState(member.avatarEmoji);
@@ -585,7 +591,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
   return (
     <Modal visible={modalVisible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalSheet, { backgroundColor: Colors.surface }]}>
+        <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>Edit Profile ✏️</Text>
           <Text style={styles.modalSub}>Update {member.displayName}'s name, age, and photo.</Text>
@@ -603,7 +609,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleChangePhotoPress} disabled={isPhotoBusy}>
-              <Text style={[styles.addChildLink, { color: Colors.primary }]}>{photoURL ? 'Change Photo' : 'Add Photo'}</Text>
+              <Text style={[styles.addChildLink, { color: colors.primary }]}>{photoURL ? 'Change Photo' : 'Add Photo'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -627,7 +633,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
             style={styles.modalInput}
             value={name} onChangeText={setName}
             placeholder="Name"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             maxLength={20}
           />
           <Text style={styles.fieldLabel}>Age (optional)</Text>
@@ -635,7 +641,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
             style={styles.modalInput}
             value={age} onChangeText={setAge}
             placeholder="e.g. 8"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             keyboardType="number-pad" maxLength={2}
           />
           <View style={styles.modalBtns}>
@@ -656,6 +662,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
 function RoleModal({ target, onClose, onSelect, colors }: {
   target: MemberDoc; onClose: () => void; onSelect: (r: MemberDoc['role']) => void; colors: any;
 }) {
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const ROLES: { role: MemberDoc['role']; label: string; desc: string; emoji: string }[] = [
     { role: 'parent', label: 'Parent', desc: 'Can create tasks, approve rewards, log penalties', emoji: '👩‍💼' },
     { role: 'admin_parent', label: 'Family Admin', desc: 'Full control — can manage roles and all settings', emoji: '👑' },
@@ -691,7 +698,8 @@ function RoleModal({ target, onClose, onSelect, colors }: {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg },
   headerTitle: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold },
@@ -730,23 +738,24 @@ const styles = StyleSheet.create({
   // Modals
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
   modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg, paddingBottom: 40 },
-  modalHandle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.md },
-  modalTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, color: Colors.text, marginBottom: 4 },
-  modalSub: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginBottom: Spacing.lg },
-  fieldLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: Colors.text, marginBottom: 6, marginTop: Spacing.sm },
-  modalInput: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.md, fontFamily: FontFamily.regular, color: Colors.text, backgroundColor: Colors.background },
+  modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.md },
+  modalTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, color: colors.text, marginBottom: 4 },
+  modalSub: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, marginBottom: Spacing.lg },
+  fieldLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.text, marginBottom: 6, marginTop: Spacing.sm },
+  modalInput: { borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.md, fontFamily: FontFamily.regular, color: colors.text, backgroundColor: colors.background },
   photoPreviewWrap: { width: 60, height: 60, borderRadius: 30 },
   photoPreviewImg: { width: 60, height: 60, borderRadius: 30 },
-  photoPreviewEmpty: { width: 60, height: 60, borderRadius: 30, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
-  photoPreviewBadge: { position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.surface },
-  emojiOpt: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
-  emojiOptSelected: { borderColor: Colors.primary, backgroundColor: Colors.primary + '20' },
+  photoPreviewEmpty: { width: 60, height: 60, borderRadius: 30, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  photoPreviewBadge: { position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.surface },
+  emojiOpt: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  emojiOptSelected: { borderColor: colors.primary, backgroundColor: colors.primary + '20' },
   modalBtns: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
-  cancelBtn: { flex: 1, borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center' },
-  cancelBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: Colors.textSecondary },
-  saveBtn: { flex: 1, backgroundColor: Colors.primary, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center' },
+  cancelBtn: { flex: 1, borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center' },
+  cancelBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.textSecondary },
+  saveBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center' },
   saveBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFF' },
   roleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1.5, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.sm },
   roleLabel: { fontSize: FontSize.md, fontFamily: FontFamily.bold },
   roleDesc: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2 },
-});
+  });
+}

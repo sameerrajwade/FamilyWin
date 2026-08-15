@@ -6,15 +6,17 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal,
   ScrollView, Pressable,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useAuthStore, useFamilyStore } from '@/store';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { useTheme, type ThemeColors } from '@/lib/theme';
 import { Avatar } from '@/components/ui';
+import { Icon } from '@/components/ui/Icon';
 import type { MemberDoc } from '@/lib/firebase';
 
 // ── Banner shown when acting as a managed child ───────────────────────────────
@@ -24,6 +26,8 @@ interface ProfileSwitcherBannerProps {
 }
 
 export function ProfileSwitcherBanner({ onPress }: ProfileSwitcherBannerProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { member, actingAsMember } = useAuthStore();
   const { members } = useFamilyStore();
   const isParent = member?.role === 'admin_parent' || member?.role === 'parent';
@@ -51,7 +55,8 @@ export function ProfileSwitcherBanner({ onPress }: ProfileSwitcherBannerProps) {
         </View>
       </View>
       <View style={styles.bannerRight}>
-        <Text style={styles.switchText}>Switch Profile 🔄</Text>
+        <Text style={styles.switchText}>Switch</Text>
+        <Icon name="swap-horizontal" size={16} color="rgba(255,255,255,0.9)" />
       </View>
     </TouchableOpacity>
   );
@@ -65,6 +70,8 @@ interface ProfilePickerProps {
 }
 
 export function ProfilePickerModal({ visible, onClose }: ProfilePickerProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { member, actingAsMember, setActingAsMember } = useAuthStore();
   const { members } = useFamilyStore();
 
@@ -144,6 +151,8 @@ function ProfileRow({
   isActive: boolean;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -171,13 +180,14 @@ function ProfileRow({
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   // Banner
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     marginHorizontal: Spacing.lg,
     marginBottom: Spacing.sm,
     borderRadius: BorderRadius.lg,
@@ -186,27 +196,27 @@ const styles = StyleSheet.create({
     ...Shadow.sm,
   },
   bannerSelf: {
-    backgroundColor: Colors.primary + 'CC', // slightly transparent when acting as self
+    backgroundColor: colors.primary + 'CC', // slightly transparent when acting as self
   },
   bannerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   bannerAvatar: { fontSize: 26 },
   bannerLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: 'rgba(255,255,255,0.75)' },
   bannerName: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFFFFF' },
-  bannerRight: {},
+  bannerRight: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   switchText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: 'rgba(255,255,255,0.9)' },
 
   // Modal
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingBottom: 40,
     maxHeight: '75%',
   },
-  handle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
-  sheetTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, color: Colors.text, paddingHorizontal: Spacing.lg, marginBottom: 4 },
-  sheetSubtitle: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary, paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },
+  handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
+  sheetTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, color: colors.text, paddingHorizontal: Spacing.lg, marginBottom: 4 },
+  sheetSubtitle: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },
 
   // Rows
   profileRow: {
@@ -219,15 +229,16 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     marginBottom: 4,
   },
-  profileRowActive: { backgroundColor: Colors.primary + '15', borderWidth: 1.5, borderColor: Colors.primary + '55' },
+  profileRowActive: { backgroundColor: colors.primary + '15', borderWidth: 1.5, borderColor: colors.primary + '55' },
   rowAvatar: { fontSize: 36 },
   rowInfo: { flex: 1 },
-  rowName: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: Colors.text },
-  rowNameActive: { color: Colors.primary },
-  rowRole: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
-  checkmark: { fontSize: FontSize.lg, color: Colors.primary, fontFamily: FontFamily.black },
+  rowName: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.text },
+  rowNameActive: { color: colors.primary },
+  rowRole: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
+  checkmark: { fontSize: FontSize.lg, color: colors.primary, fontFamily: FontFamily.black },
 
   // Empty hint
   emptyHint: { padding: Spacing.xl, alignItems: 'center' },
-  emptyHintText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
-});
+  emptyHintText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
+  });
+}
