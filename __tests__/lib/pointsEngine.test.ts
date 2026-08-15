@@ -32,17 +32,24 @@ import type { PointTransaction } from '@/types';
 
 // ─── missed-task penalty helpers ──────────────────────────────────────────────
 describe('missedTaskPenaltyAmount', () => {
-  it('is half the point value, rounded', () => {
+  it('defaults to half the point value, rounded', () => {
     expect(missedTaskPenaltyAmount(10)).toBe(5);
     expect(missedTaskPenaltyAmount(50)).toBe(25);
     expect(missedTaskPenaltyAmount(25)).toBe(13); // 12.5 → 13
   });
-  it('is at least 1 for any positive task', () => {
-    expect(missedTaskPenaltyAmount(1)).toBe(1);
+  it('half mode is at least 1 for any positive task', () => {
+    expect(missedTaskPenaltyAmount(1, 'half')).toBe(1);
   });
-  it('is 0 for a zero or negative value task', () => {
-    expect(missedTaskPenaltyAmount(0)).toBe(0);
-    expect(missedTaskPenaltyAmount(-10)).toBe(0);
+  it('full mode deducts the whole point value', () => {
+    expect(missedTaskPenaltyAmount(10, 'full')).toBe(10);
+    expect(missedTaskPenaltyAmount(25, 'full')).toBe(25);
+  });
+  it('off mode deducts nothing', () => {
+    expect(missedTaskPenaltyAmount(50, 'off')).toBe(0);
+  });
+  it('is 0 for a zero or negative value task in any mode', () => {
+    expect(missedTaskPenaltyAmount(0, 'half')).toBe(0);
+    expect(missedTaskPenaltyAmount(-10, 'full')).toBe(0);
   });
 });
 

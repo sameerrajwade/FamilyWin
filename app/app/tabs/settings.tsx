@@ -45,7 +45,7 @@ import {
   upsertNotifConfig, getNotifConfig, updateFamilyWeekStartDay,
   createManagedMember, removeManagedMember,
   uploadMemberPhoto, removeMemberPhoto, deleteMyAccount,
-  setMissedTaskPenalty,
+  setMissedTaskPenalty, missedPenaltyMode,
 } from '@/lib/firebase';
 import { pickPhotoUri } from '@/lib/photoPicker';
 import { useAuthStore, useFamilyStore } from '@/store';
@@ -295,15 +295,17 @@ export default function SettingsScreen() {
 
   // ── Weekly reset day ───────────────────────────────────────────────────────
 
-  async function handleToggleMissedPenalty(value: boolean) {
+  async function handleSetMissedPenalty(mode: 'off' | 'half' | 'full') {
     if (!family?.id) return;
+    const prev = missedPenaltyMode(family);
+    if (mode === prev) return;
     await Haptics.selectionAsync();
     // Optimistic — reflect immediately, roll back on failure
-    setFamily({ ...family, missedTaskPenalty: value });
+    setFamily({ ...family, missedTaskPenalty: mode });
     try {
-      await setMissedTaskPenalty(family.id, value);
+      await setMissedTaskPenalty(family.id, mode);
     } catch {
-      setFamily({ ...family, missedTaskPenalty: !value });
+      setFamily({ ...family, missedTaskPenalty: prev });
       Alert.alert('Error', 'Could not update the missed-task penalty setting.');
     }
   }
@@ -636,18 +638,33 @@ export default function SettingsScreen() {
               </View>
               <Icon name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
-            <SettingsRow
-              label="Deduct points for missed tasks"
-              subtitle="Half a task's points come off if it's not done that day. You can still mark it done up to 2 days later to win them back."
-              right={
-                <Switch
-                  value={!!family?.missedTaskPenalty}
-                  onValueChange={handleToggleMissedPenalty}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor="#FFF"
-                />
-              }
-            />
+            <View style={styles.missedPenaltyBlock}>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>Missed-task penalty</Text>
+              <Text style={[styles.actionSubtitle, { color: colors.textSecondary, marginBottom: Spacing.sm }]}>
+                Points come off a daily task if it's not done that day. Mark it done up to 2 days later to win them back.
+              </Text>
+              <View style={styles.penaltyModeRow}>
+                {([
+                  { mode: 'off' as const, label: 'Off' },
+                  { mode: 'half' as const, label: 'Half' },
+                  { mode: 'full' as const, label: 'Full' },
+                ]).map((opt) => {
+                  const active = missedPenaltyMode(family) === opt.mode;
+                  return (
+                    <TouchableOpacity
+                      key={opt.mode}
+                      style={[styles.penaltyModeChip, { borderColor: colors.border },
+                        active && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                      onPress={() => handleSetMissedPenalty(opt.mode)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                    >
+                      <Text style={[styles.penaltyModeText, { color: active ? '#FFF' : colors.text }]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
           </SettingsSection>
         )}
 
@@ -976,6 +993,10 @@ const styles = StyleSheet.create({
   dayGrid: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   dayChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: BorderRadius.md, borderWidth: 1.5, alignItems: 'center' },
   dayChipText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
+  missedPenaltyBlock: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, borderTopWidth: 1, borderTopColor: 'transparent' },
+  penaltyModeRow: { flexDirection: 'row', gap: Spacing.sm },
+  penaltyModeChip: { flex: 1, paddingVertical: 10, borderRadius: BorderRadius.md, borderWidth: 1.5, alignItems: 'center' },
+  penaltyModeText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
   // Modals
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
   modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg, paddingBottom: 40 },

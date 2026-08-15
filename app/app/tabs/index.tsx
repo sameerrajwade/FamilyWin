@@ -16,7 +16,7 @@ import {
   undoTaskCompletion,
   getCurrentWeekId, getTodayDateString, getCurrentMonthId,
   Col, getFamilyMembers, deleteTask, getRecentCompletions,
-  getMissedCatchUpTasks, applyMissedTaskPenalty, completeTaskForDate,
+  getMissedCatchUpTasks, applyMissedTaskPenalty, completeTaskForDate, missedPenaltyMode,
   type CatchUpItem,
 } from '@/lib/firebase';
 import { getCurrentWeekRange, dailyStreak, getLevel, graceWindowDays, missedTaskPenaltyAmount } from '@/lib/pointsEngine';
@@ -223,8 +223,9 @@ export default function HomeScreen() {
   // missed within the grace window, lazily apply the half-point penalty for any
   // not yet penalized (idempotent), and surface the rest as catch-up-able. Kept
   // OFF the snapshot tick — it does writes — so it settles rather than loops.
+  const penaltyMode = missedPenaltyMode(family);
   const syncCatchUp = useCallback(async () => {
-    if (!family?.id || !effectiveMember?.id || !family?.missedTaskPenalty) {
+    if (!family?.id || !effectiveMember?.id || penaltyMode === 'off') {
       setCatchUpItems([]);
       return;
     }
@@ -236,7 +237,7 @@ export default function HomeScreen() {
         await Promise.all(toPenalize.map((i) => applyMissedTaskPenalty({
           familyId: family.id, memberId: effectiveMember.id,
           taskId: i.task.id, pointValue: i.task.pointValue, taskTitle: i.task.title,
-          penaltyAmount: missedTaskPenaltyAmount(i.task.pointValue), dateKey: i.dateKey,
+          penaltyAmount: missedTaskPenaltyAmount(i.task.pointValue, penaltyMode), dateKey: i.dateKey,
         })));
         items = await getMissedCatchUpTasks({ familyId: family.id, memberId: effectiveMember.id, graceDays: days });
       }
@@ -244,7 +245,7 @@ export default function HomeScreen() {
     } catch (e) {
       if (__DEV__) console.error('catch-up sync failed:', e);
     }
-  }, [family?.id, family?.missedTaskPenalty, effectiveMember?.id]);
+  }, [family?.id, penaltyMode, effectiveMember?.id]);
 
   useEffect(() => { syncCatchUp(); }, [syncCatchUp, weekId]);
 
@@ -576,7 +577,7 @@ export default function HomeScreen() {
                 </Text>
                 {catchUpItems.map((item) => {
                   const key = `${item.task.id}::${item.dateKey}`;
-                  const penalty = missedTaskPenaltyAmount(item.task.pointValue);
+                  const penalty = missedTaskPenaltyAmount(item.task.pointValue, penaltyMode);
                   return (
                     <View key={key} style={[styles.catchUpRow, { borderTopColor: colors.warning + '33' }]}>
                       <View style={{ flex: 1 }}>

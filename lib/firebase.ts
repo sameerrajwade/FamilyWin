@@ -132,7 +132,10 @@ export interface FamilyDoc {
   name: string;
   inviteCode: string;
   weekStartDay: number;
-  missedTaskPenalty?: boolean; // opt-in: a missed daily task deducts half its points (reversible within a 2-day grace window). Absent/false = off.
+  // opt-in: a missed daily task deducts half or the full point value (reversible
+  // within a 2-day grace window). Absent = 'off'. (Legacy boolean true is read
+  // as 'half' by the client for backward-compat.)
+  missedTaskPenalty?: 'off' | 'half' | 'full' | boolean;
   createdAt: Timestamp;
 }
 
@@ -669,9 +672,17 @@ export async function undoTaskCompletion(params: {
 
 // ─── MISSED-TASK PENALTY + GRACE-WINDOW CATCH-UP (optional feature) ───────────
 
-/** Toggle the optional missed-task penalty for a family (parents only via rules). */
-export async function setMissedTaskPenalty(familyId: string, enabled: boolean): Promise<void> {
-  await Col.families().doc(familyId).update({ missedTaskPenalty: enabled });
+/** Set the missed-task penalty mode for a family (parents only via rules). */
+export async function setMissedTaskPenalty(familyId: string, mode: 'off' | 'half' | 'full'): Promise<void> {
+  await Col.families().doc(familyId).update({ missedTaskPenalty: mode });
+}
+
+/** Normalize the family's missed-task penalty setting to a mode (handles the legacy boolean). */
+export function missedPenaltyMode(family: { missedTaskPenalty?: 'off' | 'half' | 'full' | boolean } | null | undefined): 'off' | 'half' | 'full' {
+  const v = family?.missedTaskPenalty;
+  if (v === true) return 'half';        // legacy boolean
+  if (v === 'half' || v === 'full') return v;
+  return 'off';
 }
 
 export interface CatchUpItem {

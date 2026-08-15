@@ -13,17 +13,21 @@ export function calculateAutoFailPenalty(task: Task): number {
 
 // ─── MISSED-TASK PENALTY (optional per-family feature) ───────────────────────
 // How many days back a missed task can still be "caught up" (marked done),
-// which restores its points and reverses the half-penalty.
+// which restores its points and reverses the penalty.
 export const MISSED_TASK_GRACE_DAYS = 2;
 
+// Per-family choice for how much a missed daily task costs. 'off' = feature
+// disabled; 'half' = half the points; 'full' = the whole point value.
+export type MissedPenaltyMode = 'off' | 'half' | 'full';
+
 /**
- * The penalty (a POSITIVE magnitude) deducted when a daily task is missed, when
- * the optional missed-task penalty is enabled: half the task's point value,
- * rounded, and at least 1 for any positive-value task. Zero-value tasks never
- * penalize.
+ * The penalty (a POSITIVE magnitude) deducted when a daily task is missed, for
+ * the given mode: 'half' = half the point value (rounded, min 1); 'full' = the
+ * whole value; 'off' or a zero/negative-value task = 0.
  */
-export function missedTaskPenaltyAmount(pointValue: number): number {
-  if (!pointValue || pointValue <= 0) return 0;
+export function missedTaskPenaltyAmount(pointValue: number, mode: MissedPenaltyMode = 'half'): number {
+  if (mode === 'off' || !pointValue || pointValue <= 0) return 0;
+  if (mode === 'full') return pointValue;
   return Math.max(1, Math.round(pointValue / 2));
 }
 
