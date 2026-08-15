@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, Alert, Share, Image, Linking, Platform,
@@ -28,13 +28,16 @@ import {
   getFamilyMembers, upsertNotifConfig, uploadMemberPhoto, type FamilyDoc,
 } from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
+import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
+import { useTheme, type ThemeColors } from '@/lib/theme';
 import type { MemberDoc } from '@/lib/firebase';
 
 type OnboardStep = 'choice' | 'profile' | 'family_name' | 'join_code' | 'done' | 'add_children';
 type FlowType = 'create' | 'join';
 
 export default function OnboardingScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, setMember, setFamily } = useAuthStore();
   const { setMembers, members: storeMembers } = useFamilyStore();
   const [step, setStep] = useState<OnboardStep>('choice');
@@ -253,8 +256,24 @@ export default function OnboardingScreen() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // RENDER — all JSX and StyleSheet IDENTICAL to original onboarding.tsx
+  // RENDER
   // ─────────────────────────────────────────────────────────────────────────
+
+  // Nested so it captures the themed `styles`.
+  function StepHeader({ step, total, onBack }: { step: number; total: number; onBack: () => void }) {
+    return (
+      <View style={styles.stepHeader}>
+        <TouchableOpacity onPress={onBack} style={styles.stepBackBtn}>
+          <Text style={styles.stepBackText}>← Back</Text>
+        </TouchableOpacity>
+        <View style={styles.stepDots}>
+          {Array.from({ length: total }).map((_, i) => (
+            <View key={i} style={[styles.dot, i < step && styles.dotActive]} />
+          ))}
+        </View>
+      </View>
+    );
+  }
 
   if (step === 'choice') {
     return (
@@ -297,19 +316,19 @@ export default function OnboardingScreen() {
               {profilePhotoUri ? (
                 <Image source={{ uri: profilePhotoUri }} style={{ width: 64, height: 64, borderRadius: 32 }} />
               ) : (
-                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.primary + '15', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.primary + '44', borderStyle: 'dashed' }}>
+                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.primary + '44', borderStyle: 'dashed' }}>
                   <Text style={{ fontSize: 22 }}>📷</Text>
                 </View>
               )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => pickPhoto(setProfilePhotoUri)} activeOpacity={0.7}>
-              <Text style={{ color: Colors.primary, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>
+              <Text style={{ color: colors.primary, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>
                 {profilePhotoUri ? 'Change Photo' : 'Add Photo'}
               </Text>
             </TouchableOpacity>
             {profilePhotoUri && (
               <TouchableOpacity onPress={() => setProfilePhotoUri(null)} activeOpacity={0.7}>
-                <Text style={{ color: Colors.danger, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>Remove</Text>
+                <Text style={{ color: colors.danger, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>Remove</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -328,7 +347,7 @@ export default function OnboardingScreen() {
             </View>
           </ScrollView>
           <Text style={styles.label}>Display Name</Text>
-          <TextInput style={styles.input} value={displayName} onChangeText={setDisplayName} placeholder="e.g. Dad, Mom, Tommy..." placeholderTextColor={Colors.textMuted} maxLength={20} />
+          <TextInput style={styles.input} value={displayName} onChangeText={setDisplayName} placeholder="e.g. Dad, Mom, Tommy..." placeholderTextColor={colors.textMuted} maxLength={20} />
           {flow === 'join' && (
             <>
               <Text style={styles.label}>I am a...</Text>
@@ -343,7 +362,7 @@ export default function OnboardingScreen() {
             </>
           )}
           <Text style={styles.label}>Age (optional)</Text>
-          <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor={Colors.textMuted} keyboardType="number-pad" maxLength={3} />
+          <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor={colors.textMuted} keyboardType="number-pad" maxLength={3} />
           {displayName.trim() ? (
             <View style={styles.previewCard}>
               <Text style={styles.previewEmoji}>{selectedEmoji}</Text>
@@ -369,7 +388,7 @@ export default function OnboardingScreen() {
           <Text style={styles.stepTitle}>Name Your Family</Text>
           <Text style={styles.stepSubtitle}>This is what everyone in your household will see</Text>
           <Text style={styles.label}>Family Name</Text>
-          <TextInput style={styles.input} value={familyName} onChangeText={setFamilyName} placeholder="e.g. The Smiths" placeholderTextColor={Colors.textMuted} maxLength={30} autoFocus />
+          <TextInput style={styles.input} value={familyName} onChangeText={setFamilyName} placeholder="e.g. The Smiths" placeholderTextColor={colors.textMuted} maxLength={30} autoFocus />
           <Text style={styles.hint}>{"We'll add \"Family\" at the end automatically"}</Text>
           {familyName.trim() ? (
             <View style={styles.familyPreview}>
@@ -395,7 +414,7 @@ export default function OnboardingScreen() {
           <TextInput
             style={[styles.input, styles.codeInput]}
             value={inviteCode} onChangeText={(t) => setInviteCode(t.toUpperCase())}
-            placeholder="ABC123" placeholderTextColor={Colors.textMuted}
+            placeholder="ABC123" placeholderTextColor={colors.textMuted}
             autoCapitalize="characters" maxLength={6} autoFocus
           />
           <TouchableOpacity style={[styles.primaryBtn, isLoading && { opacity: 0.6 }]} onPress={handleJoinFamily} disabled={isLoading} activeOpacity={0.85}>
@@ -418,7 +437,7 @@ export default function OnboardingScreen() {
             <Text style={styles.inviteCode}>{generatedCode}</Text>
             <Text style={styles.inviteCodeHint}>Share this so your spouse or older kids can join</Text>
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: Colors.accent, marginTop: Spacing.md }]}
+              style={[styles.primaryBtn, { backgroundColor: colors.accent, marginTop: Spacing.md }]}
               onPress={() => Share.share({
                 message: `Join our family on Lootboard! 🏆\n\nDownload Lootboard and enter invite code: ${generatedCode}\n\nComplete tasks, earn points, and win the week!`,
               })}
@@ -435,10 +454,10 @@ export default function OnboardingScreen() {
           >
             <Text style={{ fontSize: 28 }}>👶</Text>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: FontSize.md, fontFamily: FontFamily.bold, color: Colors.primary }}>Add Child Profiles</Text>
-              <Text style={{ fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginTop: 2 }}>Kids don't need a phone — you complete tasks on their behalf</Text>
+              <Text style={{ fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.primary }}>Add Child Profiles</Text>
+              <Text style={{ fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 }}>Kids don't need a phone — you complete tasks on their behalf</Text>
             </View>
-            <Text style={{ fontSize: FontSize.lg, color: Colors.primary }}>→</Text>
+            <Text style={{ fontSize: FontSize.lg, color: colors.primary }}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.primaryBtn, { marginTop: Spacing.md }]} onPress={goToApp} activeOpacity={0.85}>
@@ -461,8 +480,8 @@ export default function OnboardingScreen() {
           {addedChildren.map((c, i) => (
             <View key={i} style={styles.addedChildRow}>
               <Text style={{ fontSize: 28 }}>{c.emoji}</Text>
-              <Text style={{ fontSize: FontSize.md, fontFamily: FontFamily.bold, color: Colors.text, flex: 1 }}>{c.name}</Text>
-              <Text style={{ fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: Colors.success }}>✓ Added</Text>
+              <Text style={{ fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.text, flex: 1 }}>{c.name}</Text>
+              <Text style={{ fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.success }}>✓ Added</Text>
             </View>
           ))}
 
@@ -473,19 +492,19 @@ export default function OnboardingScreen() {
               {childPhotoUri ? (
                 <Image source={{ uri: childPhotoUri }} style={{ width: 64, height: 64, borderRadius: 32 }} />
               ) : (
-                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.primary + '15', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.primary + '44', borderStyle: 'dashed' }}>
+                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.primary + '44', borderStyle: 'dashed' }}>
                   <Text style={{ fontSize: 22 }}>📷</Text>
                 </View>
               )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => pickPhoto(setChildPhotoUri)} activeOpacity={0.7}>
-              <Text style={{ color: Colors.primary, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>
+              <Text style={{ color: colors.primary, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>
                 {childPhotoUri ? 'Change Photo' : 'Add Photo'}
               </Text>
             </TouchableOpacity>
             {childPhotoUri && (
               <TouchableOpacity onPress={() => setChildPhotoUri(null)} activeOpacity={0.7}>
-                <Text style={{ color: Colors.danger, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>Remove</Text>
+                <Text style={{ color: colors.danger, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>Remove</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -500,12 +519,12 @@ export default function OnboardingScreen() {
             </View>
           </ScrollView>
           <Text style={styles.label}>Child's Name *</Text>
-          <TextInput style={styles.input} value={childName} onChangeText={setChildName} placeholder="e.g. Tommy, Emma..." placeholderTextColor={Colors.textMuted} maxLength={20} />
+          <TextInput style={styles.input} value={childName} onChangeText={setChildName} placeholder="e.g. Tommy, Emma..." placeholderTextColor={colors.textMuted} maxLength={20} />
           <Text style={styles.label}>Age (optional)</Text>
-          <TextInput style={styles.input} value={childAge} onChangeText={setChildAge} placeholder="e.g. 8" placeholderTextColor={Colors.textMuted} keyboardType="number-pad" maxLength={2} />
+          <TextInput style={styles.input} value={childAge} onChangeText={setChildAge} placeholder="e.g. 8" placeholderTextColor={colors.textMuted} keyboardType="number-pad" maxLength={2} />
 
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: Colors.success }, isAddingChild && { opacity: 0.6 }]}
+            style={[styles.primaryBtn, { backgroundColor: colors.success }, isAddingChild && { opacity: 0.6 }]}
             onPress={handleAddChild}
             disabled={isAddingChild}
           >
@@ -520,7 +539,7 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity style={{ marginTop: Spacing.md, alignItems: 'center' }} onPress={goToApp}>
-            <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textMuted }}>Skip — I'll add children later</Text>
+            <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textMuted }}>Skip — I'll add children later</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -530,75 +549,61 @@ export default function OnboardingScreen() {
   return null;
 }
 
-function StepHeader({ step, total, onBack }: { step: number; total: number; onBack: () => void }) {
-  return (
-    <View style={styles.stepHeader}>
-      <TouchableOpacity onPress={onBack} style={styles.stepBackBtn}>
-        <Text style={styles.stepBackText}>← Back</Text>
-      </TouchableOpacity>
-      <View style={styles.stepDots}>
-        {Array.from({ length: total }).map((_, i) => (
-          <View key={i} style={[styles.dot, i < step && styles.dotActive]} />
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// All styles identical to original onboarding.tsx
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
   scrollContent: { flexGrow: 1, padding: Spacing.lg, paddingBottom: Spacing.xxl },
   stepEmoji: { fontSize: 56, marginBottom: Spacing.md },
-  stepTitle: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, color: Colors.text, textAlign: 'center', marginBottom: Spacing.xs },
-  stepSubtitle: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl },
+  stepTitle: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, color: colors.text, textAlign: 'center', marginBottom: Spacing.xs },
+  stepSubtitle: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl },
   stepHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg },
   stepBackBtn: { minHeight: 44, justifyContent: 'center' },
-  stepBackText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: Colors.primary },
+  stepBackText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.primary },
   stepDots: { flexDirection: 'row', gap: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.border },
-  dotActive: { backgroundColor: Colors.primary, width: 24 },
-  label: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: Colors.text, marginBottom: Spacing.sm, marginTop: Spacing.md },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
+  dotActive: { backgroundColor: colors.primary, width: 24 },
+  label: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.text, marginBottom: Spacing.sm, marginTop: Spacing.md },
   input: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.md,
-    fontFamily: FontFamily.regular, color: Colors.text, backgroundColor: Colors.surface,
+    fontFamily: FontFamily.regular, color: colors.text, backgroundColor: colors.surface,
   },
   codeInput: { fontSize: 32, fontFamily: FontFamily.extraBold, textAlign: 'center', letterSpacing: 8, paddingVertical: Spacing.lg },
-  hint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textMuted, marginTop: 4 },
+  hint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textMuted, marginTop: 4 },
   emojiScroll: { marginBottom: Spacing.md },
   emojiRow: { flexDirection: 'row', gap: Spacing.sm, paddingVertical: Spacing.xs },
-  emojiOption: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.border },
-  emojiSelected: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight + '33' },
+  emojiOption: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.border },
+  emojiSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight + '33' },
   emojiText: { fontSize: 28 },
   roleRow: { flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.sm },
-  roleChip: { flex: 1, alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.lg, backgroundColor: Colors.surface, borderWidth: 2, borderColor: Colors.border },
-  roleChipSelected: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight + '22' },
+  roleChip: { flex: 1, alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.lg, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.border },
+  roleChipSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight + '22' },
   roleEmoji: { fontSize: 32, marginBottom: 4 },
-  roleLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: Colors.text },
-  roleLabelSelected: { color: Colors.primary },
-  previewCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, marginTop: Spacing.md, marginBottom: Spacing.sm, borderWidth: 2, borderColor: Colors.primary + '44' },
+  roleLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.text },
+  roleLabelSelected: { color: colors.primary },
+  previewCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, marginTop: Spacing.md, marginBottom: Spacing.sm, borderWidth: 2, borderColor: colors.primary + '44' },
   previewEmoji: { fontSize: 40 },
-  previewName: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: Colors.text },
-  previewRole: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary, textTransform: 'capitalize' },
-  familyPreview: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: Colors.primaryLight + '22', borderRadius: BorderRadius.lg, padding: Spacing.md, marginVertical: Spacing.md, borderWidth: 1.5, borderColor: Colors.primary + '44' },
+  previewName: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: colors.text },
+  previewRole: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, textTransform: 'capitalize' },
+  familyPreview: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.primaryLight + '22', borderRadius: BorderRadius.lg, padding: Spacing.md, marginVertical: Spacing.md, borderWidth: 1.5, borderColor: colors.primary + '44' },
   familyPreviewEmoji: { fontSize: 28 },
-  familyPreviewName: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: Colors.primary },
-  inviteCodeCard: { backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.xl, alignItems: 'center', width: '100%', marginVertical: Spacing.xl, ...Shadow.lg, borderWidth: 2, borderColor: Colors.primary + '44' },
-  inviteCodeLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: Colors.textSecondary, marginBottom: Spacing.sm },
-  inviteCode: { fontSize: 42, fontFamily: FontFamily.black, color: Colors.primary, letterSpacing: 8 },
-  inviteCodeHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textMuted, marginTop: Spacing.sm, textAlign: 'center' },
-  choiceCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.lg, width: '100%', marginBottom: Spacing.md, ...Shadow.md, borderWidth: 1.5, borderColor: Colors.border },
-  choiceCardSecondary: { borderColor: Colors.accent + '66' },
+  familyPreviewName: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: colors.primary },
+  inviteCodeCard: { backgroundColor: colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.xl, alignItems: 'center', width: '100%', marginVertical: Spacing.xl, ...Shadow.lg, borderWidth: 2, borderColor: colors.primary + '44' },
+  inviteCodeLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.textSecondary, marginBottom: Spacing.sm },
+  inviteCode: { fontSize: 42, fontFamily: FontFamily.black, color: colors.primary, letterSpacing: 8 },
+  inviteCodeHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textMuted, marginTop: Spacing.sm, textAlign: 'center' },
+  choiceCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.lg, width: '100%', marginBottom: Spacing.md, ...Shadow.md, borderWidth: 1.5, borderColor: colors.border },
+  choiceCardSecondary: { borderColor: colors.accent + '66' },
   choiceEmoji: { fontSize: 36 },
   choiceInfo: { flex: 1 },
-  choiceTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: Colors.text },
-  choiceDesc: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginTop: 2 },
-  choiceArrow: { fontSize: FontSize.xl, color: Colors.primary },
-  primaryBtn: { backgroundColor: Colors.primary, borderRadius: BorderRadius.md, paddingVertical: 16, alignItems: 'center', marginTop: Spacing.lg, width: '100%', ...Shadow.lg },
+  choiceTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.text },
+  choiceDesc: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 },
+  choiceArrow: { fontSize: FontSize.xl, color: colors.primary },
+  primaryBtn: { backgroundColor: colors.primary, borderRadius: BorderRadius.md, paddingVertical: 16, alignItems: 'center', marginTop: Spacing.lg, width: '100%', ...Shadow.lg },
   primaryBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFF', letterSpacing: 0.5 },
-  addChildCta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.primary + '10', borderRadius: BorderRadius.lg, padding: Spacing.md, marginTop: Spacing.md, borderWidth: 2, borderColor: Colors.primary + '44' },
-  addedChildRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.success + '10', borderRadius: BorderRadius.md, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.success + '44' },
-});
+  addChildCta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: colors.primary + '10', borderRadius: BorderRadius.lg, padding: Spacing.md, marginTop: Spacing.md, borderWidth: 2, borderColor: colors.primary + '44' },
+  addedChildRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: colors.success + '10', borderRadius: BorderRadius.md, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: colors.success + '44' },
+  });
+}
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Image, Alert, Linking, InteractionManager, Platform, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,11 +10,14 @@ import * as Haptics from 'expo-haptics';
 import { Col, getCurrentWeekId, getWeekStart, uploadMemberPhoto, removeMemberPhoto, setMemberWeeklyGoal } from '@/lib/firebase';
 import { useAuthStore } from '@/store';
 import { getCompletionRate, getRankEmoji, calculateStreak, getCurrentWeekRange, getLevel } from '@/lib/pointsEngine';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { useTheme, type ThemeColors } from '@/lib/theme';
 import type { MemberDoc, TransactionDoc, CompletionDoc } from '@/lib/firebase';
 
 export default function MemberProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { family, member: viewerMember } = useAuthStore();
   const [member, setMember] = useState<MemberDoc | null>(null);
   const [transactions, setTransactions] = useState<TransactionDoc[]>([]);
@@ -189,6 +192,26 @@ export default function MemberProfileScreen() {
   const failed = thisWeekCompletions.filter((c) => c.wasAutoFailed).length;
   const completionRate = getCompletionRate(completed, thisWeekCompletions.length);
 
+  // Nested so these presentational helpers capture the themed `styles`.
+  function StatBox({ label, value, color, emoji }: { label: string; value: string; color: string; emoji: string }) {
+    return (
+      <View style={styles.statBox}>
+        <Text style={styles.statEmoji}>{emoji}</Text>
+        <Text style={[styles.statValue, { color }]}>{value}</Text>
+        <Text style={styles.statLabel}>{label}</Text>
+      </View>
+    );
+  }
+
+  function WeekStat({ label, value, color, showSign }: { label: string; value: number; color: string; showSign?: boolean }) {
+    return (
+      <View style={styles.weekStat}>
+        <Text style={[styles.weekStatValue, { color }]}>{showSign && value > 0 ? '+' : ''}{value}</Text>
+        <Text style={styles.weekStatLabel}>{label}</Text>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -199,7 +222,7 @@ export default function MemberProfileScreen() {
         </View>
 
         {isLoading ? (
-          <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xxl }} />
+          <ActivityIndicator color={colors.primary} style={{ marginTop: Spacing.xxl }} />
         ) : (
           <>
             <View style={styles.hero}>
@@ -218,7 +241,7 @@ export default function MemberProfileScreen() {
                 {canEditPhoto && (
                   <View style={styles.editBadge}>
                     {isUploadingPhoto ? (
-                      <ActivityIndicator size="small" color={Colors.surface} />
+                      <ActivityIndicator size="small" color={colors.surface} />
                     ) : (
                       <Text style={styles.editBadgeText}>✏️</Text>
                     )}
@@ -256,9 +279,9 @@ export default function MemberProfileScreen() {
             </View>
 
             <View style={styles.statsRow}>
-              <StatBox label="This Week" value={`${weeklyPoints >= 0 ? '+' : ''}${weeklyPoints}`} color={weeklyPoints >= 0 ? Colors.success : Colors.danger} emoji="📅" />
-              <StatBox label="All Time" value={`${allTimePoints}`} color={Colors.primary} emoji="⭐" />
-              <StatBox label="Done Rate" value={`${completionRate}%`} color={Colors.warning} emoji="✅" />
+              <StatBox label="This Week" value={`${weeklyPoints >= 0 ? '+' : ''}${weeklyPoints}`} color={weeklyPoints >= 0 ? colors.success : colors.danger} emoji="📅" />
+              <StatBox label="All Time" value={`${allTimePoints}`} color={colors.primary} emoji="⭐" />
+              <StatBox label="Done Rate" value={`${completionRate}%`} color={colors.warning} emoji="✅" />
             </View>
 
             {/* Weekly goal — beating it earns the 🎯 Goal Crusher crown (4.2) */}
@@ -272,8 +295,8 @@ export default function MemberProfileScreen() {
                   <View style={styles.goalHeader}>
                     <Text style={styles.goalTitle}>🎯 Weekly Goal</Text>
                     <Text style={styles.goalNumbers}>
-                      <Text style={{ color: Colors.primary, fontFamily: FontFamily.extraBold }}>{weeklyPoints}</Text>
-                      <Text style={{ color: Colors.textSecondary }}> / {currentGoal} pts</Text>
+                      <Text style={{ color: colors.primary, fontFamily: FontFamily.extraBold }}>{weeklyPoints}</Text>
+                      <Text style={{ color: colors.textSecondary }}> / {currentGoal} pts</Text>
                     </Text>
                   </View>
                   <View style={styles.goalTrack}>
@@ -313,11 +336,11 @@ export default function MemberProfileScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>This Week</Text>
               <View style={styles.weekCard}>
-                <WeekStat label="Completed" value={completed} color={Colors.success} />
+                <WeekStat label="Completed" value={completed} color={colors.success} />
                 <View style={styles.weekDivider} />
-                <WeekStat label="Auto-Failed" value={failed} color={Colors.danger} />
+                <WeekStat label="Auto-Failed" value={failed} color={colors.danger} />
                 <View style={styles.weekDivider} />
-                <WeekStat label="Points" value={weeklyPoints} color={Colors.primary} showSign />
+                <WeekStat label="Points" value={weeklyPoints} color={colors.primary} showSign />
               </View>
             </View>
 
@@ -325,18 +348,18 @@ export default function MemberProfileScreen() {
               <Text style={styles.sectionTitle}>Recent Activity</Text>
               {transactions.slice(0, 10).map((tx) => (
                 <View key={tx.id} style={styles.txRow}>
-                  <View style={[styles.txDot, { backgroundColor: tx.delta >= 0 ? Colors.success : Colors.danger }]} />
+                  <View style={[styles.txDot, { backgroundColor: tx.delta >= 0 ? colors.success : colors.danger }]} />
                   <View style={styles.txInfo}>
                     <Text style={styles.txReason} numberOfLines={1}>{tx.reason}</Text>
                     <Text style={styles.txDate}>{tx.createdAt?.toDate().toLocaleDateString()}</Text>
                   </View>
-                  <Text style={[styles.txDelta, { color: tx.delta >= 0 ? Colors.success : Colors.danger }]}>
+                  <Text style={[styles.txDelta, { color: tx.delta >= 0 ? colors.success : colors.danger }]}>
                     {tx.delta >= 0 ? '+' : ''}{tx.delta}
                   </Text>
                 </View>
               ))}
               {transactions.length === 0 && (
-                <Text style={{ color: Colors.textMuted, textAlign: 'center', marginTop: Spacing.lg }}>No activity yet</Text>
+                <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: Spacing.lg }}>No activity yet</Text>
               )}
             </View>
           </>
@@ -367,17 +390,17 @@ export default function MemberProfileScreen() {
                   onChangeText={setGoalInput}
                   keyboardType="number-pad"
                   placeholder="e.g. 250"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   accessibilityLabel="Weekly points goal"
                 />
                 <View style={styles.modalBtns}>
                   {currentGoal ? (
                     <TouchableOpacity style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => saveGoal(true)} disabled={savingGoal}>
-                      <Text style={[styles.modalBtnText, { color: Colors.danger }]}>Clear</Text>
+                      <Text style={[styles.modalBtnText, { color: colors.danger }]}>Clear</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setShowGoalModal(false)} disabled={savingGoal}>
-                      <Text style={[styles.modalBtnText, { color: Colors.textSecondary }]}>Cancel</Text>
+                      <Text style={[styles.modalBtnText, { color: colors.textSecondary }]}>Cancel</Text>
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={() => saveGoal(false)} disabled={savingGoal}>
@@ -411,91 +434,74 @@ function calcStreakFromCompletions(completions: CompletionDoc[]): number {
   return streak;
 }
 
-function StatBox({ label, value, color, emoji }: { label: string; value: string; color: string; emoji: string }) {
-  return (
-    <View style={styles.statBox}>
-      <Text style={styles.statEmoji}>{emoji}</Text>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function WeekStat({ label, value, color, showSign }: { label: string; value: number; color: string; showSign?: boolean }) {
-  return (
-    <View style={styles.weekStat}>
-      <Text style={[styles.weekStatValue, { color }]}>{showSign && value > 0 ? '+' : ''}{value}</Text>
-      <Text style={styles.weekStatLabel}>{label}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   header: { padding: Spacing.lg, paddingBottom: 0 },
-  backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: Colors.primary },
+  backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.primary },
   hero: { alignItems: 'center', padding: Spacing.xl },
   avatarWrap: { position: 'relative', marginBottom: Spacing.sm },
-  avatarEmojiWrap: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center', ...Shadow.sm },
+  avatarEmojiWrap: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', ...Shadow.sm },
   avatarImage: { width: 96, height: 96, borderRadius: 48, ...Shadow.sm },
-  editBadge: { position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.surface },
+  editBadge: { position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.surface },
   editBadgeText: { fontSize: 14 },
   heroEmoji: { fontSize: 56 },
-  heroName: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, color: Colors.text },
-  heroRole: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary, textTransform: 'capitalize', marginTop: 4 },
-  levelCard: { marginTop: Spacing.md, alignSelf: 'stretch', marginHorizontal: Spacing.xl, backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, borderWidth: 1.5, borderColor: Colors.primary + '2E', ...Shadow.sm },
+  heroName: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, color: colors.text },
+  heroRole: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, textTransform: 'capitalize', marginTop: 4 },
+  levelCard: { marginTop: Spacing.md, alignSelf: 'stretch', marginHorizontal: Spacing.xl, backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, borderWidth: 1.5, borderColor: colors.primary + '2E', ...Shadow.sm },
   levelTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 },
-  levelTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, color: Colors.text },
-  levelPts: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: Colors.textSecondary },
-  levelTrack: { height: 8, borderRadius: 5, backgroundColor: Colors.primary + '1A', overflow: 'hidden' },
-  levelFill: { height: '100%', borderRadius: 5, backgroundColor: Colors.primary },
-  streakBadge: { marginTop: Spacing.sm, backgroundColor: Colors.warning + '22', borderRadius: 20, paddingHorizontal: Spacing.md, paddingVertical: 6, borderWidth: 1.5, borderColor: Colors.warning + '66' },
-  streakText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: Colors.warning },
+  levelTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, color: colors.text },
+  levelPts: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.textSecondary },
+  levelTrack: { height: 8, borderRadius: 5, backgroundColor: colors.primary + '1A', overflow: 'hidden' },
+  levelFill: { height: '100%', borderRadius: 5, backgroundColor: colors.primary },
+  streakBadge: { marginTop: Spacing.sm, backgroundColor: colors.warning + '22', borderRadius: 20, paddingHorizontal: Spacing.md, paddingVertical: 6, borderWidth: 1.5, borderColor: colors.warning + '66' },
+  streakText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.warning },
   statsRow: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.lg },
-  statBox: { flex: 1, backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, alignItems: 'center', ...Shadow.sm },
+  statBox: { flex: 1, backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, alignItems: 'center', ...Shadow.sm },
   statEmoji: { fontSize: 22, marginBottom: 4 },
   statValue: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold },
-  statLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginTop: 2 },
+  statLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 },
   section: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },
-  sectionTitle: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: Colors.text, marginBottom: Spacing.sm },
-  adjustBtn: { backgroundColor: Colors.surface, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.primary + '55', ...Shadow.sm },
-  adjustBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: Colors.primary },
-  adjustHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textMuted, textAlign: 'center', marginTop: 6 },
+  sectionTitle: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: colors.text, marginBottom: Spacing.sm },
+  adjustBtn: { backgroundColor: colors.surface, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: colors.primary + '55', ...Shadow.sm },
+  adjustBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.primary },
+  adjustHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textMuted, textAlign: 'center', marginTop: 6 },
   // Weekly goal
-  goalCard: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, borderWidth: 1.5, borderColor: Colors.primary + '33', ...Shadow.sm },
-  goalCardMet: { borderColor: Colors.gold + '88', backgroundColor: Colors.gold + '12' },
+  goalCard: { backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, borderWidth: 1.5, borderColor: colors.primary + '33', ...Shadow.sm },
+  goalCardMet: { borderColor: colors.gold + '88', backgroundColor: colors.gold + '12' },
   goalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  goalTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: Colors.text },
+  goalTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.text },
   goalNumbers: { fontSize: FontSize.sm },
-  goalTrack: { height: 9, borderRadius: 5, backgroundColor: Colors.primary + '1A', overflow: 'hidden' },
-  goalFill: { height: '100%', borderRadius: 5, backgroundColor: Colors.primary },
-  goalHint: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: Colors.textSecondary, marginTop: 8 },
-  goalSetBtn: { backgroundColor: Colors.surface, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.primary + '55', ...Shadow.sm },
-  goalSetBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: Colors.primary },
+  goalTrack: { height: 9, borderRadius: 5, backgroundColor: colors.primary + '1A', overflow: 'hidden' },
+  goalFill: { height: '100%', borderRadius: 5, backgroundColor: colors.primary },
+  goalHint: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.textSecondary, marginTop: 8 },
+  goalSetBtn: { backgroundColor: colors.surface, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: colors.primary + '55', ...Shadow.sm },
+  goalSetBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.primary },
   // Goal modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalSheet: { backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg, paddingBottom: Spacing.xxl },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.border, alignSelf: 'center', marginBottom: Spacing.md },
-  modalTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, color: Colors.text, marginBottom: 4 },
-  modalSub: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 },
+  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: Spacing.md },
+  modalTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, color: colors.text, marginBottom: 4 },
+  modalSub: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 },
   presetRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md },
-  presetChip: { flex: 1, backgroundColor: Colors.primary + '12', borderColor: Colors.primary + '44', borderWidth: 1, borderRadius: BorderRadius.md, paddingVertical: 10, alignItems: 'center' },
-  presetChipText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: Colors.primary },
-  goalInput: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: Colors.text, backgroundColor: Colors.background, marginBottom: Spacing.md },
+  presetChip: { flex: 1, backgroundColor: colors.primary + '12', borderColor: colors.primary + '44', borderWidth: 1, borderRadius: BorderRadius.md, paddingVertical: 10, alignItems: 'center' },
+  presetChipText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.primary },
+  goalInput: { borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: colors.text, backgroundColor: colors.background, marginBottom: Spacing.md },
   modalBtns: { flexDirection: 'row', gap: Spacing.sm },
   modalBtn: { flex: 1, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center' },
-  modalBtnGhost: { borderWidth: 1.5, borderColor: Colors.border },
-  modalBtnPrimary: { backgroundColor: Colors.primary },
+  modalBtnGhost: { borderWidth: 1.5, borderColor: colors.border },
+  modalBtnPrimary: { backgroundColor: colors.primary },
   modalBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold },
-  weekCard: { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, ...Shadow.sm },
+  weekCard: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, ...Shadow.sm },
   weekStat: { flex: 1, alignItems: 'center' },
   weekStatValue: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold },
-  weekStatLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginTop: 2 },
-  weekDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
-  txRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.sm, gap: Spacing.sm, ...Shadow.sm },
+  weekStatLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 },
+  weekDivider: { width: 1, backgroundColor: colors.border, marginVertical: 4 },
+  txRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.sm, gap: Spacing.sm, ...Shadow.sm },
   txDot: { width: 10, height: 10, borderRadius: 5 },
   txInfo: { flex: 1 },
-  txReason: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: Colors.text },
-  txDate: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginTop: 2 },
+  txReason: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.text },
+  txDate: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 },
   txDelta: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold, minWidth: 44, textAlign: 'right' },
-});
+  });
+}

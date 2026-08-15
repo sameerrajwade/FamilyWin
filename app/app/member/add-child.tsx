@@ -8,7 +8,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -18,9 +18,12 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { createManagedMember } from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
+import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
+import { useTheme, type ThemeColors } from '@/lib/theme';
 
 export default function AddChildScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { family } = useAuthStore();
   const { members, setMembers } = useFamilyStore();
 
@@ -103,7 +106,7 @@ export default function AddChildScreen() {
             value={displayName}
             onChangeText={setDisplayName}
             placeholder="e.g. Tommy, Emma..."
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             maxLength={20}
             autoFocus
           />
@@ -115,7 +118,7 @@ export default function AddChildScreen() {
             value={age}
             onChangeText={setAge}
             placeholder="e.g. 8"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             keyboardType="number-pad"
             maxLength={2}
           />
@@ -167,53 +170,55 @@ export default function AddChildScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   scroll: { flexGrow: 1, padding: Spacing.lg, paddingBottom: Spacing.xxl },
-  handle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.lg },
+  handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.lg },
   header: { alignItems: 'center', marginBottom: Spacing.lg },
   emoji: { fontSize: 56 },
-  title: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, color: Colors.text, marginTop: Spacing.sm, textAlign: 'center' },
-  subtitle: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginTop: 6 },
-  label: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: Colors.text, marginTop: Spacing.md, marginBottom: Spacing.xs },
+  title: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, color: colors.text, marginTop: Spacing.sm, textAlign: 'center' },
+  subtitle: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, marginTop: 6 },
+  label: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.text, marginTop: Spacing.md, marginBottom: Spacing.xs },
   input: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md, paddingVertical: 14,
-    fontSize: FontSize.md, fontFamily: FontFamily.regular, color: Colors.text,
-    backgroundColor: Colors.surface,
+    fontSize: FontSize.md, fontFamily: FontFamily.regular, color: colors.text,
+    backgroundColor: colors.surface,
   },
   emojiScroll: { marginBottom: Spacing.xs },
   emojiRow: { flexDirection: 'row', gap: Spacing.sm, paddingVertical: Spacing.xs },
   emojiOption: {
     width: 52, height: 52, borderRadius: 26,
-    backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: Colors.border,
+    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.border,
   },
-  emojiSelected: { borderColor: Colors.primary, backgroundColor: Colors.primary + '18' },
+  emojiSelected: { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
   emojiText: { fontSize: 28 },
   previewCard: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.surface, borderRadius: BorderRadius.lg,
+    backgroundColor: colors.surface, borderRadius: BorderRadius.lg,
     padding: Spacing.md, marginTop: Spacing.md,
-    borderWidth: 2, borderColor: Colors.primary + '44', ...Shadow.sm,
+    borderWidth: 2, borderColor: colors.primary + '44', ...Shadow.sm,
   },
   previewAvatar: { fontSize: 40 },
   previewInfo: {},
-  previewName: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: Colors.text },
-  previewRole: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginTop: 2 },
+  previewName: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: colors.text },
+  previewRole: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 },
   infoBox: {
-    backgroundColor: Colors.primary + '0F', borderRadius: BorderRadius.lg,
+    backgroundColor: colors.primary + '0F', borderRadius: BorderRadius.lg,
     padding: Spacing.md, marginTop: Spacing.lg,
-    borderWidth: 1, borderColor: Colors.primary + '33',
+    borderWidth: 1, borderColor: colors.primary + '33',
   },
-  infoTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: Colors.primary, marginBottom: 6 },
-  infoText: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.text, lineHeight: 20 },
+  infoTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary, marginBottom: 6 },
+  infoText: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.text, lineHeight: 20 },
   saveBtn: {
-    backgroundColor: Colors.primary, borderRadius: BorderRadius.md,
+    backgroundColor: colors.primary, borderRadius: BorderRadius.md,
     paddingVertical: 16, alignItems: 'center', marginTop: Spacing.xl, ...Shadow.lg,
   },
   saveBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFF', letterSpacing: 0.5 },
   cancelBtn: { alignItems: 'center', paddingVertical: Spacing.md, marginTop: Spacing.xs },
-  cancelBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: Colors.textSecondary },
-});
+  cancelBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.textSecondary },
+  });
+}
 
