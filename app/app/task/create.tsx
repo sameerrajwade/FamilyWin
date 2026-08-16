@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -59,6 +60,7 @@ export default function CreateTaskScreen() {
   const [pointValue, setPointValue] = useState(editData?.pointValue ?? DIFFICULTY_POINTS.easy);
   const [customPoints, setCustomPoints] = useState(!!editData?.pointValue && editData.pointValue !== DIFFICULTY_POINTS[editData.difficulty ?? 'easy']);
   const [autoFailHour, setAutoFailHour] = useState(editData?.autoFailHour ?? 20);
+  const [requiresApproval, setRequiresApproval] = useState<boolean>(editData?.requiresApproval ?? false);
   const [taskEmoji, setTaskEmoji] = useState<string>(
     editData?.taskEmoji ?? detectTaskEmoji(editData?.title ?? '', editData?.category ?? 'chores'),
   );
@@ -138,6 +140,7 @@ export default function CreateTaskScreen() {
           pointValue,
           autoFailHour,
           taskEmoji,
+          requiresApproval,
         });
       } else {
         // Create mode
@@ -152,6 +155,7 @@ export default function CreateTaskScreen() {
           pointValue,
           autoFailHour,
           taskEmoji,
+          requiresApproval,
           isActive: true,
           createdBy: member.id,
           createdAt: new Date(),
@@ -415,6 +419,26 @@ export default function CreateTaskScreen() {
                     </Text>
                   </TouchableOpacity>
                 )}
+              </View>
+            )}
+
+            {/* Requires parent approval (Phase 4.3) */}
+            {isParent && (
+              <View style={styles.field}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flex: 1, paddingRight: Spacing.md }}>
+                    <Text style={[styles.label, { color: colors.text }]}>Require parent approval</Text>
+                    <Text style={{ fontSize: FontSize.xs, color: colors.textMuted, marginTop: 2 }}>
+                      Points are held until a parent approves the completion.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={requiresApproval}
+                    onValueChange={(v) => { setRequiresApproval(v); Haptics.selectionAsync(); }}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor="#FFFFFF"
+                  />
+                </View>
               </View>
             )}
 

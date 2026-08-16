@@ -33,8 +33,8 @@ type TaskWithCompletion = {
   id: string; familyId: string; title: string; category: string;
   difficulty: 'easy' | 'medium' | 'hard'; recurrence: string;
   pointValue: number; autoFailHour?: number; isActive: boolean;
-  assignedTo?: string | null; createdBy: string;
-  completion: { id: string; wasAutoFailed: boolean; pointsAwarded: number; completedDate?: string | null; completedAt?: any } | null;
+  assignedTo?: string | null; createdBy: string; requiresApproval?: boolean;
+  completion: { id: string; wasAutoFailed: boolean; pointsAwarded: number; completedDate?: string | null; completedAt?: any; status?: 'pending' | 'approved' | 'rejected' } | null;
 };
 
 export default function HomeScreen() {
@@ -55,6 +55,7 @@ export default function HomeScreen() {
   const [pointBurstVisible, setPointBurstVisible] = useState(false);
   const [pointBurstKey, setPointBurstKey] = useState(0);
   const [weeklyPoints, setWeeklyPoints] = useState(0);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
   const [streak, setStreak] = useState(0);
   const [lifetimePoints, setLifetimePoints] = useState(0);
   // Undo state — cleared after 5 seconds
@@ -110,9 +111,11 @@ export default function HomeScreen() {
       }
 
       function isCompleted(taskId: string, recurrence: string) {
-        // All completions for this task + this member this week
+        // All completions for this task + this member this week.
+        // Phase 4.3: a REJECTED completion doesn't count as done — the task
+        // returns to incomplete so it can be redone.
         const all = completions.filter(
-          (c) => c.taskId === taskId && c.memberId === effectiveMember!.id,
+          (c) => c.taskId === taskId && c.memberId === effectiveMember!.id && c.status !== 'rejected',
         );
         if (all.length === 0) return null;
 
@@ -151,10 +154,17 @@ export default function HomeScreen() {
         })
         .map((task) => {
           const c = isCompleted(task.id, task.recurrence);
-          return { ...task, completion: c ? { id: c.id, wasAutoFailed: c.wasAutoFailed, pointsAwarded: c.pointsAwarded, completedDate: c.completedDate ?? dateStr(c.completedAt), completedAt: c.completedAt } : null };
+          return { ...task, completion: c ? { id: c.id, wasAutoFailed: c.wasAutoFailed, pointsAwarded: c.pointsAwarded, completedDate: c.completedDate ?? dateStr(c.completedAt), completedAt: c.completedAt, status: c.status } : null };
         });
 
       setTodaysTasks(myTasks as any);
+
+      // Phase 4.3: family-wide count of completions awaiting a parent's approval
+      // (reuses the week's completions we already fetched → refreshes with the
+      // same live listener). Only parents act on these.
+      if (isParent) {
+        setPendingApprovals(completions.filter((c) => c.status === 'pending').length);
+      }
 
       // Weekly points for the active profile.
       // Use getCurrentWeekRange with family's chosen weekStartDay (not hardcoded Monday).
@@ -281,7 +291,16 @@ export default function HomeScreen() {
         weekId,
         pointValue: task.pointValue,
         taskTitle: task.title,
+        requiresApproval: task.requiresApproval,
       });
+
+      // Phase 4.3: an approval-required task is submitted, not awarded. No points
+      // burst / undo toast / confetti — the card flips to "Awaiting approval" and
+      // a parent settles the points from the approval queue.
+      if (task.requiresApproval) {
+        await loadTasks();
+        return;
+      }
 
       markTaskComplete(task.id, task.pointValue, tx.completionId);
       updateMemberPoints(effectiveMember!.id, task.pointValue);
@@ -523,6 +542,31 @@ export default function HomeScreen() {
           />
         </SlideIn>
 
+        {isParent && pendingApprovals > 0 && (
+          <View style={styles.section}>
+            <SlideIn delay={120}>
+              <TouchableOpacity
+                style={[styles.catchUpCard, { backgroundColor: colors.primary + '14', borderColor: colors.primary + '55' }]}
+                onPress={() => router.push('/app/approvals' as any)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={`${pendingApprovals} completions awaiting approval`}
+              >
+                <Icon name="checkmark-done-circle-outline" size={22} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.catchUpTitle, { color: colors.text }]}>
+                    {pendingApprovals} {pendingApprovals === 1 ? 'task' : 'tasks'} awaiting your approval
+                  </Text>
+                  <Text style={[styles.catchUpSub, { color: colors.textSecondary }]}>
+                    Review and approve to award the points.
+                  </Text>
+                </View>
+                <Icon name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </SlideIn>
+          </View>
+        )}
+
         {catchUpItems.length > 0 && (
           <View style={styles.section}>
             <SlideIn delay={150}>
@@ -663,12 +707,14 @@ function StatsHero({ level, weeklyPoints, completedCount, totalCount, progressPc
 }
 
 function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSize, isReadOnly, isParent }: any) {
-  const isDone = !!task.completion && !task.completion.wasAutoFailed;
+  // Phase 4.3: a completion awaiting parent approval — done-but-not-awarded.
+  const isPending = task.completion?.status === 'pending';
+  const isDone = !!task.completion && !task.completion.wasAutoFailed && !isPending;
   const isFailed = task.completion?.wasAutoFailed;
   const scale = useSharedValue(1);
   const cardAnim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const canTapToUndo = isDone && !isReadOnly && !isCompleting;
-  const isDisabled = (isDone && !canTapToUndo) || isFailed || isCompleting || isReadOnly;
+  const isDisabled = (isDone && !canTapToUndo) || isFailed || isPending || isCompleting || isReadOnly;
   const catColor = CATEGORY_COLORS[task.category] ?? colors.primary;
   const diffColor = task.difficulty === 'easy' ? colors.success : task.difficulty === 'medium' ? colors.warning : colors.danger;
   return (
@@ -679,6 +725,7 @@ function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSiz
           styles.taskCard,
           { backgroundColor: colors.surface },
           isDone && { backgroundColor: (colors.successLight ?? colors.surface) },
+          isPending && { borderWidth: 1.5, borderColor: colors.warning, backgroundColor: (colors.warningLight ?? colors.surface) },
           isFailed && { borderWidth: 1.5, borderColor: colors.danger, backgroundColor: (colors.dangerLight ?? colors.surface) },
           isReadOnly && { opacity: 0.8 },
           Shadow.sm,
@@ -707,6 +754,7 @@ function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSiz
                 pointValue: task.pointValue,
                 autoFailHour: task.autoFailHour,
                 taskEmoji: task.taskEmoji,
+                requiresApproval: task.requiresApproval,
               }),
             },
           });
@@ -715,7 +763,7 @@ function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSiz
         accessibilityRole="button"
         accessibilityState={{ disabled: isDisabled, checked: isDone }}
       >
-        {isParent && !isDone && !isFailed && (
+        {isParent && !isDone && !isFailed && !isPending && (
           <View style={[styles.editHint, { backgroundColor: colors.background + 'DD' }]} pointerEvents="none">
             <Text style={[styles.editHintText, { color: colors.textMuted }]}>✎ hold to edit</Text>
           </View>
@@ -746,6 +794,7 @@ function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSiz
           <View style={styles.taskRight}>
             {isCompleting ? <ActivityIndicator color={colors.primary} size="small" /> :
               isDone ? <View style={[styles.statusIcon, { backgroundColor: colors.success }, Shadow.sm]}><Text style={styles.statusIconText}>✓</Text></View> :
+              isPending ? <View style={[styles.pendingPill, { backgroundColor: colors.warning + '22', borderColor: colors.warning }]}><Text style={[styles.pendingPillText, { color: colors.warning }]}>⏳ Pending</Text></View> :
               isFailed ? <View style={[styles.statusIcon, { backgroundColor: colors.danger }]}><Text style={styles.statusIconText}>✗</Text></View> :
               isReadOnly ? <View style={[styles.statusIcon, { backgroundColor: colors.border }]}><Text style={{ fontSize: 16 }}>👁</Text></View> :
               <View style={[styles.rewardChip, { backgroundColor: colors.primary }, Shadow.sm]}>
@@ -889,6 +938,8 @@ const styles = StyleSheet.create({
   rewardChipUnit: { fontSize: 9, fontFamily: FontFamily.bold, color: 'rgba(255,255,255,0.9)', marginTop: -2 },
   statusIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   statusIconText: { fontSize: FontSize.lg, color: '#FFFFFF', fontFamily: FontFamily.black },
+  pendingPill: { borderRadius: BorderRadius.full, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  pendingPillText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
   // Undo toast
   undoToast: { position: 'absolute', bottom: 16, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', borderRadius: BorderRadius.lg, padding: Spacing.sm, borderWidth: 1, zIndex: 200, ...Shadow.md },
   undoText: { flex: 1, fontSize: FontSize.sm, fontFamily: FontFamily.semiBold },

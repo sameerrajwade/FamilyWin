@@ -1176,7 +1176,7 @@ export async function sendPasswordReset(email: string): Promise<void> {
 export async function updateTask(
   familyId: string,
   taskId: string,
-  updates: Partial<Pick<TaskDoc, 'title' | 'description' | 'category' | 'difficulty' | 'recurrence' | 'assignedTo' | 'pointValue' | 'autoFailHour' | 'taskEmoji'>>,
+  updates: Partial<Pick<TaskDoc, 'title' | 'description' | 'category' | 'difficulty' | 'recurrence' | 'assignedTo' | 'pointValue' | 'autoFailHour' | 'taskEmoji' | 'requiresApproval'>>,
 ): Promise<void> {
   await Col.tasks(familyId).doc(taskId).update(updates);
 }
