@@ -138,8 +138,10 @@ describe('Immutable audit data', () => {
   test('transactions cannot be deleted', async () => {
     await assertFails(deleteDoc(doc(adminA(), 'families/famA/transactions/tx1')));
   });
-  test('completions cannot be updated', async () => {
+  test('completion content fields stay immutable (even for a parent)', async () => {
+    // Phase 4.3 opened status-only edits; the point/task fields are still locked.
     await assertFails(updateDoc(doc(adminA(), 'families/famA/completions/c1'), { pointsAwarded: 9999 }));
+    await assertFails(updateDoc(doc(adminA(), 'families/famA/completions/c1'), { taskId: 'other' }));
   });
 });
 
@@ -149,6 +151,24 @@ describe('Core member abilities (current behavior)', () => {
   });
   test('a member can undo (delete) their own completion', async () => {
     await assertSucceeds(deleteDoc(doc(childA(), 'families/famA/completions/c1')));
+  });
+});
+
+describe('Task verification / approval (Phase 4.3)', () => {
+  test('a parent can approve a completion (status-only edit)', async () => {
+    await assertSucceeds(updateDoc(doc(adminA(), 'families/famA/completions/c1'), { status: 'approved', approvedBy: 'mAdminA' }));
+  });
+  test('a parent can reject a completion', async () => {
+    await assertSucceeds(updateDoc(doc(adminA(), 'families/famA/completions/c1'), { status: 'rejected', approvedBy: 'mAdminA' }));
+  });
+  test('a child cannot approve their own completion (no self-granting points)', async () => {
+    await assertFails(updateDoc(doc(childA(), 'families/famA/completions/c1'), { status: 'approved' }));
+  });
+  test('a parent cannot smuggle a point change in alongside the status', async () => {
+    await assertFails(updateDoc(doc(adminA(), 'families/famA/completions/c1'), { status: 'approved', pointsAwarded: 9999 }));
+  });
+  test('status must be an allowed value', async () => {
+    await assertFails(updateDoc(doc(adminA(), 'families/famA/completions/c1'), { status: 'hacked' }));
   });
 });
 

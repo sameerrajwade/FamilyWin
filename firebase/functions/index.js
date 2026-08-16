@@ -15,7 +15,7 @@
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { onDocumentCreated, onDocumentDeleted } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
@@ -52,6 +52,93 @@ function missedPenaltyMode(family) {
 const txCol = (familyId) =>
   db.collection('families').doc(familyId).collection('transactions');
 
+// ─── SHARED SETTLE / REVERSE ──────────────────────────────────────────────────
+// Extracted so create (immediate), update (Phase 4.3 approval pending→approved),
+// and delete (undo / catch-up) all go through one authoritative code path.
+
+/**
+ * Write the single points transaction for a completion, from the task's
+ * authoritative pointValue. Idempotent: no-op if a tx already references this
+ * completion (so approve-after-create, or a re-fired trigger, never double-count).
+ */
+async function awardForCompletion(familyId, completionId, c) {
+  const dup = await txCol(familyId).where('referenceId', '==', completionId).limit(1).get();
+  if (!dup.empty) return;
+
+  const taskSnap = await db
+    .collection('families').doc(familyId).collection('tasks').doc(c.taskId).get();
+  const pointValue = taskSnap.exists ? (taskSnap.data().pointValue || 0) : 0;
+  const title = taskSnap.exists ? (taskSnap.data().title || 'Task') : 'Task';
+
+  let delta;
+  let reason;
+  if (c.wasAutoFailed === true) {
+    let penalty;
+    if (c.penaltyKind === 'autofail') {
+      // Auto-fail (task not done by its autoFailHour): full point value.
+      penalty = pointValue;
+    } else {
+      // Missed-task penalty feature ('miss' / legacy): half|full|off setting.
+      const familySnap = await db.collection('families').doc(familyId).get();
+      const mode = missedPenaltyMode(familySnap.exists ? familySnap.data() : null);
+      penalty = missedTaskPenaltyAmount(pointValue, mode);
+    }
+    if (penalty <= 0) return;
+    delta = -penalty;
+    reason = c.penaltyKind === 'autofail' ? `Auto-failed: ${title}` : `Missed: ${title}`;
+  } else {
+    if (pointValue <= 0) return;
+    delta = pointValue;
+    reason = c.completedLate ? `Completed (late): ${title}` : `Completed: ${title}`;
+  }
+
+  await txCol(familyId).add({
+    familyId,
+    memberId: c.memberId,
+    delta,
+    reason,
+    source: 'task',
+    referenceId: completionId,
+    createdAt: Timestamp.now(),
+  });
+}
+
+/**
+ * Balance out any transactions referencing a completion (undo / catch-up / a
+ * parent rejecting an already-approved completion). Idempotent: no-op if the
+ * referencing transactions already net to zero.
+ */
+async function reverseForCompletion(familyId, completionId, c) {
+  const refd = await txCol(familyId).where('referenceId', '==', completionId).get();
+  if (refd.empty) return;
+  const sum = refd.docs.reduce((s, d) => s + (d.data().delta || 0), 0);
+  if (sum === 0) return; // already balanced
+
+  const taskSnap = await db
+    .collection('families').doc(familyId).collection('tasks').doc(c.taskId).get();
+  const title = taskSnap.exists ? (taskSnap.data().title || 'Task') : 'Task';
+
+  await txCol(familyId).add({
+    familyId,
+    memberId: c.memberId,
+    delta: -sum,
+    reason: sum > 0 ? `Undo: ${title}` : `Restored: ${title}`,
+    source: 'task',
+    referenceId: completionId,
+    createdAt: Timestamp.now(),
+  });
+}
+
+/**
+ * Phase 4.3: a completion for a task that requires parent approval is created
+ * with status:'pending' and settles points only once a parent approves. A
+ * completion with no status (or 'approved') settles immediately as before —
+ * fully backward compatible with pre-4.3 completions.
+ */
+function isAwardable(c) {
+  return c.status !== 'pending' && c.status !== 'rejected';
+}
+
 // Award (or penalize) on completion create. Idempotent per completion id.
 exports.onCompletionCreated = onDocumentCreated(
   'families/{familyId}/completions/{completionId}',
@@ -60,48 +147,32 @@ exports.onCompletionCreated = onDocumentCreated(
     if (!snap) return;
     const c = snap.data();
     if (!c || c.serverAward !== true) return; // legacy/self-awarded — skip
+    if (!isAwardable(c)) return; // Phase 4.3: awaiting parent approval
+    const { familyId, completionId } = event.params;
+    await awardForCompletion(familyId, completionId, c);
+  },
+);
+
+// Phase 4.3: settle points when a parent approves a pending completion, and
+// reverse them if a parent later rejects an approved one. Only reacts to a
+// status transition so ordinary field touches don't re-award.
+exports.onCompletionUpdated = onDocumentUpdated(
+  'families/{familyId}/completions/{completionId}',
+  async (event) => {
+    const before = event.data && event.data.before && event.data.before.data();
+    const after = event.data && event.data.after && event.data.after.data();
+    if (!after || after.serverAward !== true) return;
     const { familyId, completionId } = event.params;
 
-    // Idempotency: never write a second tx for the same completion.
-    const dup = await txCol(familyId).where('referenceId', '==', completionId).limit(1).get();
-    if (!dup.empty) return;
+    const was = before ? before.status : undefined;
+    const now = after.status;
+    if (was === now) return; // no status change → nothing to do
 
-    const taskSnap = await db
-      .collection('families').doc(familyId).collection('tasks').doc(c.taskId).get();
-    const pointValue = taskSnap.exists ? (taskSnap.data().pointValue || 0) : 0;
-    const title = taskSnap.exists ? (taskSnap.data().title || 'Task') : 'Task';
-
-    let delta;
-    let reason;
-    if (c.wasAutoFailed === true) {
-      let penalty;
-      if (c.penaltyKind === 'autofail') {
-        // Auto-fail (task not done by its autoFailHour): full point value.
-        penalty = pointValue;
-      } else {
-        // Missed-task penalty feature ('miss' / legacy): half|full|off setting.
-        const familySnap = await db.collection('families').doc(familyId).get();
-        const mode = missedPenaltyMode(familySnap.exists ? familySnap.data() : null);
-        penalty = missedTaskPenaltyAmount(pointValue, mode);
-      }
-      if (penalty <= 0) return;
-      delta = -penalty;
-      reason = c.penaltyKind === 'autofail' ? `Auto-failed: ${title}` : `Missed: ${title}`;
-    } else {
-      if (pointValue <= 0) return;
-      delta = pointValue;
-      reason = c.completedLate ? `Completed (late): ${title}` : `Completed: ${title}`;
+    if (now === 'approved') {
+      await awardForCompletion(familyId, completionId, after);
+    } else if (now === 'rejected') {
+      await reverseForCompletion(familyId, completionId, after);
     }
-
-    await txCol(familyId).add({
-      familyId,
-      memberId: c.memberId,
-      delta,
-      reason,
-      source: 'task',
-      referenceId: completionId,
-      createdAt: Timestamp.now(),
-    });
   },
 );
 
@@ -116,25 +187,7 @@ exports.onCompletionDeleted = onDocumentDeleted(
     const c = snap.data();
     if (!c || c.serverAward !== true) return;
     const { familyId, completionId } = event.params;
-
-    const refd = await txCol(familyId).where('referenceId', '==', completionId).get();
-    if (refd.empty) return;
-    const sum = refd.docs.reduce((s, d) => s + (d.data().delta || 0), 0);
-    if (sum === 0) return; // already balanced
-
-    const taskSnap = await db
-      .collection('families').doc(familyId).collection('tasks').doc(c.taskId).get();
-    const title = taskSnap.exists ? (taskSnap.data().title || 'Task') : 'Task';
-
-    await txCol(familyId).add({
-      familyId,
-      memberId: c.memberId,
-      delta: -sum,
-      reason: sum > 0 ? `Undo: ${title}` : `Restored: ${title}`,
-      source: 'task',
-      referenceId: completionId,
-      createdAt: Timestamp.now(),
-    });
+    await reverseForCompletion(familyId, completionId, c);
   },
 );
 

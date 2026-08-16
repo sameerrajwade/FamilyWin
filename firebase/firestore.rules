@@ -98,8 +98,15 @@ service cloud.firestore {
         allow read: if isFamilyMember(familyId);
         // Any family member can create a completion (for their own tasks)
         allow create: if isFamilyMember(familyId);
-        // No edits — completions are immutable once written
-        allow update: if false;
+        // Phase 4.3 task verification: a PARENT may approve/reject a completion,
+        // changing ONLY the status (+ approver stamp). Everything else stays
+        // immutable, and a child can never flip their own pending completion to
+        // 'approved' — so points still can't be self-granted. Points settle via
+        // the onCompletionUpdated Cloud Function, not the client.
+        allow update: if isFamilyMember(familyId) && isParent(familyId)
+          && request.resource.data.diff(resource.data)
+               .affectedKeys().hasOnly(['status', 'approvedBy', 'approvedAt'])
+          && request.resource.data.status in ['approved', 'rejected'];
         // A member can undo (delete) their own completion; parents can also
         // undo on behalf of managed children. The app additionally enforces
         // the "same calendar day" rule client-side.

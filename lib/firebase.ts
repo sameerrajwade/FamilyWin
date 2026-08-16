@@ -522,6 +522,9 @@ export interface TaskDoc {
   autoFailHour?: number;
   taskEmoji?: string;
   isActive: boolean;
+  /** Phase 4.3: when true, a child's completion is held for parent approval
+   *  before points are awarded. Absent/false = points settle immediately. */
+  requiresApproval?: boolean;
   createdBy: string;
   createdAt: Timestamp;
 }
@@ -544,6 +547,12 @@ export interface CompletionDoc {
   completedLate?: boolean;
   /** For wasAutoFailed completions: which penalty the CF should apply. */
   penaltyKind?: 'autofail' | 'miss';
+  /** Phase 4.3 task verification: 'pending' holds points until a parent
+   *  approves; 'approved'/absent settles them; 'rejected' voids the award.
+   *  Points are settled by the onCompletionUpdated Cloud Function. */
+  status?: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedAt?: Timestamp | null;
 }
 
 export interface TransactionDoc {
@@ -593,11 +602,16 @@ export async function completeTask(params: {
   weekId: string;
   pointValue: number;
   taskTitle: string;
+  /** Phase 4.3: when true, the completion lands as 'pending' and points are
+   *  awarded only after a parent approves it. */
+  requiresApproval?: boolean;
 }): Promise<TransactionDoc & { completionId: string }> {
   // Phase 1.8: the client writes ONLY the completion (stamped serverAward:true).
   // The onCompletionCreated Cloud Function settles the points transaction from
   // the task's authoritative pointValue — clients can no longer forge task
   // points. Completion still writes offline; points settle on reconnect.
+  // Phase 4.3: a task that requiresApproval lands 'pending' — the CF holds the
+  // award until a parent approves (onCompletionUpdated).
   const completionRef = Col.completions(params.familyId).doc();
   await completionRef.set({
     taskId: params.taskId,
@@ -609,6 +623,7 @@ export async function completeTask(params: {
     wasAutoFailed: false,
     pointsAwarded: params.pointValue, // display hint; server recomputes the tx
     serverAward: true,
+    ...(params.requiresApproval ? { status: 'pending' as const } : {}),
   });
 
   // Return shape preserved for callers (toast + undo). No client tx id exists now
@@ -673,6 +688,51 @@ export async function undoTaskCompletion(params: {
   // by the CF; older completions still carry their own client tx, unaffected.)
   await ref.delete();
   return { undone: true, pointsReversed: reversed };
+}
+
+// ─── TASK VERIFICATION / PARENT APPROVAL (Phase 4.3) ─────────────────────────
+
+/**
+ * Completions awaiting parent approval (status:'pending'). Parents see these in
+ * the approval queue. Uses a single-field equality query (no composite index).
+ */
+export async function getPendingCompletions(familyId: string): Promise<CompletionDoc[]> {
+  const snap = await Col.completions(familyId).where('status', '==', 'pending').get();
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CompletionDoc, 'id'>) }));
+}
+
+/**
+ * Approve a pending completion. Points settle server-side via the
+ * onCompletionUpdated Cloud Function — the client only flips the status (rules
+ * allow a parent to change status/approver fields only). Idempotent client-side.
+ */
+export async function approveCompletion(params: {
+  familyId: string;
+  completionId: string;
+  approvedBy: string;
+}): Promise<void> {
+  await Col.completions(params.familyId).doc(params.completionId).update({
+    status: 'approved',
+    approvedBy: params.approvedBy,
+    approvedAt: firestore.Timestamp.now(),
+  });
+}
+
+/**
+ * Reject a pending completion (task not actually done to standard). No points
+ * are awarded; if the completion had somehow been approved first, the CF
+ * reverses it. The task returns to incomplete for that day.
+ */
+export async function rejectCompletion(params: {
+  familyId: string;
+  completionId: string;
+  approvedBy: string;
+}): Promise<void> {
+  await Col.completions(params.familyId).doc(params.completionId).update({
+    status: 'rejected',
+    approvedBy: params.approvedBy,
+    approvedAt: firestore.Timestamp.now(),
+  });
 }
 
 // ─── MISSED-TASK PENALTY + GRACE-WINDOW CATCH-UP (optional feature) ───────────

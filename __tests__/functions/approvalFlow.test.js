@@ -1,0 +1,106 @@
+/**
+ * __tests__/functions/approvalFlow.test.js
+ * Phase 4.3 task verification — parent approval flow. Proves the
+ * onCompletionCreated / onCompletionUpdated triggers hold points for a
+ * status:'pending' completion and settle (or reverse) them on the parent's
+ * approve/reject transition, against the functions + firestore emulators.
+ *
+ *   firebase emulators:exec --project demo-lootboard --only firestore,functions \
+ *     "npx jest --config jest.functions.config.js"
+ */
+const path = require('path');
+const admin = require(path.join(__dirname, '../../firebase/functions/node_modules/firebase-admin'));
+
+admin.initializeApp({ projectId: 'demo-lootboard' });
+const db = admin.firestore();
+
+const FAM = 'apprFam';
+const famRef = db.collection('families').doc(FAM);
+const txCol = () => famRef.collection('transactions');
+const compCol = () => famRef.collection('completions');
+
+async function eventually(fn, { timeout = 35000, interval = 400 } = {}) {
+  const start = Date.now();
+  let last;
+  while (Date.now() - start < timeout) {
+    last = await fn();
+    if (last) return last;
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  return last;
+}
+async function txForCompletion(completionId) {
+  const snap = await txCol().where('referenceId', '==', completionId).get();
+  return snap.docs.map((d) => d.data());
+}
+const sum = (txs) => txs.reduce((s, t) => s + (t.delta || 0), 0);
+
+beforeAll(async () => {
+  await famRef.set({ name: 'Approval Family', missedTaskPenalty: 'off' });
+  await famRef.collection('tasks').doc('t1').set({ title: 'Homework', pointValue: 20, requiresApproval: true });
+
+  // Warm up the REAL award pipeline before any timed assertion. This suite sorts
+  // first, so it otherwise pays the emulator's cold eventarc→functions delivery
+  // latency (tens of seconds on the very first firestore event) inside a test.
+  // A real create-award and a real pending→approve-award make both delivery
+  // paths hot; warmup docs are deleted after.
+  await compCol().doc('warm_create').set({ taskId: 't1', memberId: 'w', wasAutoFailed: false, serverAward: true });
+  await compCol().doc('warm_upd').set({ taskId: 't1', memberId: 'w', wasAutoFailed: false, serverAward: true, status: 'pending' });
+  await eventually(async () => ((await txForCompletion('warm_create')).length ? true : null));
+  await compCol().doc('warm_upd').update({ status: 'approved' });
+  await eventually(async () => ((await txForCompletion('warm_upd')).length ? true : null));
+  await compCol().doc('warm_create').delete();
+  await compCol().doc('warm_upd').delete();
+}, 120000);
+
+describe('Phase 4.3 — parent approval flow', () => {
+  it('holds points while pending, then awards on approve (via onCompletionUpdated)', async () => {
+    await compCol().doc('p_pending').set({ taskId: 't1', memberId: 'kid', wasAutoFailed: false, serverAward: true, status: 'pending', pointsAwarded: 20 });
+    // must NOT award while pending
+    await new Promise((r) => setTimeout(r, 5000));
+    expect(await txForCompletion('p_pending')).toHaveLength(0);
+
+    // parent approves → the update trigger settles the points
+    await compCol().doc('p_pending').update({ status: 'approved', approvedBy: 'dad' });
+    const txs = await eventually(async () => {
+      const t = await txForCompletion('p_pending');
+      return t.length ? t : null;
+    });
+    expect(txs).toHaveLength(1);
+    expect(txs[0].delta).toBe(20); // from the task's pointValue, not the client
+    expect(txs[0].source).toBe('task');
+
+    // idempotent — re-touching an approved completion never double-awards
+    await compCol().doc('p_pending').update({ approvedAt: admin.firestore.Timestamp.now() });
+    await new Promise((r) => setTimeout(r, 3000));
+    expect(await txForCompletion('p_pending')).toHaveLength(1);
+  });
+
+  it('never awards when a pending completion is rejected (pending → rejected)', async () => {
+    await compCol().doc('p_reject').set({ taskId: 't1', memberId: 'kid', wasAutoFailed: false, serverAward: true, status: 'pending', pointsAwarded: 20 });
+    await new Promise((r) => setTimeout(r, 4000));
+    await compCol().doc('p_reject').update({ status: 'rejected', approvedBy: 'dad' });
+    await new Promise((r) => setTimeout(r, 4000));
+    expect(sum(await txForCompletion('p_reject'))).toBe(0);
+  });
+
+  it('reverses to net zero if a parent rejects an already-approved completion', async () => {
+    await compCol().doc('p_flip').set({ taskId: 't1', memberId: 'kid', wasAutoFailed: false, serverAward: true, status: 'pending', pointsAwarded: 20 });
+    await compCol().doc('p_flip').update({ status: 'approved', approvedBy: 'dad' });
+    await eventually(async () => ((await txForCompletion('p_flip')).length === 1 ? true : null));
+    await compCol().doc('p_flip').update({ status: 'rejected', approvedBy: 'mom' });
+    const balanced = await eventually(async () => {
+      const t = await txForCompletion('p_flip');
+      return t.length === 2 && sum(t) === 0 ? t : null;
+    });
+    expect(sum(balanced)).toBe(0); // +20 award, then -20 reversal
+  });
+
+  it('a non-status field touch on a pending completion does not award', async () => {
+    await compCol().doc('p_touch').set({ taskId: 't1', memberId: 'kid', wasAutoFailed: false, serverAward: true, status: 'pending', pointsAwarded: 20 });
+    await new Promise((r) => setTimeout(r, 3000));
+    await compCol().doc('p_touch').update({ note: 'parent looked' }); // status unchanged
+    await new Promise((r) => setTimeout(r, 4000));
+    expect(await txForCompletion('p_touch')).toHaveLength(0);
+  });
+});

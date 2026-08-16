@@ -10,7 +10,7 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/__tests__/functions/**/*.test.js'],
   transform: {},
-  testTimeout: 45000,
+  testTimeout: 60000,
   // Serialize suites: they share one emulator backend, and running trigger-heavy
   // suites in parallel workers floods the async trigger queue so another suite's
   // polls time out. One worker keeps trigger latency deterministic.
