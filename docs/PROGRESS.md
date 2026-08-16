@@ -10,6 +10,15 @@
 
 ---
 
+## Iteration 30 (2026-08-15) — 1.8 point integrity IMPLEMENTED + cutover in progress
+User: do 1.8 first, then merge everything to main. User deployed current firestore.rules (penalties block live; tightened-tx NOT yet). User granted firebase CLI full control.
+- ✅ **1.8 server-authoritative points** — code committed (ba632f3). Design: client only writes/deletes COMPLETION docs stamped `serverAward:true`; `onCompletionCreated`/`onCompletionDeleted` CF triggers are the sole writers of source:'task' tx, amounts recomputed from task.pointValue (normal=+pv; wasAutoFailed → penaltyKind 'autofail'=full / 'miss'=missed-setting; delete reverses net). serverAward flag → old-client completions ignored (no double-count in overlap). Auto-fail (backgroundTasks.ts) + missed-penalty + catch-up all moved to completion→trigger path.
+- ✅ **Tightened rules**: transactions create = parent-only, source ∈ discipline/manual/bonus/redemption; NO client source:'task'; children never write tx (closes forge + redemption-bank-inflation). Rules tests 27/27 green (hole flipped to assertFails + integrity cases).
+- ✅ **CUTOVER COMPLETE + DEVICE-VERIFIED** (functions→client→rules, all on familywin-35a97): (1) deployed both CF triggers (first-gen-Eventarc needed a retry after propagation); (2) built+installed new client; (3) deployed tightened firestore.rules. Device verification (Pixel, Aug15→16): complete task → leaderboard 10 pts via CF; undo → onCompletionDeleted fired (05:10:58) reversing; miss-penalty via CF (catch-up card on Aug-16 rollover, half mode −5); earning still works AFTER rules tighten (onCompletionCreated fired 05:13:11, no error). Negative-points penalty list + Add-penalty UI verified on device.
+- ⚠️ Transition caveat: undoing a PRE-cutover completion (no serverAward) after tighten won't reverse (CF skips non-serverAward). Weekly reset clears it; negligible.
+- ⚠️ TEST DATA: my device verification left real completions on Sameer (Workout, Make a Bed, a one-time "CFtesty" task, + a Make-a-Bed miss penalty) on the live family. Resets Monday; delete CFtesty task if undesired.
+- ✅ **MERGED to main** (see below). Big update shipped: UI batch + rules tests + negative-points + 1.8 point integrity.
+
 ## Iteration 29 (2026-08-15) — Negative points (a) built; 1.8 decision; merge-to-main pending
 User: negative-points = (a) penalty-items list; 1.8 = GO; "once done, merge everything to main for big update."
 - ✅ **Negative points (a)** CODE COMPLETE + committed (5c8ee0c): parent-defined penalty presets (Col.penalties + PenaltyDoc + getActivePenalties/createPenalty/deletePenalty). discipline/log.tsx now loads the family's own penalty list (built-in seed until they add their own), "Add penalty" modal (icon+name+points), long-press to remove custom ones. Applying = existing source:'discipline' negative tx. penalties rules (member read/parent write) + 2 rules tests → 22/22 green. tsc clean. NOTE: custom-CREATE needs firestore.rules DEPLOYED (additive/safe, `firebase deploy --only firestore:rules`); built-in presets apply w/o deploy.
