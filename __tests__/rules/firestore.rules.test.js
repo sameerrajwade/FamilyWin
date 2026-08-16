@@ -150,10 +150,25 @@ describe('Core member abilities (current behavior)', () => {
   test('a member can undo (delete) their own completion', async () => {
     await assertSucceeds(deleteDoc(doc(childA(), 'families/famA/completions/c1')));
   });
-  // CURRENT HOLE (Phase 1.8 target): any member can forge an arbitrary points
-  // transaction. This asserts today's behavior; flip to assertFails once point
-  // awards are server-authoritative and client transaction writes are locked down.
-  test('CURRENT HOLE: a member can forge a points transaction', async () => {
-    await assertSucceeds(addDoc(collection(childA(), 'families/famA/transactions'), { memberId: 'mChildA', delta: 9999, source: 'task' }));
+});
+
+describe('Point integrity (Phase 1.8 — task points are Cloud-Function-only)', () => {
+  test('a child cannot forge a source:task transaction', async () => {
+    await assertFails(addDoc(collection(childA(), 'families/famA/transactions'), { memberId: 'mChildA', delta: 9999, source: 'task' }));
+  });
+  test('even a parent cannot write a source:task transaction (CF only)', async () => {
+    await assertFails(addDoc(collection(adminA(), 'families/famA/transactions'), { memberId: 'mAdminA', delta: 10, source: 'task' }));
+  });
+  test('a parent can log a discipline adjustment', async () => {
+    await assertSucceeds(addDoc(collection(adminA(), 'families/famA/transactions'), { memberId: 'mChildA', delta: -15, source: 'discipline' }));
+  });
+  test('a child cannot log a discipline adjustment (not a parent)', async () => {
+    await assertFails(addDoc(collection(childA(), 'families/famA/transactions'), { memberId: 'mChildA', delta: -15, source: 'discipline' }));
+  });
+  test('a parent can create the redemption spend transaction (on approval)', async () => {
+    await assertSucceeds(addDoc(collection(adminA(), 'families/famA/transactions'), { memberId: 'mChildA', delta: -30, source: 'redemption' }));
+  });
+  test('a child cannot forge a redemption transaction (bank-balance inflation)', async () => {
+    await assertFails(addDoc(collection(childA(), 'families/famA/transactions'), { memberId: 'mChildA', delta: 9999, source: 'redemption' }));
   });
 });

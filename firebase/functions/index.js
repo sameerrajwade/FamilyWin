@@ -15,6 +15,7 @@
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onDocumentCreated, onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
@@ -24,6 +25,117 @@ const { getStorage } = require('firebase-admin/storage');
 initializeApp();
 
 const db = getFirestore();
+
+// ─── SERVER-AUTHORITATIVE POINTS (Phase 1.8) ──────────────────────────────────
+// Points for task completions are settled here, not by the client, so a modified
+// client can't forge `source:'task'` transactions (firestore.rules blocks those
+// for clients once this is live). The client (>= the 1.8 build) writes ONLY the
+// completion doc, stamped `serverAward: true`, and this trigger mirrors it into a
+// transaction using the task's authoritative pointValue. Older clients omit the
+// flag and are ignored here (they still write their own tx) — this keeps the
+// deploy overlap window safe from double-counting. See docs/POINT_INTEGRITY.md.
+
+/** Points to deduct for a missed daily task (mirrors lib/pointsEngine.ts). */
+function missedTaskPenaltyAmount(pointValue, mode) {
+  if (mode === 'off' || !pointValue || pointValue <= 0) return 0;
+  if (mode === 'full') return pointValue;
+  return Math.max(1, Math.round(pointValue / 2));
+}
+function missedPenaltyMode(family) {
+  const v = family && family.missedTaskPenalty;
+  if (v === true) return 'half';
+  if (v === 'half' || v === 'full') return v;
+  return 'off';
+}
+
+const txCol = (familyId) =>
+  db.collection('families').doc(familyId).collection('transactions');
+
+// Award (or penalize) on completion create. Idempotent per completion id.
+exports.onCompletionCreated = onDocumentCreated(
+  'families/{familyId}/completions/{completionId}',
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const c = snap.data();
+    if (!c || c.serverAward !== true) return; // legacy/self-awarded — skip
+    const { familyId, completionId } = event.params;
+
+    // Idempotency: never write a second tx for the same completion.
+    const dup = await txCol(familyId).where('referenceId', '==', completionId).limit(1).get();
+    if (!dup.empty) return;
+
+    const taskSnap = await db
+      .collection('families').doc(familyId).collection('tasks').doc(c.taskId).get();
+    const pointValue = taskSnap.exists ? (taskSnap.data().pointValue || 0) : 0;
+    const title = taskSnap.exists ? (taskSnap.data().title || 'Task') : 'Task';
+
+    let delta;
+    let reason;
+    if (c.wasAutoFailed === true) {
+      let penalty;
+      if (c.penaltyKind === 'autofail') {
+        // Auto-fail (task not done by its autoFailHour): full point value.
+        penalty = pointValue;
+      } else {
+        // Missed-task penalty feature ('miss' / legacy): half|full|off setting.
+        const familySnap = await db.collection('families').doc(familyId).get();
+        const mode = missedPenaltyMode(familySnap.exists ? familySnap.data() : null);
+        penalty = missedTaskPenaltyAmount(pointValue, mode);
+      }
+      if (penalty <= 0) return;
+      delta = -penalty;
+      reason = c.penaltyKind === 'autofail' ? `Auto-failed: ${title}` : `Missed: ${title}`;
+    } else {
+      if (pointValue <= 0) return;
+      delta = pointValue;
+      reason = c.completedLate ? `Completed (late): ${title}` : `Completed: ${title}`;
+    }
+
+    await txCol(familyId).add({
+      familyId,
+      memberId: c.memberId,
+      delta,
+      reason,
+      source: 'task',
+      referenceId: completionId,
+      createdAt: Timestamp.now(),
+    });
+  },
+);
+
+// Reverse on completion delete (undo, or catch-up removing a miss). Idempotent:
+// if the transactions referencing this completion already net to zero, do
+// nothing; otherwise write the single balancing transaction.
+exports.onCompletionDeleted = onDocumentDeleted(
+  'families/{familyId}/completions/{completionId}',
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const c = snap.data();
+    if (!c || c.serverAward !== true) return;
+    const { familyId, completionId } = event.params;
+
+    const refd = await txCol(familyId).where('referenceId', '==', completionId).get();
+    if (refd.empty) return;
+    const sum = refd.docs.reduce((s, d) => s + (d.data().delta || 0), 0);
+    if (sum === 0) return; // already balanced
+
+    const taskSnap = await db
+      .collection('families').doc(familyId).collection('tasks').doc(c.taskId).get();
+    const title = taskSnap.exists ? (taskSnap.data().title || 'Task') : 'Task';
+
+    await txCol(familyId).add({
+      familyId,
+      memberId: c.memberId,
+      delta: -sum,
+      reason: sum > 0 ? `Undo: ${title}` : `Restored: ${title}`,
+      source: 'task',
+      referenceId: completionId,
+      createdAt: Timestamp.now(),
+    });
+  },
+);
 
 // ─── WEEKLY RESET ─────────────────────────────────────────────────────────────
 // Cron: every Monday at 00:01 UTC

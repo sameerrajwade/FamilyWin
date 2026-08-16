@@ -73,7 +73,10 @@ TaskManager.defineTask(AUTO_FAIL_TASK_NAME, async () => {
           const pairKey = `${task.id}::${member.id}`;
           if (completedPairs.has(pairKey)) continue;
 
-          // Auto-fail: mark completion + deduct points
+          // Auto-fail: write ONLY the completion (Phase 1.8). The
+          // onCompletionCreated Cloud Function deducts the full point value
+          // server-side (penaltyKind:'autofail') — clients no longer write
+          // source:'task' transactions.
           const completionRef = firestore()
             .collection('families').doc(familyId)
             .collection('completions').doc();
@@ -83,20 +86,9 @@ TaskManager.defineTask(AUTO_FAIL_TASK_NAME, async () => {
             weekId,
             completedAt: null,
             wasAutoFailed: true,
-            pointsAwarded: -task.pointValue,
-          });
-
-          const txRef = firestore()
-            .collection('families').doc(familyId)
-            .collection('transactions').doc();
-          batch.set(txRef, {
-            familyId,
-            memberId: member.id,
-            delta: -task.pointValue,
-            reason: `Auto-failed: ${task.title}`,
-            source: 'task',
-            referenceId: task.id,
-            createdAt: firestore.FieldValue.serverTimestamp(),
+            pointsAwarded: -task.pointValue, // display hint; server recomputes
+            serverAward: true,
+            penaltyKind: 'autofail',
           });
 
           batchCount++;

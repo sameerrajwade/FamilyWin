@@ -1,10 +1,27 @@
 # Point Integrity Migration (Phase 1.8) — design & cutover runbook
 
-> **Status:** designed, NOT deployed. This is a coordinated prod migration that
-> touches the core write path and offline UX, so it must be executed *with* the
-> user against the live project (`familywin-35a97`) in the exact order below.
-> Do not deploy the tightened rules before the Cloud Functions are live and the
-> client is shipped, or task completion breaks for everyone.
+> **Status: IMPLEMENTED (not yet cut over).** Code is committed on
+> `autonomous/gamify-home`; the live cutover (deploy functions → ship client →
+> deploy tightened rules) is done in the ordered steps below.
+>
+> **As built (cleaner than the original sketch below):** the client only ever
+> writes/deletes **completion** docs, stamped `serverAward: true`. Two Firestore
+> triggers — `onCompletionCreated` / `onCompletionDeleted` — are the sole writers
+> of `source:'task'` transactions. Amounts are recomputed server-side from the
+> task's `pointValue` (never trusting the client): a normal completion awards
+> `+pointValue`; a `wasAutoFailed` completion deducts either the full value
+> (`penaltyKind:'autofail'`) or the missed-task setting (`penaltyKind:'miss'`);
+> deleting a completion reverses whatever it netted. The `serverAward` flag lets
+> old-client completions (which still carry their own tx) be ignored by the
+> trigger, so the deploy overlap can't double-count. Tightened rules make ALL
+> client transaction writes parent-only (discipline/manual/bonus/redemption);
+> children never write transactions. Auto-fail (`lib/backgroundTasks.ts`) and the
+> missed-task penalty now also go through the completion→trigger path.
+
+> This is a coordinated prod migration that touches the core write path and
+> offline UX, executed against the live project (`familywin-35a97`) in the exact
+> order below. Do not deploy the tightened rules before the Cloud Functions are
+> live and the client is shipped, or task completion breaks for everyone.
 
 ## The hole (today)
 

@@ -532,6 +532,12 @@ export interface CompletionDoc {
   completedAt?: Timestamp | null;
   wasAutoFailed: boolean;
   pointsAwarded: number;
+  /** Phase 1.8: marks completions whose points are settled by the Cloud Function. */
+  serverAward?: boolean;
+  /** True for grace-window catch-up completions (affects the CF's tx reason). */
+  completedLate?: boolean;
+  /** For wasAutoFailed completions: which penalty the CF should apply. */
+  penaltyKind?: 'autofail' | 'miss';
 }
 
 export interface TransactionDoc {
@@ -582,10 +588,12 @@ export async function completeTask(params: {
   pointValue: number;
   taskTitle: string;
 }): Promise<TransactionDoc & { completionId: string }> {
-  const batch = firestore().batch();
-
+  // Phase 1.8: the client writes ONLY the completion (stamped serverAward:true).
+  // The onCompletionCreated Cloud Function settles the points transaction from
+  // the task's authoritative pointValue — clients can no longer forge task
+  // points. Completion still writes offline; points settle on reconnect.
   const completionRef = Col.completions(params.familyId).doc();
-  batch.set(completionRef, {
+  await completionRef.set({
     taskId: params.taskId,
     memberId: params.memberId,
     weekId: params.weekId,
@@ -593,10 +601,12 @@ export async function completeTask(params: {
     monthId: getCurrentMonthId(),
     completedAt: firestore.Timestamp.now(),
     wasAutoFailed: false,
-    pointsAwarded: params.pointValue,
+    pointsAwarded: params.pointValue, // display hint; server recomputes the tx
+    serverAward: true,
   });
 
-  const txRef = Col.transactions(params.familyId).doc();
+  // Return shape preserved for callers (toast + undo). No client tx id exists now
+  // — the CF creates it — so `id` mirrors the completion id (unused by undo).
   const txData = {
     familyId: params.familyId,
     memberId: params.memberId,
@@ -606,10 +616,7 @@ export async function completeTask(params: {
     referenceId: params.taskId,
     createdAt: firestore.Timestamp.now(),
   };
-  batch.set(txRef, txData);
-
-  await batch.commit();
-  return { id: txRef.id, completionId: completionRef.id, ...txData };
+  return { id: completionRef.id, completionId: completionRef.id, ...txData };
 }
 
 /**
@@ -625,7 +632,7 @@ export async function undoTaskCompletion(params: {
   pointsAwarded: number;
   taskTitle: string;
 }): Promise<{ undone: boolean; pointsReversed: number }> {
-  const { familyId, completionId, taskId, memberId, taskTitle } = params;
+  const { familyId, completionId, taskId, memberId } = params;
 
   // Resolve the LIVE positive completion to reverse. The passed completionId can
   // be empty (optimistic store value) or a stale/cached id, in which case a
@@ -654,22 +661,11 @@ export async function undoTaskCompletion(params: {
     data = live.data();
   }
 
-  const reversed = data.pointsAwarded ?? 0; // the actual points to hand back
-  const batch = firestore().batch();
-  batch.delete(ref);
-
-  const txRef = Col.transactions(familyId).doc();
-  batch.set(txRef, {
-    familyId,
-    memberId,
-    delta: -reversed,
-    reason: `Undo: ${taskTitle}`,
-    source: 'task' as const,
-    referenceId: taskId,
-    createdAt: firestore.Timestamp.now(),
-  });
-
-  await batch.commit();
+  const reversed = data.pointsAwarded ?? 0; // the points the CF will hand back
+  // Phase 1.8: just delete the completion — onCompletionDeleted reverses the
+  // points transaction server-side. (Only serverAward completions are reversed
+  // by the CF; older completions still carry their own client tx, unaffected.)
+  await ref.delete();
   return { undone: true, pointsReversed: reversed };
 }
 
@@ -767,7 +763,7 @@ export async function applyMissedTaskPenalty(params: {
   penaltyAmount: number; // positive magnitude; stored as a negative delta
   dateKey: string; // YYYY-MM-DD
 }): Promise<void> {
-  const { familyId, memberId, taskId, pointValue, taskTitle, penaltyAmount, dateKey } = params;
+  const { familyId, memberId, taskId, penaltyAmount, dateKey } = params;
   if (penaltyAmount <= 0) return;
   const [y, m, d] = dateKey.split('-').map(Number);
   const weekId = getWeekIdForDate(new Date(y, m - 1, d, 12, 0, 0));
@@ -783,9 +779,11 @@ export async function applyMissedTaskPenalty(params: {
   // Deterministic doc IDs keyed on (task, member, day) so a race between two
   // devices that both pass the guard above writes the SAME two docs (one
   // penalty) instead of duplicating the -half transaction.
+  // Phase 1.8: write ONLY the miss completion (deterministic id keeps the
+  // cross-device race writing one doc). onCompletionCreated sees wasAutoFailed
+  // and writes the −penalty transaction, recomputed from the task server-side.
   const key = `${taskId}__${memberId}__${dateKey}`;
-  const batch = firestore().batch();
-  batch.set(Col.completions(familyId).doc(`miss__${key}`), {
+  await Col.completions(familyId).doc(`miss__${key}`).set({
     taskId,
     memberId,
     weekId,
@@ -793,18 +791,10 @@ export async function applyMissedTaskPenalty(params: {
     monthId: `${y}-${String(m).padStart(2, '0')}`,
     completedAt: null,
     wasAutoFailed: true,
-    pointsAwarded: -penaltyAmount,
+    pointsAwarded: -penaltyAmount, // display hint; server recomputes the tx
+    serverAward: true,
+    penaltyKind: 'miss',
   });
-  batch.set(Col.transactions(familyId).doc(`misstx__${key}`), {
-    familyId,
-    memberId,
-    delta: -penaltyAmount,
-    reason: `Missed: ${taskTitle}`,
-    source: 'task' as const,
-    referenceId: taskId,
-    createdAt: firestore.Timestamp.now(),
-  });
-  await batch.commit();
 }
 
 /**
@@ -821,7 +811,7 @@ export async function completeTaskForDate(params: {
   taskTitle: string;
   dateKey: string; // YYYY-MM-DD
 }): Promise<void> {
-  const { familyId, taskId, memberId, pointValue, taskTitle, dateKey } = params;
+  const { familyId, taskId, memberId, pointValue, dateKey } = params;
   const [y, m, d] = dateKey.split('-').map(Number);
   const dateObj = new Date(y, m - 1, d, 12, 0, 0);
   const weekId = getWeekIdForDate(dateObj);
@@ -839,21 +829,12 @@ export async function completeTaskForDate(params: {
 
   const batch = firestore().batch();
 
-  // Reverse any miss penalty for that day (adds back the deducted points).
+  // Phase 1.8: reverse any miss penalty for that day by DELETING the miss
+  // completion — onCompletionDeleted adds the deducted points back. Then create
+  // the late completion; onCompletionCreated awards +pointValue (serverAward +
+  // completedLate). No client-written transactions.
   const missed = docs.find((c) => c.wasAutoFailed || (c.pointsAwarded ?? 0) < 0);
-  if (missed) {
-    batch.delete(Col.completions(familyId).doc(missed.id));
-    const revRef = Col.transactions(familyId).doc();
-    batch.set(revRef, {
-      familyId,
-      memberId,
-      delta: -(missed.pointsAwarded ?? 0), // pointsAwarded is negative → adds it back
-      reason: `Restored: ${taskTitle}`,
-      source: 'task' as const,
-      referenceId: taskId,
-      createdAt: firestore.Timestamp.now(),
-    });
-  }
+  if (missed) batch.delete(Col.completions(familyId).doc(missed.id));
 
   const completionRef = Col.completions(familyId).doc();
   batch.set(completionRef, {
@@ -864,17 +845,9 @@ export async function completeTaskForDate(params: {
     monthId,
     completedAt: firestore.Timestamp.now(),
     wasAutoFailed: false,
-    pointsAwarded: pointValue,
-  });
-  const txRef = Col.transactions(familyId).doc();
-  batch.set(txRef, {
-    familyId,
-    memberId,
-    delta: pointValue,
-    reason: `Completed (late): ${taskTitle}`,
-    source: 'task' as const,
-    referenceId: taskId,
-    createdAt: firestore.Timestamp.now(),
+    pointsAwarded: pointValue, // display hint; server recomputes the tx
+    serverAward: true,
+    completedLate: true,
   });
 
   await batch.commit();
