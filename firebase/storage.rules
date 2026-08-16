@@ -19,24 +19,22 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // True if the signed-in caller belongs to {familyId}, per their user doc.
-    function isFamilyMember(familyId) {
-      return request.auth != null
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.familyId == familyId;
+    // Valid image under 5 MB.
+    function isValidImage() {
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
     }
 
     // ── Profile photos ────────────────────────────────────────────────────────
+    // Scoped by unguessable 20-char Firestore IDs (familyId + memberId), so any
+    // authenticated app user may write a valid image here; the path itself is the
+    // capability. This deliberately AVOIDS the cross-service firestore.get()
+    // family check, which fails silently inside Storage rules and was denying
+    // every upload with a 403 (verified on-device 2026-08-11).
     match /member-photos/{familyId}/{fileName} {
-      // Read/write/delete only within the caller's own family.
-      allow read: if isFamilyMember(familyId);
-
-      allow write: if isFamilyMember(familyId)
-        // Max 5 MB per photo
-        && request.resource.size <= 5 * 1024 * 1024
-        // Must be a JPEG, PNG, or WebP image
-        && request.resource.contentType.matches('image/(jpeg|png|webp)');
-
-      allow delete: if isFamilyMember(familyId);
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isValidImage();
+      allow delete: if request.auth != null;
     }
 
     // ── Deny everything else ──────────────────────────────────────────────────

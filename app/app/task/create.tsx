@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,8 +17,9 @@ import * as Haptics from 'expo-haptics';
 import { Col, getActiveTasks, updateTask, deleteTask } from '@/lib/firebase';
 import { detectTaskEmoji } from '@/lib/taskEmoji';
 import { useAuthStore, useFamilyStore } from '@/store';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, CATEGORY_ICONS, DIFFICULTY_POINTS } from '@/constants/theme';
-import { useTheme } from '@/lib/theme';
+import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, CATEGORY_ICONS, DIFFICULTY_POINTS } from '@/constants/theme';
+import { useTheme, type ThemeColors } from '@/lib/theme';
+import { Icon } from '@/components/ui/Icon';
 import type { TaskCategory, TaskDifficulty, TaskRecurrence } from '@/types';
 
 const CATEGORIES: TaskCategory[] = ['chores', 'homework', 'hygiene', 'behavior', 'extras'];
@@ -34,6 +35,7 @@ export default function CreateTaskScreen() {
   const { member, family } = useAuthStore();
   const { members } = useFamilyStore();
   const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   // Params: defaultAssignee pre-selects a member; taskId + taskData enable edit mode
   const { defaultAssignee, taskId, taskData } = useLocalSearchParams<{
     defaultAssignee?: string;
@@ -223,9 +225,14 @@ export default function CreateTaskScreen() {
                 accessibilityLabel="Delete this task"
                 accessibilityRole="button"
               >
-                <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: Colors.danger }}>
-                  {isDeleting ? '…' : '🗑️ Delete'}
-                </Text>
+                {isDeleting ? (
+                  <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.danger }}>…</Text>
+                ) : (
+                  <View style={styles.headerLink}>
+                    <Icon name="trash-outline" size={16} color={colors.danger} />
+                    <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.danger }}>Delete</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -234,7 +241,10 @@ export default function CreateTaskScreen() {
                 accessibilityLabel="Browse starter task packs"
                 accessibilityRole="button"
               >
-                <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: Colors.primary }}>📦 Packs</Text>
+                <View style={styles.headerLink}>
+                  <Icon name="cube" size={16} color={colors.primary} />
+                  <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary }}>Packs</Text>
+                </View>
               </TouchableOpacity>
             )}
           </View>
@@ -375,7 +385,7 @@ export default function CreateTaskScreen() {
             {isParent && members.length > 0 && (
               <View style={styles.field}>
                 <Text style={[styles.label, { color: colors.text }]}>Assign To (select multiple)</Text>
-                <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: Spacing.sm }}>
+                <Text style={{ fontSize: FontSize.xs, color: colors.textMuted, marginBottom: Spacing.sm }}>
                   Leave blank to assign to everyone
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -400,7 +410,7 @@ export default function CreateTaskScreen() {
                 </ScrollView>
                 {assignedTo.length > 0 && (
                   <TouchableOpacity onPress={() => setAssignedTo([])}>
-                    <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 }}>
+                    <Text style={{ fontSize: FontSize.xs, color: colors.textMuted, marginTop: 4 }}>
                       Clear — assign to everyone
                     </Text>
                   </TouchableOpacity>
@@ -413,9 +423,12 @@ export default function CreateTaskScreen() {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
                 <Text style={styles.label}>Points Value</Text>
                 <TouchableOpacity onPress={() => setCustomPoints(!customPoints)}>
-                  <Text style={{ fontSize: FontSize.xs, color: Colors.primary, fontFamily: FontFamily.bold }}>
-                    {customPoints ? '↩ Use difficulty preset' : '✏️ Customise'}
-                  </Text>
+                  <View style={styles.headerLink}>
+                    <Icon name={customPoints ? 'arrow-undo' : 'pencil'} size={13} color={colors.primary} />
+                    <Text style={{ fontSize: FontSize.xs, color: colors.primary, fontFamily: FontFamily.bold }}>
+                      {customPoints ? 'Use difficulty preset' : 'Customise'}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               </View>
               {customPoints ? (
@@ -429,7 +442,7 @@ export default function CreateTaskScreen() {
                   }}
                   keyboardType="number-pad"
                   placeholder="Enter custom point value"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   maxLength={4}
                 />
               ) : (
@@ -479,8 +492,10 @@ export default function CreateTaskScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  headerLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -491,12 +506,12 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: FontSize.md,
     fontFamily: FontFamily.semiBold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   headerTitle: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.bold,
-    color: Colors.text,
+    color: colors.text,
   },
   form: {
     paddingHorizontal: Spacing.lg,
@@ -508,19 +523,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semiBold,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: Spacing.sm,
   },
   input: {
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: 14,
     fontSize: FontSize.md,
     fontFamily: FontFamily.regular,
-    color: Colors.text,
-    backgroundColor: Colors.surface,
+    color: colors.text,
+    backgroundColor: colors.surface,
   },
   inputFlex: { flex: 1 },
   emojiPreview: {
@@ -549,23 +564,23 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     gap: 4,
   },
   chipSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   chipEmoji: { fontSize: 16 },
   chipText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semiBold,
-    color: Colors.text,
+    color: colors.text,
   },
   chipTextSelected: {
     color: '#FFFFFF',
@@ -577,27 +592,27 @@ const styles = StyleSheet.create({
   diffChip: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   diffChipSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   diffEmoji: { fontSize: 24, marginBottom: 4 },
   diffLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.text,
+    color: colors.text,
   },
   diffLabelSelected: { color: '#FFFFFF' },
   diffPoints: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semiBold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   diffPointsSelected: { color: 'rgba(255,255,255,0.8)' },
@@ -607,32 +622,32 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   timeChip: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   timeChipText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semiBold,
-    color: Colors.text,
+    color: colors.text,
   },
-  suggestBox: { marginTop: Spacing.sm, backgroundColor: Colors.primary + '0C', borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.primary + '33', overflow: 'hidden' },
-  suggestLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: Colors.primary, paddingHorizontal: Spacing.sm, paddingTop: Spacing.sm, paddingBottom: 4 },
-  suggestRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.sm, paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.primary + '22' },
+  suggestBox: { marginTop: Spacing.sm, backgroundColor: colors.primary + '0C', borderRadius: BorderRadius.md, borderWidth: 1, borderColor: colors.primary + '33', overflow: 'hidden' },
+  suggestLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.primary, paddingHorizontal: Spacing.sm, paddingTop: Spacing.sm, paddingBottom: 4 },
+  suggestRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.sm, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.primary + '22' },
   suggestEmoji: { fontSize: 20 },
-  suggestTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: Colors.text },
-  suggestMeta: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
-  suggestReuse: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: Colors.primary },
-  duplicateBox: { marginTop: Spacing.sm, backgroundColor: Colors.warning + '15', borderRadius: BorderRadius.md, borderWidth: 1.5, borderColor: Colors.warning + '55', padding: Spacing.md },
-  duplicateTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: Colors.warning, marginBottom: 6 },
-  duplicateText: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: Colors.text, lineHeight: 18, marginBottom: Spacing.sm },
-  duplicateBtn: { backgroundColor: Colors.warning, borderRadius: BorderRadius.md, paddingVertical: 10, alignItems: 'center' },
+  suggestTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.text },
+  suggestMeta: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
+  suggestReuse: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: colors.primary },
+  duplicateBox: { marginTop: Spacing.sm, backgroundColor: colors.warning + '15', borderRadius: BorderRadius.md, borderWidth: 1.5, borderColor: colors.warning + '55', padding: Spacing.md },
+  duplicateTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.warning, marginBottom: 6 },
+  duplicateText: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.text, lineHeight: 18, marginBottom: Spacing.sm },
+  duplicateBtn: { backgroundColor: colors.warning, borderRadius: BorderRadius.md, paddingVertical: 10, alignItems: 'center' },
   duplicateBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFF' },
   createButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: BorderRadius.md,
     paddingVertical: 18,
     alignItems: 'center',
@@ -646,4 +661,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-});
+  });
+}

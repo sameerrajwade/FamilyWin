@@ -15,6 +15,7 @@ import {
   computeInsights,
   getLevel,
   calculateStreak,
+  dailyStreak,
   getCurrentWeekRange,
   getWeekLabel,
   isCurrentWeek,
@@ -22,8 +23,50 @@ import {
   getRankEmoji,
   getPointsColor,
   formatPoints,
+  missedTaskPenaltyAmount,
+  toDateKey,
+  graceWindowDays,
+  MISSED_TASK_GRACE_DAYS,
 } from '@/lib/pointsEngine';
 import type { PointTransaction } from '@/types';
+
+// ─── missed-task penalty helpers ──────────────────────────────────────────────
+describe('missedTaskPenaltyAmount', () => {
+  it('defaults to half the point value, rounded', () => {
+    expect(missedTaskPenaltyAmount(10)).toBe(5);
+    expect(missedTaskPenaltyAmount(50)).toBe(25);
+    expect(missedTaskPenaltyAmount(25)).toBe(13); // 12.5 → 13
+  });
+  it('half mode is at least 1 for any positive task', () => {
+    expect(missedTaskPenaltyAmount(1, 'half')).toBe(1);
+  });
+  it('full mode deducts the whole point value', () => {
+    expect(missedTaskPenaltyAmount(10, 'full')).toBe(10);
+    expect(missedTaskPenaltyAmount(25, 'full')).toBe(25);
+  });
+  it('off mode deducts nothing', () => {
+    expect(missedTaskPenaltyAmount(50, 'off')).toBe(0);
+  });
+  it('is 0 for a zero or negative value task in any mode', () => {
+    expect(missedTaskPenaltyAmount(0, 'half')).toBe(0);
+    expect(missedTaskPenaltyAmount(-10, 'full')).toBe(0);
+  });
+});
+
+describe('graceWindowDays / toDateKey', () => {
+  it('returns the past N days most-recent first, excluding today', () => {
+    const now = new Date(2026, 7, 15); // Sat Aug 15 2026
+    expect(graceWindowDays(now, 2)).toEqual(['2026-08-14', '2026-08-13']);
+  });
+  it('defaults to the 2-day grace window', () => {
+    const now = new Date(2026, 0, 1); // Jan 1 → crosses year boundary
+    expect(MISSED_TASK_GRACE_DAYS).toBe(2);
+    expect(graceWindowDays(now)).toEqual(['2025-12-31', '2025-12-30']);
+  });
+  it('toDateKey formats local Y-M-D zero-padded', () => {
+    expect(toDateKey(new Date(2026, 2, 5))).toBe('2026-03-05');
+  });
+});
 
 // ─── calculateTaskPoints ──────────────────────────────────────────────────────
 describe('calculateTaskPoints', () => {
@@ -233,6 +276,38 @@ describe('calculateStreak', () => {
 });
 
 // ─── getCurrentWeekRange ──────────────────────────────────────────────────────
+describe('dailyStreak', () => {
+  const NOW = new Date('2026-08-10T12:00:00'); // a Monday noon
+  const dayBefore = (n: number) => { const d = new Date(NOW); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - n); return d; };
+
+  it('returns 0 for no completions', () => {
+    expect(dailyStreak([], NOW)).toBe(0);
+  });
+
+  it('counts consecutive days ending today', () => {
+    // today, yesterday, 2 days ago
+    expect(dailyStreak([dayBefore(0), dayBefore(1), dayBefore(2)], NOW)).toBe(3);
+  });
+
+  it('stays lit when today has nothing yet but yesterday does (grace day)', () => {
+    // yesterday + day before — streak of 2, still alive today
+    expect(dailyStreak([dayBefore(1), dayBefore(2)], NOW)).toBe(2);
+  });
+
+  it('is broken when the most recent completion is older than yesterday', () => {
+    expect(dailyStreak([dayBefore(2), dayBefore(3)], NOW)).toBe(0);
+  });
+
+  it('stops at the first gap', () => {
+    // today, yesterday, then skip, then 3 days ago → streak is 2
+    expect(dailyStreak([dayBefore(0), dayBefore(1), dayBefore(3), dayBefore(4)], NOW)).toBe(2);
+  });
+
+  it('dedupes multiple completions on the same day', () => {
+    expect(dailyStreak([dayBefore(0), dayBefore(0), dayBefore(1)], NOW)).toBe(2);
+  });
+});
+
 describe('getCurrentWeekRange', () => {
   it('returns start on Monday and end 6 days later', () => {
     const { start, end } = getCurrentWeekRange();
@@ -508,6 +583,46 @@ describe('computeInsights', () => {
   it('does not flag most-dodged for a single miss', () => {
     const txns = [{ delta: -10, source: 'task', reason: 'Missed: Make the bed', date: D(1) }];
     expect(computeInsights(txns, []).find((c) => c.key === 'dodged')).toBeUndefined();
+  });
+
+  it('does not count undo reversals as most-dodged', () => {
+    // A completion followed by two undos must NOT read as "Undo: Workout ×2" —
+    // undos are bookkeeping, not a behavioural dodge.
+    const txns = [
+      { delta: 10, source: 'task', reason: 'Completed: Workout', date: D(1) },
+      { delta: -10, source: 'task', reason: 'Undo: Workout', date: D(1) },
+      { delta: -10, source: 'task', reason: 'Undo: Workout', date: D(2) },
+    ];
+    expect(computeInsights(txns, []).find((c) => c.key === 'dodged')).toBeUndefined();
+  });
+
+  it('does not count undo reversals toward the best day or tasks-done', () => {
+    const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay()); weekStart.setHours(0, 0, 0, 0);
+    const txns = [
+      { delta: 10, source: 'task', reason: 'Completed: A', date: D(1) },
+      { delta: -10, source: 'task', reason: 'Undo: A', date: D(1) },
+    ];
+    const cards = computeInsights(txns, [], weekStart);
+    // only one real completion counts; the reversal is excluded
+    expect(cards.find((c) => c.key === 'tasks')!.title).toContain('1 task');
+  });
+
+  it('never reports a bogus "Down 0%" when last week was not positive', () => {
+    // cur negative, prev zero → old code produced "Down 0% this week".
+    const cards = computeInsights([], [{ week: 'Jun 1', points: 0 }, { week: 'Jun 8', points: -10 }]);
+    const trend = cards.find((c) => c.key === 'trend')!;
+    expect(trend.title).not.toMatch(/0%/);
+    expect(trend.title).toBe('In the red this week');
+    expect(trend.tone).toBe('bad');
+  });
+
+  it('does not surface a best-day card from a single day of activity', () => {
+    const txns = [
+      { delta: 10, source: 'task', date: D(3) },
+      { delta: 25, source: 'task', date: D(3) },
+      { delta: 50, source: 'task', date: D(3) },
+    ];
+    expect(computeInsights(txns, []).find((c) => c.key === 'bestday')).toBeUndefined();
   });
 
   it('counts tasks done this week when a weekStart is given', () => {

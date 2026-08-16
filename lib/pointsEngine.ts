@@ -11,6 +11,48 @@ export function calculateAutoFailPenalty(task: Task): number {
   return -task.point_value;
 }
 
+// ─── MISSED-TASK PENALTY (optional per-family feature) ───────────────────────
+// How many days back a missed task can still be "caught up" (marked done),
+// which restores its points and reverses the penalty.
+export const MISSED_TASK_GRACE_DAYS = 2;
+
+// Per-family choice for how much a missed daily task costs. 'off' = feature
+// disabled; 'half' = half the points; 'full' = the whole point value.
+export type MissedPenaltyMode = 'off' | 'half' | 'full';
+
+/**
+ * The penalty (a POSITIVE magnitude) deducted when a daily task is missed, for
+ * the given mode: 'half' = half the point value (rounded, min 1); 'full' = the
+ * whole value; 'off' or a zero/negative-value task = 0.
+ */
+export function missedTaskPenaltyAmount(pointValue: number, mode: MissedPenaltyMode = 'half'): number {
+  if (mode === 'off' || !pointValue || pointValue <= 0) return 0;
+  if (mode === 'full') return pointValue;
+  return Math.max(1, Math.round(pointValue / 2));
+}
+
+/**
+ * Local YYYY-MM-DD for a date (matches CompletionDoc.completedDate). Kept here
+ * (pure) so both the grace-window UI and its tests agree on day bucketing.
+ */
+export function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * The catch-up-able past days (most-recent first), excluding today, within the
+ * grace window. e.g. on Wed with a 2-day window → [Tue, Mon].
+ */
+export function graceWindowDays(now: Date = new Date(), graceDays: number = MISSED_TASK_GRACE_DAYS): string[] {
+  const days: string[] = [];
+  for (let i = 1; i <= graceDays; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    days.push(toDateKey(d));
+  }
+  return days;
+}
+
 export function calculateStreakBonus(streakDays: number): number {
   if (streakDays === 7) return 50; // Perfect week bonus
   if (streakDays === 14) return 100; // Two week bonus
@@ -241,37 +283,55 @@ function cleanReason(reason: string): string {
   return reason.replace(/^(missed|auto-?failed|failed|penalty|deducted)\s*[:\-–]\s*/i, '').trim() || reason;
 }
 
+// A reversal (task "Undo") is bookkeeping — it cancels an earlier completion and
+// nets to zero. It is NOT a behavioural signal, so it must be excluded from the
+// per-transaction analyses (best-day, most-dodged) or it shows up as e.g.
+// "Most-dodged: Undo: Workout ×2", which is nonsense. (The weekly point SUMS in
+// `weeklyData` legitimately include it — undo correctly zeroes out the points.)
+function isReversal(t: InsightTxn): boolean {
+  return /^undo\s*[:\-–]/i.test(t.reason ?? '');
+}
+
 export function computeInsights(
   txns: InsightTxn[],
   weeklyData: { week: string; points: number }[],
   weekStart?: Date,
 ): InsightCard[] {
   const cards: InsightCard[] = [];
-  const positives = txns.filter((t) => t.delta > 0);
+  const positives = txns.filter((t) => t.delta > 0 && !isReversal(t));
 
   // 📈 Trend — this week vs last, from the trailing two chart columns.
   if (weeklyData.length >= 2) {
     const cur = weeklyData[weeklyData.length - 1].points;
     const prev = weeklyData[weeklyData.length - 2].points;
     if (!(cur === 0 && prev === 0)) {
+      const fmt = (n: number) => `${n >= 0 ? '+' : ''}${n}`;
+      const detail = `${fmt(cur)} pts vs ${fmt(prev)} last week`;
       if (cur === prev) {
-        cards.push({ key: 'trend', emoji: '➡️', title: 'Holding steady', detail: `${cur} pts, same as last week`, tone: 'neutral' });
+        cards.push({ key: 'trend', emoji: '➡️', title: 'Holding steady', detail: `${fmt(cur)} pts, same as last week`, tone: 'neutral' });
+      } else if (cur < 0) {
+        // In the red — a "Down X%" framing is meaningless once you go negative.
+        cards.push({ key: 'trend', emoji: '📉', title: 'In the red this week', detail, tone: 'bad' });
       } else if (cur > prev) {
-        const pct = prev > 0 ? Math.round(((cur - prev) / prev) * 100) : 100;
-        cards.push({ key: 'trend', emoji: '📈', title: `Up ${pct}% this week`, detail: `${cur} pts vs ${prev} last week`, tone: 'good' });
+        // A percentage only means something when last week was positive.
+        const pct = prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null;
+        cards.push({ key: 'trend', emoji: '📈', title: pct != null ? `Up ${pct}% this week` : `Up to ${cur} pts`, detail, tone: 'good' });
       } else {
-        const pct = prev > 0 ? Math.round(((prev - cur) / prev) * 100) : 0;
-        cards.push({ key: 'trend', emoji: '📉', title: `Down ${pct}% this week`, detail: `${cur} pts vs ${prev} last week`, tone: 'bad' });
+        const pct = prev > 0 ? Math.round(((prev - cur) / prev) * 100) : null;
+        cards.push({ key: 'trend', emoji: '📉', title: pct != null ? `Down ${pct}% this week` : `Down to ${cur} pts`, detail, tone: 'bad' });
       }
     }
   }
 
-  // 🗓️ Best day of week — where the most points get earned.
-  if (positives.length > 0) {
+  // 🗓️ Best day of week — where the most points get earned. Gated: needs enough
+  // data across at least two days, or "your strongest day" from a single entry
+  // is meaningless.
+  if (positives.length >= 3) {
     const byDay = new Array(7).fill(0);
     for (const t of positives) byDay[t.date.getDay()] += t.delta;
+    const activeDays = byDay.filter((v) => v > 0).length;
     const best = byDay.indexOf(Math.max(...byDay));
-    if (byDay[best] > 0) {
+    if (activeDays >= 2 && byDay[best] > 0) {
       cards.push({ key: 'bestday', emoji: '💪', title: `${WEEKDAY_PLURAL[best]} are your strongest`, detail: `${byDay[best]} pts earned on ${WEEKDAY_PLURAL[best].toLowerCase()}`, tone: 'good' });
     }
   }
@@ -284,8 +344,9 @@ export function computeInsights(
     }
   }
 
-  // 🙈 Most-dodged — the reason behind the most point losses.
-  const negs = txns.filter((t) => t.delta < 0 && t.reason);
+  // 🙈 Most-dodged — the reason behind the most point losses. Excludes undo
+  // reversals (bookkeeping) and redemptions (a deliberate spend, not a dodge).
+  const negs = txns.filter((t) => t.delta < 0 && t.reason && t.source !== 'redemption' && !isReversal(t));
   if (negs.length > 0) {
     const counts: Record<string, number> = {};
     for (const t of negs) counts[t.reason!] = (counts[t.reason!] ?? 0) + 1;
@@ -297,7 +358,7 @@ export function computeInsights(
 
   // ✅ Tasks logged this week — momentum counter.
   if (weekStart) {
-    const done = txns.filter((t) => t.source === 'task' && t.delta > 0 && t.date >= weekStart).length;
+    const done = txns.filter((t) => t.source === 'task' && t.delta > 0 && !isReversal(t) && t.date >= weekStart).length;
     if (done > 0) {
       cards.push({ key: 'tasks', emoji: '✅', title: `${done} task${done > 1 ? 's' : ''} done this week`, detail: 'Keep the streak alive!', tone: 'good' });
     }
@@ -333,6 +394,49 @@ export function calculateStreak(completions: TaskCompletion[]): number {
     }
   }
 
+  return streak;
+}
+
+/**
+ * Consecutive-day streak from a list of completion Dates.
+ *
+ * Unlike calculateStreak (which breaks unless *today* already has a completion),
+ * this keeps the streak lit through the current day: the streak is "alive" if
+ * the most recent completion was today OR yesterday, and counts back from there.
+ * This matches how streaks feel to users — you don't lose your 6-day streak the
+ * instant the clock rolls to a new day; you lose it only after a full day passes
+ * with nothing done.
+ *
+ * Pure + Firestore-agnostic: callers pass the completedAt Dates of their
+ * non-auto-failed completions. Returns 0 for an empty/broken streak.
+ */
+export function dailyStreak(completedDates: Date[], now: Date = new Date()): number {
+  if (!completedDates || completedDates.length === 0) return 0;
+
+  // Unique calendar days, most-recent first.
+  const days = completedDates
+    .filter(Boolean)
+    .map((d) => d.toDateString())
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  if (days.length === 0) return 0;
+
+  const today = new Date(now); today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+
+  // Anchor: the streak only counts if the latest day is today or yesterday.
+  let anchor: Date;
+  if (days[0] === today.toDateString()) anchor = today;
+  else if (days[0] === yesterday.toDateString()) anchor = yesterday;
+  else return 0; // most recent completion is >1 day old → streak broken
+
+  let streak = 0;
+  for (let i = 0; i < days.length; i++) {
+    const expected = new Date(anchor);
+    expected.setDate(anchor.getDate() - i);
+    if (days[i] === expected.toDateString()) streak++;
+    else break;
+  }
   return streak;
 }
 

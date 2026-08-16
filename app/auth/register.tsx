@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert,
@@ -8,9 +8,12 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { signUp } from '@/lib/firebase';
 import { signInWithGoogle } from '@/lib/googleAuth';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { useTheme, type ThemeColors } from '@/lib/theme';
 
 export default function RegisterScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -79,7 +82,7 @@ export default function RegisterScreen() {
             activeOpacity={0.85}
           >
             {isGoogleLoading ? (
-              <ActivityIndicator color={Colors.text} />
+              <ActivityIndicator color={colors.text} />
             ) : (
               <View style={styles.googleButtonInner}>
                 <Text style={styles.googleIcon}>G</Text>
@@ -103,7 +106,7 @@ export default function RegisterScreen() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="you@example.com"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -118,7 +121,7 @@ export default function RegisterScreen() {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Min. 6 characters"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showPassword}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
@@ -134,7 +137,7 @@ export default function RegisterScreen() {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Repeat your password"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 secureTextEntry={!showPassword}
                 onSubmitEditing={handleRegister}
               />
@@ -167,49 +170,51 @@ export default function RegisterScreen() {
 
 // ─── STYLES — all original values preserved ──────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   scroll: { flexGrow: 1, padding: Spacing.lg },
   backBtn: { marginBottom: Spacing.md, alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
-  backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: Colors.primary },
+  backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.primary },
   header: { alignItems: 'center', marginBottom: Spacing.lg },
   logo: { fontSize: 56, marginBottom: Spacing.sm },
-  title: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, color: Colors.text },
-  subtitle: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary, textAlign: 'center', marginTop: 4 },
+  title: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, color: colors.text },
+  subtitle: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, textAlign: 'center', marginTop: 4 },
   // Google button
   googleButton: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md,
-    paddingVertical: 14, alignItems: 'center', backgroundColor: Colors.surface,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md,
+    paddingVertical: 14, alignItems: 'center', backgroundColor: colors.surface,
     ...Shadow.sm,
   },
   googleButtonInner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   googleIcon: { fontSize: 16, fontWeight: '800', color: '#4285F4', fontFamily: FontFamily.black },
-  googleButtonText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: Colors.text },
+  googleButtonText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.text },
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: Spacing.md },
-  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textMuted, marginHorizontal: Spacing.sm },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textMuted, marginHorizontal: Spacing.sm },
   // Email form
-  form: { backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.lg, ...Shadow.md },
+  form: { backgroundColor: colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.lg, ...Shadow.md },
   field: { marginBottom: Spacing.md },
-  label: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: Colors.text, marginBottom: 6 },
+  label: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.text, marginBottom: 6 },
   input: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md, paddingVertical: 14,
-    fontSize: FontSize.md, fontFamily: FontFamily.regular, color: Colors.text, backgroundColor: Colors.background,
+    fontSize: FontSize.md, fontFamily: FontFamily.regular, color: colors.text, backgroundColor: colors.background,
   },
   passwordRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md, backgroundColor: Colors.background,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md, backgroundColor: colors.background,
   },
-  passwordInput: { flex: 1, paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.md, fontFamily: FontFamily.regular, color: Colors.text },
+  passwordInput: { flex: 1, paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.md, fontFamily: FontFamily.regular, color: colors.text },
   eyeBtn: { paddingHorizontal: Spacing.md, paddingVertical: 14, minWidth: 44, alignItems: 'center' },
   primaryBtn: {
-    backgroundColor: Colors.primary, borderRadius: BorderRadius.md,
+    backgroundColor: colors.primary, borderRadius: BorderRadius.md,
     paddingVertical: 16, alignItems: 'center', marginTop: Spacing.sm, ...Shadow.lg,
   },
   primaryBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFF', letterSpacing: 0.5 },
   loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: Spacing.lg },
-  loginText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary },
-  loginLink: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: Colors.primary },
-});
+  loginText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary },
+  loginLink: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary },
+  });
+}
 

@@ -108,14 +108,33 @@ service cloud.firestore {
       }
 
       // ── Transactions subcollection ────────────────────────────────────────
+      // Phase 1.8: clients may NOT write task-sourced points — the Cloud
+      // Function (admin SDK, bypasses rules) is the sole writer of source:'task'
+      // transactions. Parents may still log discipline/manual/bonus adjustments,
+      // and any member may create the redemption spend. This closes the
+      // point-forging hole (a modified client can no longer grant task points).
+      // Only PARENTS write transactions from a client, and only these sources:
+      // discipline/manual/bonus adjustments and the redemption spend (written on
+      // parent approval). Task points are Cloud-Function-only. Children (whether
+      // self-account or parent-managed) never write transactions directly, so a
+      // modified client can't forge points OR inflate a spendable balance.
       match /transactions/{transactionId} {
         allow read: if isFamilyMember(familyId);
-        allow create: if isFamilyMember(familyId);
-        allow update, delete: if false; // Transactions are immutable audit logs
+        allow create: if isFamilyMember(familyId) && isParent(familyId)
+          && request.resource.data.source in ['discipline', 'manual', 'bonus', 'redemption'];
+        allow update, delete: if false; // immutable audit logs
       }
 
       // ── Rewards subcollection ─────────────────────────────────────────────
       match /rewards/{rewardId} {
+        allow read: if isFamilyMember(familyId);
+        allow create, update, delete: if isFamilyMember(familyId) && isParent(familyId);
+      }
+
+      // ── Penalties subcollection ───────────────────────────────────────────
+      // Parent-defined penalty presets (the customizable "negative rewards"
+      // list). Mirrors rewards: any member reads; only parents manage.
+      match /penalties/{penaltyId} {
         allow read: if isFamilyMember(familyId);
         allow create, update, delete: if isFamilyMember(familyId) && isParent(familyId);
       }

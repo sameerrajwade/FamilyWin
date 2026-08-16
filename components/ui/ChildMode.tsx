@@ -109,8 +109,9 @@ interface ChildTaskCardProps {
 export function ChildTaskCard({ task, onComplete, onUndo, isCompleting, index }: ChildTaskCardProps) {
   const { colors } = useTheme();
   const scale = useSharedValue(0);
-  const isDone = !!task.completion && !task.completion.was_auto_failed;
-  const isFailed = task.completion?.was_auto_failed;
+  const wasAutoFailed = (task.completion as any)?.wasAutoFailed ?? (task.completion as any)?.was_auto_failed;
+  const isDone = !!task.completion && !wasAutoFailed;
+  const isFailed = !!wasAutoFailed;
 
   useEffect(() => {
     scale.value = withDelay(
@@ -154,7 +155,7 @@ export function ChildTaskCard({ task, onComplete, onUndo, isCompleting, index }:
             </Text>
             <View style={styles.childCardPoints}>
               <Text style={styles.childCardPointsText}>
-                {isDone ? '✅ Done! (tap to undo)' : isFailed ? '❌ Missed' : `🏅 +${task.point_value} pts`}
+                {isDone ? '✅ Done! (tap to undo)' : isFailed ? '❌ Missed' : `🏅 +${(task as any).pointValue ?? (task as any).point_value ?? 0} pts`}
               </Text>
             </View>
           </View>

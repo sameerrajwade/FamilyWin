@@ -115,7 +115,7 @@ export const Gradients = {
   primary: ['#6C63FF', '#9D97FF', '#FF6B2C'] as const,
   primaryButton: ['#6C63FF', '#8B84FF'] as const,
   gold: ['#FFD700', '#FFA000'] as const,
-  silver: ['#E0E0E0', '#9E9E9E'] as const,
+  silver: ['#EAF0F7', '#8595AC'] as const,
   bronze: ['#D4853B', '#A05A2C'] as const,
   success: ['#00E676', '#00C853'] as const,
   darkSurface: ['rgba(108,99,255,0.06)', 'transparent'] as const,

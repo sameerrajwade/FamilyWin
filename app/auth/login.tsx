@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert,
@@ -9,10 +9,13 @@ import * as Haptics from 'expo-haptics';
 import { signIn, sendPasswordReset } from '@/lib/firebase';
 import { signInWithGoogle } from '@/lib/googleAuth';
 import { useAuthStore } from '@/store';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { useTheme, type ThemeColors } from '@/lib/theme';
 import { Strings } from '@/constants/strings';
 
 export default function LoginScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -100,7 +103,7 @@ export default function LoginScreen() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="you@example.com"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -116,7 +119,7 @@ export default function LoginScreen() {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showPassword}
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
@@ -172,7 +175,7 @@ export default function LoginScreen() {
               activeOpacity={0.8}
             >
               {isGoogleLoading ? (
-                <ActivityIndicator color={Colors.text} />
+                <ActivityIndicator color={colors.text} />
               ) : (
                 <View style={styles.googleButtonInner}>
                   <Text style={styles.googleIcon}>G</Text>
@@ -200,54 +203,56 @@ export default function LoginScreen() {
 
 // ─── STYLES — all original StyleSheet values preserved ───────────────────────
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   keyboardView: { flex: 1 },
   scroll: { flexGrow: 1, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.xl },
   header: { alignItems: 'center', marginBottom: Spacing.xxl, marginTop: Spacing.xl },
   logo: { fontSize: 64, marginBottom: Spacing.sm },
-  appName: { fontSize: FontSize.xxxl, fontFamily: FontFamily.black, color: Colors.primary, letterSpacing: -0.5 },
-  tagline: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary, marginTop: Spacing.xs, letterSpacing: 1, textTransform: 'uppercase' },
+  appName: { fontSize: FontSize.xxxl, fontFamily: FontFamily.black, color: colors.primary, letterSpacing: -0.5 },
+  tagline: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: Spacing.xs, letterSpacing: 1, textTransform: 'uppercase' },
   form: {
-    backgroundColor: Colors.surface, borderRadius: BorderRadius.xl,
+    backgroundColor: colors.surface, borderRadius: BorderRadius.xl,
     padding: Spacing.lg, ...Shadow.md,
   },
-  formTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.bold, color: Colors.text, marginBottom: Spacing.lg },
+  formTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.bold, color: colors.text, marginBottom: Spacing.lg },
   inputGroup: { marginBottom: Spacing.md },
-  label: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: Colors.text, marginBottom: Spacing.xs },
+  label: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.text, marginBottom: Spacing.xs },
   input: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md, paddingVertical: 14,
-    fontSize: FontSize.md, fontFamily: FontFamily.regular, color: Colors.text, backgroundColor: Colors.background,
+    fontSize: FontSize.md, fontFamily: FontFamily.regular, color: colors.text, backgroundColor: colors.background,
   },
   passwordContainer: {
     flexDirection: 'row', alignItems: 'center', borderWidth: 1.5,
-    borderColor: Colors.border, borderRadius: BorderRadius.md, backgroundColor: Colors.background,
+    borderColor: colors.border, borderRadius: BorderRadius.md, backgroundColor: colors.background,
   },
-  passwordInput: { flex: 1, paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.md, fontFamily: FontFamily.regular, color: Colors.text },
+  passwordInput: { flex: 1, paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.md, fontFamily: FontFamily.regular, color: colors.text },
   eyeButton: { paddingHorizontal: Spacing.md, paddingVertical: 14 },
   eyeIcon: { fontSize: 18 },
   forgotPassword: { alignSelf: 'flex-end', marginBottom: Spacing.md },
-  forgotPasswordText: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: Colors.primary },
+  forgotPasswordText: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.primary },
   primaryButton: {
-    backgroundColor: Colors.primary, borderRadius: BorderRadius.md,
+    backgroundColor: colors.primary, borderRadius: BorderRadius.md,
     paddingVertical: 16, alignItems: 'center', marginTop: Spacing.xs, ...Shadow.lg,
   },
   buttonDisabled: { opacity: 0.6 },
   primaryButtonText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFFFFF', letterSpacing: 0.5 },
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: Spacing.lg },
-  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textMuted, marginHorizontal: Spacing.sm },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textMuted, marginHorizontal: Spacing.sm },
   // ── Google button — new, matches secondary button aesthetic ──
   googleButton: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md,
-    paddingVertical: 14, alignItems: 'center', backgroundColor: Colors.surface,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md,
+    paddingVertical: 14, alignItems: 'center', backgroundColor: colors.surface,
     marginBottom: Spacing.sm,
   },
   googleButtonInner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   googleIcon: { fontSize: 16, fontWeight: '800', color: '#4285F4', fontFamily: FontFamily.black },
-  googleButtonText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: Colors.text },
+  googleButtonText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.text },
   secondaryButton: { alignItems: 'center', paddingVertical: Spacing.sm },
-  secondaryButtonText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: Colors.textSecondary },
-  linkText: { fontFamily: FontFamily.bold, color: Colors.primary },
-});
+  secondaryButtonText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary },
+  linkText: { fontFamily: FontFamily.bold, color: colors.primary },
+  });
+}

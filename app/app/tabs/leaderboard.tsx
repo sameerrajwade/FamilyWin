@@ -5,10 +5,12 @@ import { router, useFocusEffect } from 'expo-router';
 import { firestore } from '@/lib/fb';
 import { useAuthStore, useFamilyStore, usePointsStore } from '@/store';
 import { Col, getFamilyMembers, getCurrentWeekId, getWeekCompletions, getMemberPersonalBest } from '@/lib/firebase';
-import { buildLeaderboard, computeCrowns, getWeekLabel, getCurrentWeekRange, getRankEmoji } from '@/lib/pointsEngine';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { buildLeaderboard, computeCrowns, getWeekLabel, getCurrentWeekRange } from '@/lib/pointsEngine';
+import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 import { Avatar } from '@/components/ui';
+import { Icon } from '@/components/ui/Icon';
 import { BrandBar } from '@/components/ui/Brand';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/lib/theme';
 import { SlideIn, CountUp, ScalePress, RankChangeBadge } from '@/components/ui/Animations';
 import type { LeaderboardEntry, CrownSlot } from '@/lib/pointsEngine';
@@ -23,7 +25,7 @@ export default function LeaderboardScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [personalBest, setPersonalBest] = useState<number>(0);
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const weekId = getCurrentWeekId();
   const { start } = getCurrentWeekRange(family?.weekStartDay ?? 1);
@@ -182,7 +184,7 @@ export default function LeaderboardScreen() {
                     <Text style={[styles.winnerBannerTitle, { color: colors.text }]}>Last week's champion</Text>
                     <Text style={[styles.winnerBannerSub, { color: colors.textSecondary }]}>{lastWeekChampion} took the crown — tap to relive it</Text>
                   </View>
-                  <Text style={[styles.winnerBannerChevron, { color: colors.textSecondary }]}>›</Text>
+                  <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
                 </TouchableOpacity>
               </SlideIn>
             )}
@@ -190,46 +192,16 @@ export default function LeaderboardScreen() {
             {/* Three-crowns row — rewards more than raw points (Roadmap 1.1/4.2) */}
             {leaderboard.length >= 2 && (
               <SlideIn delay={80} from="bottom">
-                <CrownsRow crowns={crowns} colors={colors} />
+                <CrownsRow crowns={crowns} colors={colors} isDark={isDark} />
               </SlideIn>
             )}
 
-            {/* Podium */}
+            {/* Podium — premium gradient pedestals, tallest in the middle */}
             {topThree.length >= 2 && (
               <SlideIn delay={100} from="bottom"><View style={styles.podiumContainer}>
-                {/* 2nd */}
-                <View style={styles.podiumItem}>
-                  <View style={styles.podiumAvatar}><Avatar emoji={topThree[1]?.avatarEmoji ?? '👤'} photoURL={topThree[1]?.photoURL} size={48} /></View>
-                  <Text style={[styles.podiumName, { color: colors.text }]}>{topThree[1]?.displayName}</Text>
-                  <CountUp value={topThree[1]?.points ?? 0} style={[styles.podiumPoints, { color: colors.silver }]} />
-                  <Text style={[styles.podiumPtsLabel, { color: colors.textMuted }]}>pts</Text>
-                  <View style={[styles.podiumBlock, { height: 54, backgroundColor: colors.silver }]}>
-                    <Text style={styles.podiumRankText}>2</Text>
-                  </View>
-                </View>
-                {/* 1st */}
-                <View style={[styles.podiumItem, styles.podiumItemCurrent]}>
-                  <Text style={styles.crownEmoji}>👑</Text>
-                  <View style={styles.podiumAvatar}><Avatar emoji={topThree[0]?.avatarEmoji ?? '👤'} photoURL={topThree[0]?.photoURL} size={56} showRing ringColor={Colors.gold} /></View>
-                  <Text style={[styles.podiumName, { color: colors.text }]}>{topThree[0]?.displayName}</Text>
-                  <CountUp value={topThree[0]?.points ?? 0} style={[styles.podiumPoints, { color: colors.gold }]} />
-                  <Text style={[styles.podiumPtsLabel, { color: colors.textMuted }]}>pts</Text>
-                  <View style={[styles.podiumBlock, { height: 78, backgroundColor: colors.gold }]}>
-                    <Text style={styles.podiumRankText}>1</Text>
-                  </View>
-                </View>
-                {/* 3rd */}
-                {topThree[2] && (
-                  <View style={styles.podiumItem}>
-                    <View style={styles.podiumAvatar}><Avatar emoji={topThree[2].avatarEmoji} photoURL={topThree[2].photoURL} size={48} /></View>
-                    <Text style={[styles.podiumName, { color: colors.text }]}>{topThree[2].displayName}</Text>
-                    <CountUp value={topThree[2].points} style={[styles.podiumPoints, { color: colors.bronze }]} />
-                    <Text style={[styles.podiumPtsLabel, { color: colors.textMuted }]}>pts</Text>
-                    <View style={[styles.podiumBlock, { height: 40, backgroundColor: colors.bronze }]}>
-                      <Text style={styles.podiumRankText}>3</Text>
-                    </View>
-                  </View>
-                )}
+                {topThree[1] && <PodiumColumn entry={topThree[1]} rank={2} colors={colors} />}
+                {topThree[0] && <PodiumColumn entry={topThree[0]} rank={1} colors={colors} />}
+                {topThree[2] && <PodiumColumn entry={topThree[2]} rank={3} colors={colors} />}
               </View></SlideIn>
             )}
 
@@ -242,7 +214,13 @@ export default function LeaderboardScreen() {
                       style={[styles.row, { backgroundColor: colors.surface }, entry.isCurrentUser && { borderWidth: 2, borderColor: colors.primary }]}
                       accessibilityLabel={`${entry.displayName}, rank ${entry.rank}, ${entry.points} points`}
                     >
-                      <Text style={[styles.rowRank, { color: colors.textSecondary }]}>{getRankEmoji(entry.rank)}</Text>
+                      {entry.rank <= 3 ? (
+                        <View style={[styles.rankMedal, { backgroundColor: entry.rank === 1 ? Colors.gold : entry.rank === 2 ? '#8595AC' : Colors.bronze }]}>
+                          <Text style={styles.rankMedalText}>{entry.rank}</Text>
+                        </View>
+                      ) : (
+                        <Text style={[styles.rowRankNum, { color: colors.textMuted }]}>{entry.rank}</Text>
+                      )}
                       <Avatar emoji={entry.avatarEmoji} photoURL={entry.photoURL} size={40} />
                       <View style={styles.rowInfo}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -272,6 +250,38 @@ export default function LeaderboardScreen() {
   );
 }
 
+// ── Podium column — premium gradient pedestal ───────────────────────────────
+const PODIUM_CFG: Record<1 | 2 | 3, { grad: readonly [string, string]; height: number; avatar: number; ring: string }> = {
+  1: { grad: Gradients.gold, height: 110, avatar: 66, ring: Colors.gold },
+  2: { grad: Gradients.silver, height: 80, avatar: 52, ring: '#8595AC' },
+  3: { grad: Gradients.bronze, height: 56, avatar: 52, ring: Colors.bronze },
+};
+
+function PodiumColumn({ entry, rank, colors }: { entry: LeaderboardEntry; rank: 1 | 2 | 3; colors: any }) {
+  const cfg = PODIUM_CFG[rank];
+  return (
+    <View style={[styles.podiumItem, rank === 1 && styles.podiumItemFirst]}>
+      {rank === 1 && <Text style={styles.crownEmoji}>👑</Text>}
+      <Avatar emoji={entry.avatarEmoji ?? '👤'} photoURL={entry.photoURL} size={cfg.avatar} showRing ringColor={cfg.ring} />
+      <Text style={[styles.podiumName, { color: colors.text }]} numberOfLines={1}>{entry.displayName}</Text>
+      <View style={styles.podiumPtsRow}>
+        <CountUp value={entry.points} style={[styles.podiumPoints, { color: colors.text }]} />
+        <Text style={[styles.podiumPtsLabel, { color: colors.textMuted }]}> pts</Text>
+      </View>
+      <LinearGradient
+        colors={[...cfg.grad]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[styles.podiumBlock, { height: cfg.height }, Shadow.md]}
+      >
+        <View style={styles.podiumRankBadge}>
+          <Text style={styles.podiumRankNum}>{rank}</Text>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+}
+
 // ── Three-crowns row ────────────────────────────────────────────────────────
 // A fixed 👑 / 📈 / 🎯 trio. Awarded slots show the member; unawarded slots read
 // as "up for grabs" so the row looks intentional even early in the week.
@@ -284,35 +294,44 @@ const CROWN_ACCENT: Record<CrownSlot['kind'], { tint: string; ink: string }> = {
   goal:     { tint: '#6C63FF', ink: '#5A4FD6' },
 };
 
-function CrownsRow({ crowns, colors }: { crowns: CrownSlot[]; colors: any }) {
+function CrownsRow({ crowns, colors, isDark }: { crowns: CrownSlot[]; colors: any; isDark: boolean }) {
   return (
     <View style={crownStyles.row}>
       {crowns.map((c) => {
         const awarded = !!c.awardeeMemberId;
         const accent = CROWN_ACCENT[c.kind];
+        // Accent text: the bright tint reads well on the dark-tinted card in dark
+        // mode; the darker ink reads well on the light tint in light mode.
+        const accentText = isDark ? accent.tint : accent.ink;
         return (
           <View
             key={c.kind}
             style={[
               crownStyles.card,
+              // ALL three cards share ONE structure: a clean opaque surface card.
+              // The award colour lives in the emoji badge + title + border only —
+              // never a full tinted fill (that muddy wash read as a box-in-a-box).
+              { backgroundColor: colors.surface },
               awarded
-                ? { backgroundColor: accent.tint + '24', borderColor: accent.ink, borderStyle: 'solid' }
-                : { backgroundColor: colors.surface, borderColor: colors.primary + '33', borderStyle: 'dashed' },
-              awarded && Shadow.sm,
+                ? { borderColor: accent.tint + (isDark ? '99' : '80'), borderStyle: 'solid' }
+                : { borderColor: colors.border, borderStyle: 'dashed' },
+              Shadow.sm,
             ]}
           >
-            <Text style={[crownStyles.emoji, !awarded && { opacity: 0.8 }]}>{c.emoji}</Text>
+            <View style={[crownStyles.badge, { backgroundColor: awarded ? accent.tint + '26' : colors.textMuted + '1A' }]}>
+              <Text style={[crownStyles.emoji, !awarded && { opacity: 0.75 }]}>{c.emoji}</Text>
+            </View>
             <Text
-              style={[crownStyles.title, { color: awarded ? accent.ink : colors.textSecondary }]}
+              style={[crownStyles.title, { color: awarded ? accentText : colors.textSecondary }]}
               numberOfLines={1}
             >{c.title}</Text>
             {awarded ? (
               <>
                 <Text style={[crownStyles.name, { color: colors.text }]} numberOfLines={1}>{c.awardeeName}</Text>
-                <Text style={[crownStyles.detail, { color: accent.ink }]} numberOfLines={1}>{c.detail}</Text>
+                <Text style={[crownStyles.detail, { color: accentText }]} numberOfLines={1}>{c.detail}</Text>
               </>
             ) : (
-              <Text style={[crownStyles.upForGrabs, { color: colors.primary }]} numberOfLines={1}>up for grabs</Text>
+              <Text style={[crownStyles.upForGrabs, { color: colors.textMuted }]} numberOfLines={1}>up for grabs</Text>
             )}
           </View>
         );
@@ -322,12 +341,13 @@ function CrownsRow({ crowns, colors }: { crowns: CrownSlot[]; colors: any }) {
 }
 const crownStyles = StyleSheet.create({
   row: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md },
-  card: { flex: 1, borderRadius: BorderRadius.lg, borderWidth: 1.5, paddingVertical: Spacing.sm, paddingHorizontal: 6, alignItems: 'center' },
-  emoji: { fontSize: 22, marginBottom: 2 },
-  title: { fontSize: 9.5, fontFamily: FontFamily.bold, textTransform: 'uppercase', letterSpacing: 0.3 },
-  name: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginTop: 3 },
-  detail: { fontSize: 10, fontFamily: FontFamily.bold, marginTop: 1 },
-  upForGrabs: { fontSize: 10, fontFamily: FontFamily.regular, marginTop: 5, fontStyle: 'italic' },
+  card: { flex: 1, borderRadius: BorderRadius.lg, borderWidth: 1.5, paddingVertical: 12, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'flex-start', minHeight: 118 },
+  badge: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 7 },
+  emoji: { fontSize: 21 },
+  title: { fontSize: 9.5, fontFamily: FontFamily.bold, textTransform: 'uppercase', letterSpacing: 0.2, textAlign: 'center' },
+  name: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginTop: 4, textAlign: 'center' },
+  detail: { fontSize: 10, fontFamily: FontFamily.bold, marginTop: 2, textAlign: 'center' },
+  upForGrabs: { fontSize: 10, fontFamily: FontFamily.regular, marginTop: 6, fontStyle: 'italic' },
 });
 
 const styles = StyleSheet.create({
@@ -343,16 +363,17 @@ const styles = StyleSheet.create({
   historyBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold },
   title: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold },
   weekLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, marginTop: 4 },
-  podiumContainer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, justifyContent: 'center', gap: Spacing.sm },
+  podiumContainer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, justifyContent: 'center', gap: 10 },
   podiumItem: { flex: 1, alignItems: 'center' },
-  podiumItemCurrent: { transform: [{ scale: 1.05 }] },
-  crownEmoji: { fontSize: 24, marginBottom: 2 },
-  podiumAvatar: { fontSize: 36, marginBottom: 4 },
-  podiumName: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, marginBottom: 2 },
-  podiumPoints: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold },
-  podiumPtsLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginBottom: 4 },
-  podiumBlock: { width: '100%', borderTopLeftRadius: 8, borderTopRightRadius: 8, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 8 },
-  podiumRankText: { fontSize: 20 },
+  podiumItemFirst: { zIndex: 2 },
+  crownEmoji: { fontSize: 28, marginBottom: 4 },
+  podiumName: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginTop: 8, maxWidth: '100%' },
+  podiumPtsRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 2, marginBottom: 8 },
+  podiumPoints: { fontSize: FontSize.lg, fontFamily: FontFamily.black },
+  podiumPtsLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.bold },
+  podiumBlock: { width: '100%', borderTopLeftRadius: 16, borderTopRightRadius: 16, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 10 },
+  podiumRankBadge: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.18)', alignItems: 'center', justifyContent: 'center' },
+  podiumRankNum: { fontSize: 18, fontFamily: FontFamily.black, color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.25)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   personalBestCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: Spacing.lg, marginBottom: Spacing.md, borderRadius: BorderRadius.lg, padding: Spacing.md, borderWidth: 1.5, gap: Spacing.sm },
   personalBestEmoji: { fontSize: 28 },
   personalBestLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.regular },
@@ -363,7 +384,9 @@ const styles = StyleSheet.create({
   emptyPodiumSub: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, textAlign: 'center', lineHeight: 20 },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
   row: { flexDirection: 'row', alignItems: 'center', borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.sm, ...Shadow.sm },
-  rowRank: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold, width: 28 },
+  rankMedal: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 2, ...Shadow.sm },
+  rankMedalText: { fontSize: FontSize.sm, fontFamily: FontFamily.black, color: '#FFFFFF' },
+  rowRankNum: { fontSize: FontSize.md, fontFamily: FontFamily.extraBold, width: 28, textAlign: 'center' },
   rowAvatar: { fontSize: 30, marginRight: Spacing.sm },
   rowInfo: { flex: 1 },
   rowName: { fontSize: FontSize.md, fontFamily: FontFamily.bold },
