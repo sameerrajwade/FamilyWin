@@ -10,6 +10,13 @@
 
 ---
 
+## Iteration 32 (2026-08-16) — Launch-closing: test-suite build (edge cases) + Phase 5 plan
+User directive: closing on launch. Work THROUGH the existing pending roadmap list (don't just chase the 2 new meta-tasks). New follow-on tasks layered on: (#13) comprehensive per-module + edge-case test suite "as capacity permits"; (#14) generic marketing screenshots (Dad/Mom/Alex/Jamie + generic chores — NEVER real family, per constraint) for store/website.
+- ✅ **Edge-case tests committed** (29, all green): `entitlements.test.ts` (free-for-all + mocked paid mode: plan expiry, caps) and `pointsEngine.edgecases.test.ts` (leaderboard ties/zeros/orphaned/empty, crowns fixed-order+unawarded, missed-penalty boundaries incl pv=1→1, level monotonic+cap, dailyStreak grace/gaps/dupes). Adds to the 27 rules tests.
+- 🔄 **6.3 Cloud Functions tests** (in progress): NEW `__tests__/functions/completionTriggers.test.js` + `jest.functions.config.js` + firebase.json functions-emulator + `npm run test:functions`. Runs the REAL onCompletionCreated/Deleted triggers against firestore+functions emulators (firebase-tools@13, JDK17): award-from-task-not-client, serverAward guard, miss(−5)/autofail(−10) penalty, undo/catch-up reversal to net 0, idempotency. Emulator run bdafpvw31 pending result — if v2 firestore triggers don't fire in fb-tools@13 emulator, fall back to prod device-verification (already done) + note.
+- CURRENT test counts: rules 27 (test:rules), pointsEngine+edge ~131, entitlements 12. firebase.test.ts + RNTL screen suites still pre-existing-red (native/ThemeProvider harness).
+- NEXT (down the list, in order): finish 6.3 → 4.3 task verification (extends the CF; add approval-flow fn tests) → package rename 0.1 → tz-aware auto-fail CF → E2E(Maestro) → i18n/a11y → RNTL harness fix → then #14 generic screenshots. Package `com.familywin.app` on live prod familywin-35a97.
+
 ## Iteration 31 (2026-08-16) — Merged to main + pushed; monetization scaffolding (free-for-all)
 - ✅ **MERGED autonomous/gamify-home → main (--no-ff, ae69bd1) + PUSHED** to origin (bce63f9..ae69bd1). main now carries the whole gamify+UI+1.8+rules-tests+negative-points update. main==origin/main.
 - ✅ **Monetization scaffolding (Phase 3, free-for-all mode)** committed on main. Strategy (user's call): build the FULL Plus machinery but keep it free + say so, so enabling paid later isn't a surprise.
