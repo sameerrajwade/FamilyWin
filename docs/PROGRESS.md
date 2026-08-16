@@ -10,6 +10,14 @@
 
 ---
 
+## Iteration 33 (2026-08-16) — 6.3 CONFIRMED green + tz-aware missed-task sweep CF
+User: "you decide any order but just do it autonomously." Working down the roadmap; only live prod deploys are gated for when user is present.
+- ✅ **6.3 resolved**: the iter-32 pending question (do v2 Firestore triggers fire in the fb-tools@13 / JDK17 emulator?) → YES. `completionTriggers.test.js` **7/7 pass** against firestore+functions emulators. No prod fallback needed. Phase 6.3 DONE.
+- ✅ **tz-aware missed-task sweep CF** (roadmap "tz-aware auto-fail CF"): NEW `firebase/functions/sweep.js` `runMissedTaskSweep(db, now)` + scheduled `missedTaskSweep` (hourly, `0 * * * *`) in index.js. Backstop for members who never open the app: penalizes daily tasks missed on a member's fully-elapsed LOCAL day (from notificationConfigs.timezone via Intl). Reuses the client's deterministic id `miss__{task}__{member}__{date}` + existence guard + `.create()` → CAN'T double-penalize with the client lazy sweep; onCompletionCreated deducts (half/full) as usual. Logic lives in sweep.js (no app-init, takes db) so it's emulator-testable — the emulator doesn't fire onSchedule.
+- ✅ **NEW `__tests__/functions/missedSweep.test.js`** (9 tests): tz-correctness of localDateKey/graceDaysBefore/weekIdForKey/isDailyAssignedTo; end-to-end sweep→miss-doc→trigger penalty(−10); excludes unassigned/weekly/already-done; off-mode no-op; idempotent 2nd run. **Functions suite now 16/16** (7 triggers + 9 sweep). Made jest.functions.config serial (`maxWorkers:1`) + bumped poll/testTimeout (25s/45s) — two trigger-heavy suites on one shared emulator were racing the async trigger queue + hitting a cold-start ceiling (not a logic bug).
+- ⚠️ **DEPLOY GATE**: `missedTaskSweep` is NEW — needs `firebase deploy --only functions` (adds a scheduler job) when user is present. Safe/additive (won't double-penalize existing client path). NOT deployed yet.
+- NEXT: 4.3 task verification (build + emulator-test; gate deploy) → package rename 0.1 → E2E(Maestro) → i18n/a11y → #14 screenshots.
+
 ## Iteration 32 (2026-08-16) — Launch-closing: test-suite build (edge cases) + Phase 5 plan
 User directive: closing on launch. Work THROUGH the existing pending roadmap list (don't just chase the 2 new meta-tasks). New follow-on tasks layered on: (#13) comprehensive per-module + edge-case test suite "as capacity permits"; (#14) generic marketing screenshots (Dad/Mom/Alex/Jamie + generic chores — NEVER real family, per constraint) for store/website.
 - ✅ **Edge-case tests committed** (29, all green): `entitlements.test.ts` (free-for-all + mocked paid mode: plan expiry, caps) and `pointsEngine.edgecases.test.ts` (leaderboard ties/zeros/orphaned/empty, crowns fixed-order+unawarded, missed-penalty boundaries incl pv=1→1, level monotonic+cap, dailyStreak grace/gaps/dupes). Adds to the 27 rules tests.

@@ -21,6 +21,7 @@ const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 const { getAuth } = require('firebase-admin/auth');
 const { getStorage } = require('firebase-admin/storage');
+const { runMissedTaskSweep } = require('./sweep');
 
 initializeApp();
 
@@ -336,6 +337,21 @@ exports.dailyStreakCheck = onSchedule('0 1 * * *', async (event) => {
       console.log(`Streak bonus: family=${familyId} member=${memberId} streak=${streak} bonus=${bonus}`);
     }
   }
+  return null;
+});
+
+// ─── TIMEZONE-AWARE MISSED-TASK SWEEP ────────────────────────────────────────
+// Backstop for members who never open the app: penalizes daily tasks missed on a
+// member's LOCAL (fully-elapsed) day, using their stored notificationConfigs
+// timezone. The client applies the same penalty lazily on Home load; both write
+// the same deterministic completion id `miss__{task}__{member}__{date}` and guard
+// on existing completions, so they can never double-penalize. Hourly so each
+// timezone's day-rollover is caught promptly; the existence guard makes repeated
+// runs over the grace window cheap and idempotent. The sweep logic lives in
+// sweep.js so it can be unit-tested directly against the emulator.
+exports.missedTaskSweep = onSchedule('0 * * * *', async () => {
+  const result = await runMissedTaskSweep(db, new Date());
+  console.log('missedTaskSweep:', JSON.stringify(result));
   return null;
 });
 

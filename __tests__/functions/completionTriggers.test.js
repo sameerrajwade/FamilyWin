@@ -21,7 +21,7 @@ const txCol = () => famRef.collection('transactions');
 const compCol = () => famRef.collection('completions');
 
 /** Poll until predicate(true) or timeout — CF triggers settle asynchronously. */
-async function eventually(fn, { timeout = 12000, interval = 400 } = {}) {
+async function eventually(fn, { timeout = 25000, interval = 400 } = {}) {
   const start = Date.now();
   let last;
   while (Date.now() - start < timeout) {
