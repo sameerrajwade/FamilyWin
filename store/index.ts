@@ -20,12 +20,16 @@ interface AuthState {
   actingAsMember: MemberDoc | null;  // null = acting as self; set to a managed child to proxy for them
   isLoading: boolean;
   isHydrated: boolean;
+  /** Bumped to explicitly (re)show the welcome tour, e.g. from Settings → Replay
+   *  walkthrough. Transient (not persisted). */
+  tourNonce: number;
   setUser: (user: AuthState['user']) => void;
   setMember: (member: MemberDoc | null) => void;
   setFamily: (family: FamilyDoc | null) => void;
   setActingAsMember: (member: MemberDoc | null) => void;
   setLoading: (loading: boolean) => void;
   setHydrated: (hydrated: boolean) => void;
+  requestTour: () => void;
   clearSession: () => void;
 }
 
@@ -38,6 +42,7 @@ export const useAuthStore = create<AuthState>()(
       actingAsMember: null,
       isLoading: true,
       isHydrated: false,
+      tourNonce: 0,
       setUser: (user) => set({ user }),
       setMember: (member) => set({ member }),
       setFamily: (family) => set({ family }),
@@ -45,6 +50,7 @@ export const useAuthStore = create<AuthState>()(
       setActingAsMember: (actingAsMember) => set({ actingAsMember }),
       setLoading: (isLoading) => set({ isLoading }),
       setHydrated: (isHydrated) => set({ isHydrated }),
+      requestTour: () => set((s) => ({ tourNonce: s.tourNonce + 1 })),
       clearSession: () => set({ user: null, member: null, family: null, actingAsMember: null }),
     }),
     {

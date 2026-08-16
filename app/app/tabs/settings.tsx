@@ -33,7 +33,7 @@ import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMO
 import { useTheme } from '@/lib/theme';
 
 export default function SettingsScreen() {
-  const { member, family, clearSession } = useAuthStore();
+  const { member, family, clearSession, requestTour } = useAuthStore();
   const { updateMember } = useFamilyStore();
   const { colors } = useTheme();
 
@@ -290,8 +290,14 @@ export default function SettingsScreen() {
             icon="help-circle-outline"
             label="Help & Legal"
             subtitle="FAQ, privacy, terms & share"
-            isLast
             onPress={() => router.push('/app/settings/about' as any)}
+          />
+          <NavRow
+            icon="sparkles-outline"
+            label="Replay walkthrough"
+            subtitle="See the welcome tour again"
+            isLast
+            onPress={() => { requestTour(); router.push('/app/tabs' as any); }}
           />
         </SettingsGroup>
 

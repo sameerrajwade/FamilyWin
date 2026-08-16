@@ -41,7 +41,7 @@ type TaskWithCompletion = {
 };
 
 export default function HomeScreen() {
-  const { member, family, actingAsMember } = useAuthStore();
+  const { member, family, actingAsMember, tourNonce } = useAuthStore();
   // effectiveMember = who we're doing tasks for (self or a managed child)
   const effectiveMember = actingAsMember ?? member;
   const { todaysTasks, setTodaysTasks, isLoadingTasks, setLoadingTasks, markTaskComplete } = useTaskStore();
@@ -208,6 +208,12 @@ export default function HomeScreen() {
     })();
     return () => { cancelled = true; };
   }, [member?.id, actingAsMember]);
+
+  // Explicit "replay walkthrough" request (Settings) — show regardless of the
+  // one-time flag. tourNonce starts at 0, so this only fires on a real request.
+  useEffect(() => {
+    if (tourNonce > 0) setShowTour(true);
+  }, [tourNonce]);
 
   const dismissTour = useCallback(() => {
     setShowTour(false);
