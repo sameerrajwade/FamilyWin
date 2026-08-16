@@ -91,7 +91,7 @@ export default function ApprovalsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
           <Icon name="chevron-back" size={22} color={colors.primary} />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
@@ -138,6 +138,8 @@ export default function ApprovalsScreen() {
                     onPress={() => decide(row, false)}
                     disabled={busyId === id}
                     activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Reject ${row.task?.title ?? 'task'} for ${row.member?.displayName ?? 'member'}`}
                   >
                     {busyId === id
                       ? <ActivityIndicator color={colors.danger} size="small" />
@@ -148,6 +150,8 @@ export default function ApprovalsScreen() {
                     onPress={() => decide(row, true)}
                     disabled={busyId === id}
                     activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Approve ${row.task?.title ?? 'task'} for ${row.member?.displayName ?? 'member'}`}
                   >
                     {busyId === id
                       ? <ActivityIndicator color="#FFF" size="small" />

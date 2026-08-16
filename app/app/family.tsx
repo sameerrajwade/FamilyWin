@@ -295,17 +295,17 @@ function MemberRow({ member, isSelf, isAdmin, isLast, onRolePress, onRemove, onE
       </View>
       <View style={styles.memberActions}>
         {onEdit && (
-          <TouchableOpacity style={[styles.actionChip, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '44' }]} onPress={onEdit}>
+          <TouchableOpacity style={[styles.actionChip, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '44' }]} onPress={onEdit} accessibilityRole="button" accessibilityLabel={`Edit ${member.displayName}`}>
             <Text style={[styles.actionChipText, { color: colors.primary }]}>Edit</Text>
           </TouchableOpacity>
         )}
         {isAdmin && !isSelf && !member.isManaged && onRolePress && (
-          <TouchableOpacity style={[styles.actionChip, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '44' }]} onPress={onRolePress}>
+          <TouchableOpacity style={[styles.actionChip, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '44' }]} onPress={onRolePress} accessibilityRole="button" accessibilityLabel={`Change role for ${member.displayName}`}>
             <Text style={[styles.actionChipText, { color: colors.primary }]}>Role</Text>
           </TouchableOpacity>
         )}
         {isAdmin && !isSelf && (
-          <TouchableOpacity style={[styles.actionChip, { backgroundColor: colors.danger + '15', borderColor: colors.danger + '44' }]} onPress={onRemove}>
+          <TouchableOpacity style={[styles.actionChip, { backgroundColor: colors.danger + '15', borderColor: colors.danger + '44' }]} onPress={onRemove} accessibilityRole="button" accessibilityLabel={`Remove ${member.displayName}`}>
             <Text style={[styles.actionChipText, { color: colors.danger }]}>Remove</Text>
           </TouchableOpacity>
         )}
