@@ -12,7 +12,8 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --coverage --coverageReporters=text --coverageReporters=lcov",
-    "test:rules": "firebase emulators:exec --project demo-lootboard --only firestore \"jest --config jest.rules.config.js\""
+    "test:rules": "firebase emulators:exec --project demo-lootboard --only firestore \"jest --config jest.rules.config.js\"",
+    "test:functions": "firebase emulators:exec --project demo-lootboard --only firestore,functions \"jest --config jest.functions.config.js\""
   },
   "dependencies": {
     "@expo-google-fonts/nunito": "^0.4.2",
