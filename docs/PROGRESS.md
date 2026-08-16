@@ -10,6 +10,14 @@
 
 ---
 
+## Iteration 28 (2026-08-15) — Post-UI phases: rules tests, perf audit, point-integrity design
+User: "start everything, drive it, don't care about priority." Committed the UI batch first, then drove launch-roadmap phases:
+- ✅ **Phase 6.2 Firestore rules tests** (roadmap's "highest-value gap"): NEW `__tests__/rules/firestore.rules.test.js` (20 tests) + `jest.rules.config.js` (node env) + firebase.json emulators block + `npm run test:rules`. Ran on the Firestore emulator (via `firebase-tools@13` — global fb-tools 15 needs JDK21, we have JDK17) → **20/20 PASS**. Covers auth gate, cross-family isolation, role gates, immutable audit (tx/completions/weeklyScores), core member abilities. One test asserts the CURRENT point-forging HOLE (flips to assertFails after 1.8). devDeps: @firebase/rules-unit-testing, firebase JS SDK. COMMITTED.
+- ✅ **Phase 1 perf audit** — CLEAN, no code changes: all onSnapshot listeners unsubscribe (index.tsx tasks+completions, leaderboard.tsx); uploadMemberPhoto compresses 512/0.7/JPEG; FOUC + Zustand-persist cache-first already done iter24.
+- 📐 **Phase 1.8 point integrity DESIGNED** (`docs/POINT_INTEGRITY.md`), NOT built/deployed: server-authoritative points via `onCompletionWrite` CF trigger (preserves offline UX — client writes completion, CF settles points from task.pointValue), tightened transactions rules (client can't forge source:'task'), ordered prod cutover (functions→client→rules). GATED — coordinated live deploy must be run WITH user (real family data).
+- ⏸️ **Phase 4.3 task verification** + **negative-points**: NOT built. Both fold into the 1.8 award-path rewrite (4.3 = completion status:'pending' on the CF trigger); negative-points still needs joint spec (standing constraint + prior misfire). Surfaced both to user for decision.
+- NEXT (awaiting user): (a) negative-points spec confirm; (b) go/no-go on the 1.8 implementation+cutover; (c) whether to build 4.3 standalone-now or fold into 1.8. Then Phase 3 monetization / Phase 5 store assets remain.
+
 ## Iteration 27 (2026-08-15) — UI batch: 5 tabs, Settings hub, crown/insights/rewards polish
 User returned with 5 UI observations (grounded via device screenshots on build bllo1t1or, light mode). All coded, tsc app-src CLEAN (0 errors), pointsEngine 102/102 pass; screen RNTL suites still pre-existing-red (ThemeProvider/native harness rot, NOT my changes). Build b6o9hpnzd in progress.
 - ✅ **#1 Tabs 6→5**: removed Family from bottom bar. MOVED `app/app/tabs/family.tsx` → `app/app/family.tsx` (proper Stack screen, not href:null — cleaner nav), added its own back button ("‹ Settings"), Stack.Screen decl in app/app/_layout.tsx. Bar now: Tasks·Scores·Insights·Rewards·Settings.
