@@ -23,6 +23,8 @@ import { detectTaskEmoji } from '@/lib/taskEmoji';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
+import { WelcomeTour } from '@/components/ui/WelcomeTour';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EmptyState, Avatar } from '@/components/ui/index';
 import { Icon } from '@/components/ui/Icon';
 import { BrandBar } from '@/components/ui/Brand';
@@ -58,6 +60,7 @@ export default function HomeScreen() {
   const [weeklyPoints, setWeeklyPoints] = useState(0);
   const [pendingApprovals, setPendingApprovals] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [showTour, setShowTour] = useState(false);
   const [lifetimePoints, setLifetimePoints] = useState(0);
   // Undo state — cleared after 5 seconds
   const [undoTask, setUndoTask] = useState<{ id: string; title: string; txId: string; completionId: string; points: number } | null>(null);
@@ -191,6 +194,25 @@ export default function HomeScreen() {
   useEffect(() => { hasLoadedRef.current = false; }, [effectiveMember?.id]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
+
+  // First-run welcome tour — shown once for the account holder (not while acting
+  // as a managed child). Persisted via AsyncStorage so it never repeats.
+  useEffect(() => {
+    if (!member?.id || actingAsMember) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const seen = await AsyncStorage.getItem('lootboard_welcome_tour_v1');
+        if (!cancelled && !seen) setShowTour(true);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [member?.id, actingAsMember]);
+
+  const dismissTour = useCallback(() => {
+    setShowTour(false);
+    AsyncStorage.setItem('lootboard_welcome_tour_v1', '1').catch(() => {});
+  }, []);
 
   // Streak + lifetime level — fetched on profile/week change only (NOT on every
   // snapshot tick), so the live listeners stay cheap and flicker-free. Streak
@@ -484,6 +506,7 @@ export default function HomeScreen() {
         totalPoints={weeklyPoints}
         onDismiss={() => setShowCelebration(false)}
       />
+      <WelcomeTour visible={showTour} role={member?.role} onClose={dismissTour} />
       {/* Brand always sits on top, above the family profile switcher */}
       <BrandBar />
       {/* Profile tabs — visible to parents when family has other members */}

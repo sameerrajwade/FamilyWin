@@ -10,6 +10,11 @@
 
 ---
 
+## Iteration 36 (2026-08-16) — First-run welcome tour
+User idea: first-time users should get a walkthrough. Chose welcome-tour CARDS (not coach-marks), parent-full + child-short.
+- ✅ NEW `components/ui/WelcomeTour.tsx` — dependency-free swipeable card modal (paged ScrollView, dots, Skip + Next/"Let's go"), theme-aware. PARENT_SLIDES (6: welcome, tap-to-complete, profile switcher, add task/penalty, scores/rewards, settings) vs CHILD_SLIDES (3: welcome, tap-to-complete, climb/win) keyed off member.role.
+- ✅ Wired into Home: shows ONCE for the account holder (not while acting as a managed child), gated by AsyncStorage flag `lootboard_welcome_tour_v1`; dismiss/skip persists the flag. NEW `__tests__/components/WelcomeTour.test.tsx` (5). Full jest **307/307** (18 suites). No deploy needed (client-only). Rebuild for device verify.
+
 ## Iteration 35 (2026-08-16) — Parent-controlled join role (security gap the user spotted)
 User asked: when a kid self-joins via invite code, how do they become a child not a parent? GAP FOUND: the join flow had a self-selected role picker DEFAULTING TO PARENT, and firestore.rules let a member edit their OWN member doc with no field restriction → a kid could join as / self-promote to parent and approve their own tasks/rewards + grant points. User chose the "parent-controlled" model.
 - ✅ **joinFamily CF**: role is now SERVER-AUTHORITATIVE — every code-joiner is created as `role:'child'` (was `d.role==='child'?'child':'parent'`). Client-supplied role ignored.
