@@ -28,7 +28,8 @@ import { useAuthStore, useFamilyStore } from '@/store';
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { SettingsGroup, NavRow } from '@/components/ui/SettingsUI';
-import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
+import { FreeForAllBanner } from '@/components/ui/Plus';
+import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
 
 export default function SettingsScreen() {
@@ -232,6 +233,9 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* ── Lootboard Plus (free-for-all right now) ── */}
+        <FreeForAllBanner />
+
         {/* ── Family ── */}
         <SettingsGroup title="Family">
           <NavRow
@@ -275,6 +279,13 @@ export default function SettingsScreen() {
 
         {/* ── Support ── */}
         <SettingsGroup title="Support">
+          <NavRow
+            icon="star-outline"
+            iconColor={Colors.gold}
+            label="Lootboard Plus"
+            subtitle="Premium features — free for everyone right now"
+            onPress={() => router.push('/app/settings/plus' as any)}
+          />
           <NavRow
             icon="help-circle-outline"
             label="Help & Legal"

@@ -139,6 +139,12 @@ export interface FamilyDoc {
   // within a 2-day grace window). Absent = 'off'. (Legacy boolean true is read
   // as 'half' by the client for backward-compat.)
   missedTaskPenalty?: 'off' | 'half' | 'full' | boolean;
+  // Monetization (Lootboard Plus). Absent = free tier. Server-validated later
+  // (RevenueCat webhook → Cloud Function); the client never trusts a
+  // client-written plan. While constants/plans.ts MONETIZATION_ENABLED is false,
+  // entitlement checks treat everyone as Plus (free-for-all) regardless of this.
+  plan?: 'free' | 'plus';
+  planExpiresAt?: Timestamp | null;
   createdAt: Timestamp;
 }
 

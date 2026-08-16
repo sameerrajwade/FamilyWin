@@ -14,6 +14,7 @@ export default function AppLayout() {
       <Stack.Screen name="settings/notifications" />
       <Stack.Screen name="settings/parental" />
       <Stack.Screen name="settings/about" />
+      <Stack.Screen name="settings/plus" />
       <Stack.Screen name="member/add-child" options={{ presentation: 'modal' }} />
       <Stack.Screen name="winner" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
     </Stack>
