@@ -32,6 +32,7 @@ jest.mock('@/lib/firebase', () => ({
     transactions: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),
       get: jest.fn().mockResolvedValue({ docs: [] }),
+      onSnapshot: jest.fn(() => jest.fn()),
     })),
     tasks: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),

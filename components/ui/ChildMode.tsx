@@ -14,6 +14,7 @@ import Animated, {
   interpolate,
 } from 'react-native-reanimated';
 import { useTheme } from '@/lib/theme';
+import { detectTaskEmoji } from '@/lib/taskEmoji';
 import type { TaskWithCompletion } from '@/types';
 
 const { width: W } = Dimensions.get('window');
@@ -124,15 +125,21 @@ export function ChildTaskCard({ task, onComplete, onUndo, isCompleting, index }:
     transform: [{ scale: scale.value }],
   }));
 
-  const categoryConfig: Record<string, { emoji: string; bg: string }> = {
-    chores: { emoji: '🧹', bg: '#E3F2FD' },
-    homework: { emoji: '📚', bg: '#F3E5F5' },
-    hygiene: { emoji: '🚿', bg: '#E0F7FA' },
-    behavior: { emoji: '⭐', bg: '#FFF8E1' },
-    extras: { emoji: '🎯', bg: '#E8F5E9' },
+  // Category drives only the card TINT here; the icon comes from the shared
+  // per-task detector so child mode shows the SAME icon as the adult card
+  // (previously every chore showed a broom, every hygiene task a shower).
+  const categoryBg: Record<string, string> = {
+    chores: '#E3F2FD',
+    homework: '#F3E5F5',
+    hygiene: '#E0F7FA',
+    behavior: '#FFF8E1',
+    extras: '#E8F5E9',
   };
 
-  const config = categoryConfig[task.category] ?? { emoji: '📌', bg: '#F5F5F5' };
+  const config = {
+    emoji: detectTaskEmoji(task.title, task.category),
+    bg: categoryBg[task.category] ?? '#F5F5F5',
+  };
 
   return (
     <Animated.View style={[styles.childCard, { backgroundColor: config.bg }, cardStyle]}>

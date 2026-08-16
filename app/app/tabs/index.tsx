@@ -19,6 +19,7 @@ import {
   syncMissedPenalties, missedPenaltyMode, type CatchUpItem,
 } from '@/lib/firebase';
 import { getCurrentWeekRange, dailyStreak, getLevel } from '@/lib/pointsEngine';
+import { detectTaskEmoji } from '@/lib/taskEmoji';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
@@ -254,6 +255,25 @@ export default function HomeScreen() {
       .onSnapshot(() => { loadTasks(); }, (err) => { if (__DEV__) console.error(err); });
     return () => { unsubTasks(); unsubCompletions(); };
   }, [family?.id, weekId, loadTasks]);
+
+  // Live weekly total for the active profile. The onCompletionCreated/Updated
+  // Cloud Functions settle points ASYNCHRONOUSLY (e.g. after a parent approves),
+  // and that transaction write doesn't trip the tasks/completions listeners — so
+  // without this the hero "N pts this week" stays stale until the next reload.
+  useEffect(() => {
+    if (!family?.id || !effectiveMember?.id) return;
+    const { start } = getCurrentWeekRange(family?.weekStartDay ?? 1);
+    const unsub = Col.transactions(family.id)
+      .where('memberId', '==', effectiveMember.id)
+      .where('createdAt', '>=', firestore.Timestamp.fromDate(start))
+      .onSnapshot((snap) => {
+        const wpts = snap.docs
+          .filter((d) => d.data().source !== 'redemption')
+          .reduce((sum, d) => sum + ((d.data().delta as number) || 0), 0);
+        setWeeklyPoints(wpts);
+      }, (err) => { if (__DEV__) console.error(err); });
+    return unsub;
+  }, [family?.id, effectiveMember?.id, family?.weekStartDay]);
 
   // Always reload members when home screen is focused — ensures profile tabs appear immediately
   useFocusEffect(useCallback(() => {
@@ -621,7 +641,13 @@ export default function HomeScreen() {
               ))
             ) : (
               (todaysTasks as any[]).map((task, i) => (
-                <SlideIn key={task.id} delay={250 + i * 60}>
+                // Include the approval status in the key so a card cleanly
+                // REMOUNTS when a completion transitions pending→approved/rejected
+                // (returning from the Approvals screen) — otherwise the in-place
+                // reanimated update can leave the card content unpainted. Normal
+                // tasks (no status) keep a stable key, so complete/undo still
+                // animate in place with no flicker.
+                <SlideIn key={task.id + (task.completion?.status ? ':' + task.completion.status : '')} delay={250 + i * 60}>
                   <AdultTaskCard task={task} onComplete={handleCompleteTask} onUndo={handleUndoTask} isCompleting={completingTaskId === task.id} colors={colors} fontSize={fontSize} isReadOnly={isReadOnly} isParent={isParent} />
                 </SlideIn>
               ))
@@ -775,7 +801,7 @@ function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSiz
         )}
         <View style={styles.taskContent}>
           <View style={[styles.taskEmojiBubble, { backgroundColor: catColor + '22' }]}>
-            <Text style={styles.taskEmoji}>{task.taskEmoji ?? CATEGORY_ICONS[task.category] ?? '📌'}</Text>
+            <Text style={styles.taskEmoji}>{detectTaskEmoji(task.title, task.category)}</Text>
           </View>
           <View style={styles.taskInfo}>
             <Text numberOfLines={1} style={[styles.taskTitle, { color: colors.text, fontSize: fontSize(FontSize.md) }, (isDone || isFailed) && { opacity: 0.55, textDecorationLine: 'line-through' }]}>{task.title}</Text>
