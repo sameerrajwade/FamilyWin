@@ -1,28 +1,38 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
+  ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Sounds } from '@/lib/sounds';
-import { addPointTransaction, getFamilyMembers } from '@/lib/firebase';
+import {
+  addPointTransaction, getFamilyMembers,
+  getActivePenalties, createPenalty, deletePenalty,
+} from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
 import { Icon } from '@/components/ui/Icon';
-import type { MemberDoc } from '@/lib/firebase';
+import type { MemberDoc, PenaltyDoc } from '@/lib/firebase';
 
+// Built-in bonus presets. Penalty presets are now parent-defined (the "negative
+// rewards" list) and loaded from Firestore — see penalties state below. A couple
+// of built-in penalties seed the list for families that haven't added their own.
 const QUICK_REASONS = [
-  { label: '😤 Talked Back', delta: -15, type: 'penalty' },
-  { label: '🕐 Not Following Schedule', delta: -10, type: 'penalty' },
-  { label: '🗣️ Disrespectful', delta: -20, type: 'penalty' },
   { label: '🤝 Helped Without Being Asked', delta: +20, type: 'bonus' },
   { label: '⭐ Exceptional Behavior', delta: +30, type: 'bonus' },
   { label: '📖 Read for 30 Minutes', delta: +15, type: 'bonus' },
   { label: '🎯 Completed All Tasks Early', delta: +25, type: 'bonus' },
   { label: '😊 Great Attitude', delta: +10, type: 'bonus' },
+];
+
+// Fallback penalty presets shown when a family hasn't defined any custom ones.
+const DEFAULT_PENALTIES = [
+  { title: 'Talked Back', points: 15, emoji: '😤' },
+  { title: 'Not Following Schedule', points: 10, emoji: '🕐' },
+  { title: 'Disrespectful', points: 20, emoji: '🗣️' },
 ];
 
 export default function DisciplineLogScreen() {
@@ -38,13 +48,57 @@ export default function DisciplineLogScreen() {
   const [isBonus, setIsBonus] = useState(false);
   const [note, setNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [penalties, setPenalties] = useState<PenaltyDoc[]>([]);
+  const [showAddPenalty, setShowAddPenalty] = useState(false);
 
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
 
   useEffect(() => {
-    if (!family?.id || members.length > 0) return;
-    getFamilyMembers(family.id).then((list) => setMembers(list as any));
+    if (!family?.id) return;
+    if (members.length === 0) getFamilyMembers(family.id).then((list) => setMembers(list as any));
+    loadPenalties();
   }, [family?.id]);
+
+  async function loadPenalties() {
+    if (!family?.id) return;
+    try {
+      setPenalties(await getActivePenalties(family.id));
+    } catch { /* non-fatal — fall back to defaults */ }
+  }
+
+  // The penalty presets shown: parent-defined ones if any, else the built-in
+  // seed list. Custom presets can be removed; the seed ones cannot.
+  const penaltyPresets = penalties.length > 0
+    ? penalties.map((p) => ({ id: p.id, title: p.title, points: p.points, emoji: p.emoji ?? '⚠️', custom: true }))
+    : DEFAULT_PENALTIES.map((p) => ({ id: p.title, title: p.title, points: p.points, emoji: p.emoji, custom: false }));
+
+  function applyPreset(title: string, points: number, bonus: boolean) {
+    Haptics.selectionAsync();
+    setReason(title);
+    setPointDelta(points);
+    setIsBonus(bonus);
+  }
+
+  async function handleAddPenalty(title: string, points: number, emoji: string) {
+    if (!family?.id || !member?.id) return;
+    await createPenalty({ familyId: family.id, title, points, emoji, createdBy: member.id });
+    setShowAddPenalty(false);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    loadPenalties();
+  }
+
+  function handleDeletePenalty(p: { id: string; title: string }) {
+    Alert.alert('Remove penalty?', `Remove "${p.title}" from your penalty list? Past records are kept.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove', style: 'destructive',
+        onPress: async () => {
+          if (!family?.id) return;
+          try { await deletePenalty(family.id, p.id); loadPenalties(); } catch { Alert.alert('Error', 'Could not remove penalty.'); }
+        },
+      },
+    ]);
+  }
 
   // Pre-select the member passed via deep link once members are loaded.
   useEffect(() => {
@@ -67,13 +121,6 @@ export default function DisciplineLogScreen() {
         </View>
       </SafeAreaView>
     );
-  }
-
-  function handleQuickReason(preset: typeof QUICK_REASONS[0]) {
-    Haptics.selectionAsync();
-    setReason(preset.label.replace(/^[^\s]+\s/, ''));
-    setPointDelta(Math.abs(preset.delta));
-    setIsBonus(preset.type === 'bonus');
   }
 
   async function handleSubmit() {
@@ -180,26 +227,59 @@ export default function DisciplineLogScreen() {
               </View>
             </View>
 
-            {/* Quick Reasons */}
+            {/* Quick Reasons — bonuses are built-in; penalties are your list */}
             <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.text }]}>3. Quick Reasons</Text>
-              <View style={styles.reasonGrid}>
-                {QUICK_REASONS.filter((r) => (isBonus ? r.type === 'bonus' : r.type === 'penalty')).map((preset) => {
-                  const isSelected = reason === preset.label.replace(/^[^\s]+\s/, '');
-                  return (
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                3. {isBonus ? 'Quick Bonuses' : 'Your Penalties'}
+              </Text>
+              {isBonus ? (
+                <View style={styles.reasonGrid}>
+                  {QUICK_REASONS.map((preset) => {
+                    const title = preset.label.replace(/^[^\s]+\s/, '');
+                    const isSelected = reason === title;
+                    return (
+                      <TouchableOpacity
+                        key={preset.label}
+                        style={[styles.reasonChip, { backgroundColor: colors.surface, borderColor: isSelected ? colors.primary : colors.border }]}
+                        onPress={() => applyPreset(title, Math.abs(preset.delta), true)}
+                      >
+                        <Text style={[styles.reasonChipText, { color: colors.text }]}>{preset.label}</Text>
+                        <Text style={[styles.reasonChipPoints, { color: colors.success }]}>+{preset.delta} pts</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <>
+                  <View style={styles.reasonGrid}>
+                    {penaltyPresets.map((p) => {
+                      const isSelected = reason === p.title && !isBonus;
+                      return (
+                        <TouchableOpacity
+                          key={p.id}
+                          style={[styles.reasonChip, { backgroundColor: colors.surface, borderColor: isSelected ? colors.primary : colors.border }]}
+                          onPress={() => applyPreset(p.title, p.points, false)}
+                          onLongPress={() => p.custom && handleDeletePenalty(p)}
+                          delayLongPress={350}
+                        >
+                          <Text style={[styles.reasonChipText, { color: colors.text }]}>{p.emoji} {p.title}</Text>
+                          <Text style={[styles.reasonChipPoints, { color: colors.danger }]}>-{p.points} pts</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                     <TouchableOpacity
-                      key={preset.label}
-                      style={[styles.reasonChip, { backgroundColor: colors.surface, borderColor: isSelected ? colors.primary : colors.border }]}
-                      onPress={() => handleQuickReason(preset)}
+                      style={[styles.reasonChip, styles.addPenaltyChip, { borderColor: colors.primary }]}
+                      onPress={() => setShowAddPenalty(true)}
                     >
-                      <Text style={[styles.reasonChipText, { color: colors.text }]}>{preset.label}</Text>
-                      <Text style={[styles.reasonChipPoints, { color: isBonus ? colors.success : colors.danger }]}>
-                        {preset.delta > 0 ? '+' : ''}{preset.delta} pts
-                      </Text>
+                      <Icon name="add-circle" size={18} color={colors.primary} />
+                      <Text style={[styles.reasonChipText, { color: colors.primary, marginTop: 2 }]}>Add penalty</Text>
                     </TouchableOpacity>
-                  );
-                })}
-              </View>
+                  </View>
+                  {penalties.length > 0 && (
+                    <Text style={[styles.penaltyHint, { color: colors.textMuted }]}>Long-press a penalty you added to remove it.</Text>
+                  )}
+                </>
+              )}
             </View>
 
             {/* Custom Reason */}
@@ -276,7 +356,91 @@ export default function DisciplineLogScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {showAddPenalty && (
+        <AddPenaltyModal
+          colors={colors}
+          onClose={() => setShowAddPenalty(false)}
+          onCreate={handleAddPenalty}
+        />
+      )}
     </SafeAreaView>
+  );
+}
+
+// ─── Add Penalty modal ────────────────────────────────────────────────────────
+function AddPenaltyModal({ colors, onClose, onCreate }: {
+  colors: any; onClose: () => void; onCreate: (title: string, points: number, emoji: string) => Promise<void>;
+}) {
+  const [title, setTitle] = useState('');
+  const [points, setPoints] = useState(10);
+  const [emoji, setEmoji] = useState('⚠️');
+  const [saving, setSaving] = useState(false);
+  const EMOJIS = ['⚠️', '😤', '🗣️', '🕐', '📵', '🧹', '💥', '🚫'];
+
+  async function submit() {
+    if (!title.trim()) { Alert.alert('Enter a name', 'Please name this penalty.'); return; }
+    try { setSaving(true); await onCreate(title.trim(), points, emoji); }
+    catch { Alert.alert('Error', 'Could not add penalty.'); setSaving(false); }
+  }
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.modalTitle, { color: colors.text }]}>New Penalty ⚠️</Text>
+
+            <Text style={[styles.modalLabel, { color: colors.text }]}>Icon</Text>
+            <View style={styles.emojiRow}>
+              {EMOJIS.map((e) => (
+                <TouchableOpacity
+                  key={e}
+                  style={[styles.emojiOpt, { borderColor: colors.border }, emoji === e && { borderColor: colors.primary, backgroundColor: colors.primary + '20' }]}
+                  onPress={() => { setEmoji(e); Haptics.selectionAsync(); }}
+                >
+                  <Text style={{ fontSize: 22 }}>{e}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.modalLabel, { color: colors.text }]}>Name</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+              value={title}
+              onChangeText={setTitle}
+              placeholder="e.g. Left room messy"
+              placeholderTextColor={colors.textMuted}
+              maxLength={40}
+              autoFocus
+            />
+
+            <Text style={[styles.modalLabel, { color: colors.text }]}>Points deducted</Text>
+            <View style={styles.pointsRow}>
+              {[5, 10, 15, 20, 25, 30, 50].map((val) => (
+                <TouchableOpacity
+                  key={val}
+                  style={[styles.pointsChip, { backgroundColor: colors.surface, borderColor: colors.border }, points === val && { backgroundColor: colors.danger, borderColor: colors.danger }]}
+                  onPress={() => { setPoints(val); Haptics.selectionAsync(); }}
+                >
+                  <Text style={[styles.pointsChipText, { color: points === val ? '#FFF' : colors.text }]}>{val}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalBtns}>
+              <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={onClose}>
+                <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.danger }, saving && { opacity: 0.6 }]} onPress={submit} disabled={saving}>
+                {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Add Penalty</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -299,6 +463,8 @@ const styles = StyleSheet.create({
   reasonChip: { borderRadius: BorderRadius.md, padding: Spacing.sm, borderWidth: 1.5 },
   reasonChipText: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold },
   reasonChipPoints: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, marginTop: 2 },
+  addPenaltyChip: { alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', minWidth: 110 },
+  penaltyHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: Spacing.sm, fontStyle: 'italic' },
   input: { borderWidth: 1.5, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.md, fontFamily: FontFamily.regular },
   pointsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   pointsChip: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
@@ -313,4 +479,17 @@ const styles = StyleSheet.create({
   blockedSubtitle: { fontSize: FontSize.md, fontFamily: FontFamily.regular, textAlign: 'center', marginTop: 8 },
   backBtn: { marginTop: Spacing.xl, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.xl, paddingVertical: 14 },
   backBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFF' },
+  // Add-penalty modal
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
+  modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg, paddingBottom: 40 },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.md },
+  modalTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, marginBottom: Spacing.md, textAlign: 'center' },
+  modalLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, marginBottom: 6, marginTop: Spacing.sm },
+  emojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  emojiOpt: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
+  modalBtns: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
+  cancelBtn: { flex: 1, borderWidth: 1.5, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center' },
+  cancelBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold },
+  saveBtn: { flex: 1, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center' },
+  saveBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFF' },
 });

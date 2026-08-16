@@ -57,6 +57,8 @@ export const Col = {
     firestore().collection('families').doc(familyId).collection('rewards'),
   redemptions: (familyId: string) =>
     firestore().collection('families').doc(familyId).collection('redemptions'),
+  penalties: (familyId: string) =>
+    firestore().collection('families').doc(familyId).collection('penalties'),
   weeklyScores: (familyId: string) =>
     firestore().collection('families').doc(familyId).collection('weeklyScores'),
   notifConfigs: (familyId: string) =>
@@ -986,6 +988,55 @@ export async function createReward(params: {
     isActive: true,
     createdAt: firestore.Timestamp.now(),
   });
+}
+
+// ─── PENALTY HELPERS ─────────────────────────────────────────────────────────
+// Parent-defined penalty presets (the customizable "negative rewards" list).
+// Applying one writes a source:'discipline' negative transaction — the same
+// audited path the discipline log uses. Distinct from the missed-task
+// half/full auto-deduction, which is a per-family setting on the task path.
+
+export interface PenaltyDoc {
+  id: string;
+  familyId: string;
+  title: string;
+  /** Positive magnitude of points to deduct (the transaction delta is -points). */
+  points: number;
+  emoji?: string;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: Timestamp;
+}
+
+/** Active parent-defined penalty presets, cheapest first. */
+export async function getActivePenalties(familyId: string): Promise<PenaltyDoc[]> {
+  const snap = await Col.penalties(familyId).where('isActive', '==', true).get();
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<PenaltyDoc, 'id'>) }))
+    .sort((a, b) => a.points - b.points);
+}
+
+export async function createPenalty(params: {
+  familyId: string;
+  title: string;
+  points: number;
+  emoji?: string;
+  createdBy: string;
+}): Promise<void> {
+  await Col.penalties(params.familyId).add({
+    familyId: params.familyId,
+    title: params.title,
+    points: Math.abs(params.points),
+    ...(params.emoji ? { emoji: params.emoji } : {}),
+    createdBy: params.createdBy,
+    isActive: true,
+    createdAt: firestore.Timestamp.now(),
+  });
+}
+
+/** Soft-delete a penalty preset (keeps it out of the picker, preserves history). */
+export async function deletePenalty(familyId: string, penaltyId: string): Promise<void> {
+  await Col.penalties(familyId).doc(penaltyId).update({ isActive: false });
 }
 
 export async function requestRedemption(params: {

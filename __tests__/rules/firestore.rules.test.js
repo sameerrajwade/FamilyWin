@@ -120,6 +120,12 @@ describe('Role-based permissions', () => {
   test('parent can approve a redemption', async () => {
     await assertSucceeds(updateDoc(doc(adminA(), 'families/famA/redemptions/r1'), { status: 'approved' }));
   });
+  test('parent can create a penalty preset', async () => {
+    await assertSucceeds(setDoc(doc(adminA(), 'families/famA/penalties/p1'), { title: 'Messy room', points: 15, isActive: true }));
+  });
+  test('child cannot create a penalty preset', async () => {
+    await assertFails(setDoc(doc(childA(), 'families/famA/penalties/p2'), { title: 'x', points: 10, isActive: true }));
+  });
 });
 
 describe('Immutable audit data', () => {

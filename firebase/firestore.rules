@@ -120,6 +120,14 @@ service cloud.firestore {
         allow create, update, delete: if isFamilyMember(familyId) && isParent(familyId);
       }
 
+      // ── Penalties subcollection ───────────────────────────────────────────
+      // Parent-defined penalty presets (the customizable "negative rewards"
+      // list). Mirrors rewards: any member reads; only parents manage.
+      match /penalties/{penaltyId} {
+        allow read: if isFamilyMember(familyId);
+        allow create, update, delete: if isFamilyMember(familyId) && isParent(familyId);
+      }
+
       // ── Redemptions subcollection ─────────────────────────────────────────
       match /redemptions/{redemptionId} {
         allow read: if isFamilyMember(familyId);
