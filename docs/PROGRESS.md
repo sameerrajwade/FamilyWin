@@ -10,6 +10,16 @@
 
 ---
 
+## Iteration 31 (2026-08-16) — Merged to main + pushed; monetization scaffolding (free-for-all)
+- ✅ **MERGED autonomous/gamify-home → main (--no-ff, ae69bd1) + PUSHED** to origin (bce63f9..ae69bd1). main now carries the whole gamify+UI+1.8+rules-tests+negative-points update. main==origin/main.
+- ✅ **Monetization scaffolding (Phase 3, free-for-all mode)** committed on main. Strategy (user's call): build the FULL Plus machinery but keep it free + say so, so enabling paid later isn't a surprise.
+  - `constants/plans.ts`: `MONETIZATION_ENABLED=false` master switch, tiers, FREE_LIMITS, pricing, PLUS_FEATURES list.
+  - `lib/entitlements.ts`: isPlus/hasFeature/memberLimit/rewardLimit/historyWeeksLimit — all return unlocked while switch off; read family.plan when on. ALL future gating routes here (enable = 1 flag).
+  - FamilyDoc += optional plan/planExpiresAt (server-validated later; client never trusts).
+  - UI: `components/ui/Plus.tsx` (PlusBadge + "free for everyone" banner); `app/app/settings/plus.tsx` showcase (features, Free-vs-Plus, pricing as "when Plus launches"); Settings hub gets banner + "Lootboard Plus" row. No billing SDK yet.
+  - tsc 0 errors. Build b2lziqxhu running → device-verify Plus screen + banner.
+- NEXT: verify monetization on device; then remaining roadmap — 4.3 task verification (folds onto 1.8 CF path, needs functions redeploy), 6.3 functions tests, Phase 5 store assets, edge cases (tz-aware auto-fail CF), i18n.
+
 ## Iteration 30 (2026-08-15) — 1.8 point integrity IMPLEMENTED + cutover in progress
 User: do 1.8 first, then merge everything to main. User deployed current firestore.rules (penalties block live; tightened-tx NOT yet). User granted firebase CLI full control.
 - ✅ **1.8 server-authoritative points** — code committed (ba632f3). Design: client only writes/deletes COMPLETION docs stamped `serverAward:true`; `onCompletionCreated`/`onCompletionDeleted` CF triggers are the sole writers of source:'task' tx, amounts recomputed from task.pointValue (normal=+pv; wasAutoFailed → penaltyKind 'autofail'=full / 'miss'=missed-setting; delete reverses net). serverAward flag → old-client completions ignored (no double-count in overlap). Auto-fail (backgroundTasks.ts) + missed-penalty + catch-up all moved to completion→trigger path.
