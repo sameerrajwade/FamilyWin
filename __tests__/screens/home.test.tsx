@@ -18,12 +18,28 @@ const mockTasks = [
 jest.mock('@/lib/firebase', () => ({
   getActiveTasks: jest.fn().mockResolvedValue([]),
   getWeekCompletions: jest.fn().mockResolvedValue([]),
-  completeTask: jest.fn().mockResolvedValue({ id: 'tx1', delta: 10 }),
+  completeTask: jest.fn().mockResolvedValue({ id: 'tx1', completionId: 'c1', delta: 10 }),
+  undoTaskCompletion: jest.fn().mockResolvedValue({ undone: true, pointsReversed: 10 }),
   getCurrentWeekId: jest.fn().mockReturnValue('2024-W21'),
+  getTodayDateString: jest.fn().mockReturnValue('2024-05-20'),
+  getCurrentMonthId: jest.fn().mockReturnValue('2024-05'),
+  getFamilyMembers: jest.fn().mockResolvedValue([]),
+  deleteTask: jest.fn().mockResolvedValue(undefined),
+  getRecentCompletions: jest.fn().mockResolvedValue([]),
+  syncMissedPenalties: jest.fn().mockResolvedValue([]),
+  missedPenaltyMode: jest.fn().mockReturnValue('off'),
   Col: {
     transactions: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),
       get: jest.fn().mockResolvedValue({ docs: [] }),
+    })),
+    tasks: jest.fn(() => ({
+      where: jest.fn().mockReturnThis(),
+      onSnapshot: jest.fn(() => jest.fn()),
+    })),
+    completions: jest.fn(() => ({
+      where: jest.fn().mockReturnThis(),
+      onSnapshot: jest.fn(() => jest.fn()),
     })),
   },
 }));
@@ -84,9 +100,9 @@ describe('HomeScreen', () => {
     expect(await findByText('Completed Task')).toBeTruthy();
   });
 
-  it('renders + button for parent', async () => {
-    const { findByText } = render(<HomeScreen />);
-    expect(await findByText('＋')).toBeTruthy();
+  it('renders the task-create button for a parent', async () => {
+    const { findByLabelText } = render(<HomeScreen />);
+    expect(await findByLabelText('Create new task')).toBeTruthy();
   });
 
   it('renders progress bar section', async () => {
@@ -94,15 +110,13 @@ describe('HomeScreen', () => {
     expect(await findByText("Today's Tasks")).toBeTruthy();
   });
 
-  it('shows confirm alert when tapping incomplete task', async () => {
+  it('completes an incomplete task on tap (one-tap UX, no confirm alert)', async () => {
+    const { completeTask } = require('@/lib/firebase');
     const { findByText } = render(<HomeScreen />);
     const task = await findByText('Clean Room');
     await act(async () => { fireEvent.press(task.parent!.parent!); });
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Complete Task? ✅',
-      expect.stringContaining('Clean Room'),
-      expect.any(Array),
-    );
+    await waitFor(() => expect(completeTask).toHaveBeenCalled());
+    expect(completeTask.mock.calls[0][0]).toEqual(expect.objectContaining({ taskId: 't1' }));
   });
 });
 
@@ -120,11 +134,11 @@ describe('HomeScreen — Acting as managed child', () => {
     });
   });
 
-  it('shows profile switcher banner when acting as child', async () => {
-    // When actingAsMember is set, the ProfileSwitcherBanner renders "Acting as"
+  it('shows the acting-as-child context in the greeting', async () => {
+    // When actingAsMember is set, the greeting switches to "<name>'s tasks".
     const HomeScreen = require('@/app/app/tabs/index').default;
     const { findByText } = render(<HomeScreen />);
-    expect(await findByText('Acting as')).toBeTruthy();
+    expect(await findByText(/Tommy's tasks/)).toBeTruthy();
   });
 });
 

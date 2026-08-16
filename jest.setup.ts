@@ -8,10 +8,42 @@
 // Here we only set up mocks (setupFiles runs before Jest framework).
 
 // ─── React Native Reanimated ──────────────────────────────────────────────────
+// The bundled `react-native-reanimated/mock` (v4) transitively loads
+// react-native-worklets native code, which crashes in Node ("loadUnpackers").
+// Hand-roll a lightweight mock covering the APIs the app uses — no worklets.
 jest.mock('react-native-reanimated', () => {
-  const Reanimated = require('react-native-reanimated/mock');
-  Reanimated.default.call = () => {};
-  return Reanimated;
+  const { View, Text, ScrollView, Image } = require('react-native');
+  const passthrough = (v: any) => v;
+  const noopEasingFactory = () => 0;
+  const Easing = new Proxy({}, { get: () => (() => noopEasingFactory) });
+  return {
+    __esModule: true,
+    default: {
+      View, Text, ScrollView, Image,
+      createAnimatedComponent: (c: any) => c,
+      call: () => {},
+    },
+    View, Text, ScrollView, Image,
+    createAnimatedComponent: (c: any) => c,
+    useSharedValue: (init: any) => ({ value: init }),
+    useAnimatedStyle: () => ({}),
+    useAnimatedProps: () => ({}),
+    useDerivedValue: (fn: any) => ({ value: typeof fn === 'function' ? fn() : fn }),
+    useAnimatedScrollHandler: () => () => {},
+    withSpring: passthrough,
+    withTiming: passthrough,
+    withSequence: (...args: any[]) => args[0],
+    withDelay: (_d: number, v: any) => v,
+    withRepeat: (v: any) => v,
+    cancelAnimation: () => {},
+    interpolate: () => 0,
+    interpolateColor: () => '#000000',
+    runOnJS: (fn: any) => fn,
+    runOnUI: (fn: any) => fn,
+    Easing,
+    Layout: { springify: () => ({}), duration: () => ({}) },
+    FadeIn: {}, FadeOut: {}, SlideInDown: {}, SlideInUp: {}, ZoomIn: {}, ZoomOut: {},
+  };
 });
 
 // ─── Firebase ─────────────────────────────────────────────────────────────────
@@ -95,14 +127,22 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 }));
 
 // ─── Expo modules ─────────────────────────────────────────────────────────────
-jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn(), back: jest.fn() },
-  useLocalSearchParams: jest.fn(() => ({ id: 'test-member-id' })),
-  usePathname: jest.fn(() => '/'),
-  Stack: { Screen: jest.fn() },
-  Tabs: { Screen: jest.fn() },
-  Link: 'Link',
-}));
+jest.mock('expo-router', () => {
+  const React = require('react');
+  return {
+    router: { push: jest.fn(), replace: jest.fn(), back: jest.fn() },
+    useLocalSearchParams: jest.fn(() => ({ id: 'test-member-id' })),
+    usePathname: jest.fn(() => '/'),
+    useRouter: jest.fn(() => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() })),
+    // Run the effect once, like a focused screen; return its cleanup.
+    useFocusEffect: jest.fn((cb: any) => { React.useEffect(cb, []); }),
+    useSegments: jest.fn(() => []),
+    Stack: { Screen: jest.fn() },
+    Tabs: { Screen: jest.fn() },
+    Link: 'Link',
+    Redirect: () => null,
+  };
+});
 
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn().mockResolvedValue(undefined),
@@ -146,11 +186,94 @@ jest.mock('expo-splash-screen', () => ({
 jest.mock('expo-font', () => ({
   useFonts: jest.fn(() => [true, null]),
   loadAsync: jest.fn().mockResolvedValue(undefined),
+  isLoaded: jest.fn(() => true),
+  isLoading: jest.fn(() => false),
 }));
 
 jest.mock('expo-linear-gradient', () => ({
   LinearGradient: 'LinearGradient',
 }));
+
+// ─── Expo Audio (sound effects) ───────────────────────────────────────────────
+// lib/sounds.ts imports expo-audio at module load; its native module can't run
+// in Node, so mock the two APIs we use. Returns a no-op AudioPlayer.
+jest.mock('expo-audio', () => ({
+  createAudioPlayer: jest.fn(() => ({
+    volume: 1,
+    play: jest.fn(),
+    remove: jest.fn(),
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+  })),
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+// ─── Firebase compat shim (lib/fb.ts) ─────────────────────────────────────────
+// Screens/libs import the namespaced shim directly (e.g. `import { firestore }
+// from '@/lib/fb'`), which pulls in the real @react-native-firebase modular
+// native modules and crashes in Node ("NativeRNFBTurboApp is not registered").
+// Mock the shim's namespaced factories with chainable no-op shapes so anything
+// importing it loads. Tests that need real data mock '@/lib/firebase' on top.
+jest.mock('@/lib/fb', () => {
+  const makeCollection = () => {
+    const col = {
+      doc: jest.fn(() => makeDoc()),
+      add: jest.fn().mockResolvedValue({ id: 'new-doc-id' }),
+      get: jest.fn().mockResolvedValue({ docs: [], empty: true, forEach: () => {} }),
+      where: jest.fn(() => col),
+      orderBy: jest.fn(() => col),
+      limit: jest.fn(() => col),
+      onSnapshot: jest.fn((cb: any) => { cb({ docs: [] }); return jest.fn(); }),
+    };
+    return col;
+  };
+  const makeDoc = () => ({
+    get: jest.fn().mockResolvedValue({ exists: () => false, data: () => null, id: 'mock-id' }),
+    set: jest.fn().mockResolvedValue(undefined),
+    update: jest.fn().mockResolvedValue(undefined),
+    delete: jest.fn().mockResolvedValue(undefined),
+    onSnapshot: jest.fn((cb: any) => { cb({ exists: () => false, data: () => null }); return jest.fn(); }),
+    collection: jest.fn(() => makeCollection()),
+    id: 'mock-doc-id',
+  });
+  const firestore: any = jest.fn(() => ({
+    collection: jest.fn(() => makeCollection()),
+    batch: jest.fn(() => ({
+      set: jest.fn(), update: jest.fn(), delete: jest.fn(),
+      commit: jest.fn().mockResolvedValue(undefined),
+    })),
+    runTransaction: jest.fn(),
+  }));
+  firestore.Timestamp = {
+    now: jest.fn(() => ({ toDate: () => new Date(), seconds: Date.now() / 1000 })),
+    fromDate: jest.fn((d: Date) => ({ toDate: () => d, seconds: d.getTime() / 1000 })),
+  };
+  const auth = jest.fn(() => ({
+    currentUser: null,
+    signOut: jest.fn().mockResolvedValue(undefined),
+    onAuthStateChanged: jest.fn((cb: any) => { cb(null); return jest.fn(); }),
+  }));
+  const storage = jest.fn(() => ({
+    ref: jest.fn(() => ({
+      putFile: jest.fn().mockResolvedValue(undefined),
+      getDownloadURL: jest.fn().mockResolvedValue('https://example.com/photo.jpg'),
+      delete: jest.fn().mockResolvedValue(undefined),
+    })),
+  }));
+  const functions = jest.fn(() => ({
+    httpsCallable: jest.fn(() => jest.fn().mockResolvedValue({ data: { ok: true } })),
+  }));
+  const analytics = jest.fn(() => ({ logEvent: jest.fn(), setUserId: jest.fn() }));
+  const crashlytics = jest.fn(() => ({ log: jest.fn(), recordError: jest.fn(), setAttributes: jest.fn() }));
+  const messaging: any = Object.assign(
+    jest.fn(() => ({
+      getToken: jest.fn().mockResolvedValue('mock-fcm-token'),
+      onMessage: jest.fn(() => jest.fn()),
+      requestPermission: jest.fn().mockResolvedValue(1),
+    })),
+    { AuthorizationStatus: { AUTHORIZED: 1, PROVISIONAL: 2 } },
+  );
+  return { firestore, auth, storage, functions, analytics, crashlytics, messaging, __esModule: true };
+});
 
 // ─── Async Storage ────────────────────────────────────────────────────────────
 jest.mock('@react-native-async-storage/async-storage', () => ({
