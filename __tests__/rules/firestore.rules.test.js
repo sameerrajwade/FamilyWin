@@ -114,6 +114,15 @@ describe('Role-based permissions', () => {
   test('child cannot update another member (no ownership, not parent)', async () => {
     await assertFails(updateDoc(doc(childA(), 'families/famA/members/mAdminA'), { role: 'child' }));
   });
+  test('a member can edit their own non-role fields (name/avatar)', async () => {
+    await assertSucceeds(updateDoc(doc(childA(), 'families/famA/members/mChildA'), { displayName: 'Tom', avatarEmoji: '🐸' }));
+  });
+  test('a child CANNOT promote themselves to parent (parent-controlled join)', async () => {
+    await assertFails(updateDoc(doc(childA(), 'families/famA/members/mChildA'), { role: 'parent' }));
+  });
+  test('a parent can change another member\'s role (promote a child)', async () => {
+    await assertSucceeds(updateDoc(doc(adminA(), 'families/famA/members/mChildA'), { role: 'parent' }));
+  });
   test('child cannot approve a redemption', async () => {
     await assertFails(updateDoc(doc(childA(), 'families/famA/redemptions/r1'), { status: 'approved' }));
   });

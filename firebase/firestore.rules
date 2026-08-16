@@ -81,8 +81,13 @@ service cloud.firestore {
         allow read: if isFamilyMember(familyId);
         // New members can join (create their own doc)
         allow create: if isSignedIn();
-        // Members update their own doc; parents can update any member
-        allow update: if isOwnerMember(familyId, memberId) || isParent(familyId);
+        // A parent may update any member (incl. promoting/demoting roles). A
+        // member may update their OWN doc (name, avatar, etc.) but NOT change
+        // their own `role` — otherwise a child could self-promote to parent and
+        // bypass the parent-controlled join model. Role changes are parent-only.
+        allow update: if isParent(familyId)
+          || (isOwnerMember(familyId, memberId)
+              && request.resource.data.role == resource.data.role);
         allow delete: if false;
       }
 

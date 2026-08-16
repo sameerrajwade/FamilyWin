@@ -507,13 +507,20 @@ exports.joinFamily = onCall(async (request) => {
 
   // Create the member + link the user doc, atomically. Shape mirrors
   // lib/firebase.ts::createMember.
+  //
+  // ROLE IS SERVER-AUTHORITATIVE: everyone who joins via a code enters as a
+  // 'child'. We deliberately do NOT trust a client-supplied role — otherwise a
+  // kid could join as (or default to) 'parent' and approve their own tasks /
+  // reward redemptions and grant themselves points. An existing parent promotes
+  // a trusted adult from the Family screen (parent-gated). This is the
+  // "parent-controlled" join model.
   const memberRef = familyRef.collection('members').doc();
   const age = Number(d.age);
   const memberData = {
     familyId: familyRef.id,
     userId: uid,
     displayName: String(d.displayName || '').slice(0, 40) || 'Member',
-    role: d.role === 'child' ? 'child' : 'parent',
+    role: 'child',
     avatarEmoji: String(d.avatarEmoji || '🦁'),
     ...(Number.isFinite(age) && age > 0 ? { age } : {}),
     createdAt: Timestamp.now(),

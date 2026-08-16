@@ -209,7 +209,10 @@ export default function FamilyScreen() {
                   isSelf={false}
                   isAdmin={isAdmin}
                   isLast={i === children.length - 1}
-                  onRolePress={null}
+                  // A self-joined child has an account (not managed) and can be
+                  // promoted to parent by an admin. Managed profiles (no account)
+                  // stay children — they're controlled from the parent's phone.
+                  onRolePress={isAdmin && !m.isManaged ? () => setShowRoleModal(m) : null}
                   onRemove={() => handleRemoveMember(m)}
                   onEdit={isAdmin ? () => setShowEditMember(m) : undefined}
                   colors={colors}
@@ -673,6 +676,7 @@ function RoleModal({ target, onClose, onSelect, colors }: {
 }) {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const ROLES: { role: MemberDoc['role']; label: string; desc: string; emoji: string }[] = [
+    { role: 'child', label: 'Child', desc: 'Completes tasks & redeems rewards — no approvals or settings', emoji: '🧒' },
     { role: 'parent', label: 'Parent', desc: 'Can create tasks, approve rewards, log penalties', emoji: '👩‍💼' },
     { role: 'admin_parent', label: 'Family Admin', desc: 'Full control — can manage roles and all settings', emoji: '👑' },
   ];

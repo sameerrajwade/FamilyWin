@@ -185,12 +185,14 @@ export async function createFamily(name: string): Promise<FamilyDoc> {
  */
 export async function joinFamily(
   uid: string,
-  params: { inviteCode: string; displayName: string; role: MemberDoc['role']; avatarEmoji: string; age?: number },
+  // `role` is accepted for backwards-compat but IGNORED — the joinFamily Cloud
+  // Function always creates a 'child' (parent-controlled join). A parent
+  // promotes trusted adults later from the Family screen.
+  params: { inviteCode: string; displayName: string; role?: MemberDoc['role']; avatarEmoji: string; age?: number },
 ): Promise<{ family: FamilyDoc; member: MemberDoc }> {
   await functions().httpsCallable('joinFamily')({
     inviteCode: params.inviteCode,
     displayName: params.displayName,
-    role: params.role,
     avatarEmoji: params.avatarEmoji,
     ...(params.age != null ? { age: params.age } : {}),
   });

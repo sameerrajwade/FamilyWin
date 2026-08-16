@@ -30,7 +30,6 @@ import {
 import { useAuthStore, useFamilyStore } from '@/store';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
-import type { MemberDoc } from '@/lib/firebase';
 
 type OnboardStep = 'choice' | 'profile' | 'family_name' | 'join_code' | 'done' | 'add_children';
 type FlowType = 'create' | 'join';
@@ -49,7 +48,6 @@ export default function OnboardingScreen() {
   const [selectedEmoji, setSelectedEmoji] = useState('🦁');
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
   const [childPhotoUri, setChildPhotoUri] = useState<string | null>(null);
-  const [role, setRole] = useState<MemberDoc['role']>('parent');
   const [age, setAge] = useState('');
   const [familyName, setFamilyName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
@@ -224,10 +222,11 @@ export default function OnboardingScreen() {
     if (!uid) return;
     try {
       setIsLoading(true);
+      // NOTE: role is intentionally NOT sent — joinFamily always creates a
+      // 'child'; a parent promotes trusted adults later (parent-controlled join).
       const { family, member } = await joinFamily(uid, {
         inviteCode: inviteCode.trim().toUpperCase(),
         displayName: displayName.trim(),
-        role,
         avatarEmoji: selectedEmoji,
         age: age ? parseInt(age, 10) : undefined,
       });
@@ -349,17 +348,12 @@ export default function OnboardingScreen() {
           <Text style={styles.label}>Display Name</Text>
           <TextInput style={styles.input} value={displayName} onChangeText={setDisplayName} placeholder="e.g. Dad, Mom, Tommy..." placeholderTextColor={colors.textMuted} maxLength={20} />
           {flow === 'join' && (
-            <>
-              <Text style={styles.label}>I am a...</Text>
-              <View style={styles.roleRow}>
-                {(['parent', 'child'] as MemberDoc['role'][]).map((r) => (
-                  <TouchableOpacity key={r} style={[styles.roleChip, role === r && styles.roleChipSelected]} onPress={() => setRole(r)}>
-                    <Text style={styles.roleEmoji}>{r === 'parent' ? '👩‍💼' : '👦'}</Text>
-                    <Text style={[styles.roleLabel, role === r && styles.roleLabelSelected]}>{r.charAt(0).toUpperCase() + r.slice(1)}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
+            <View style={[styles.joinRoleNote, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '33' }]}>
+              <Text style={styles.joinRoleNoteEmoji}>👋</Text>
+              <Text style={[styles.joinRoleNoteText, { color: colors.textSecondary }]}>
+                You'll join as a family member. A parent can give you parent access later from the Family screen.
+              </Text>
+            </View>
           )}
           <Text style={styles.label}>Age (optional)</Text>
           <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor={colors.textMuted} keyboardType="number-pad" maxLength={3} />
@@ -368,7 +362,7 @@ export default function OnboardingScreen() {
               <Text style={styles.previewEmoji}>{selectedEmoji}</Text>
               <View>
                 <Text style={styles.previewName}>{displayName}</Text>
-                <Text style={styles.previewRole}>{flow === 'join' ? role : 'Admin Parent'}</Text>
+                <Text style={styles.previewRole}>{flow === 'join' ? 'Family member' : 'Admin Parent'}</Text>
               </View>
             </View>
           ) : null}
@@ -576,12 +570,9 @@ function createStyles(colors: ThemeColors) {
   emojiOption: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.border },
   emojiSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight + '33' },
   emojiText: { fontSize: 28 },
-  roleRow: { flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.sm },
-  roleChip: { flex: 1, alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.lg, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.border },
-  roleChipSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight + '22' },
-  roleEmoji: { fontSize: 32, marginBottom: 4 },
-  roleLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.text },
-  roleLabelSelected: { color: colors.primary },
+  joinRoleNote: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: BorderRadius.lg, borderWidth: 1, marginBottom: Spacing.sm },
+  joinRoleNoteEmoji: { fontSize: 22 },
+  joinRoleNoteText: { flex: 1, fontSize: FontSize.sm, fontFamily: FontFamily.regular, lineHeight: 19 },
   previewCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, marginTop: Spacing.md, marginBottom: Spacing.sm, borderWidth: 2, borderColor: colors.primary + '44' },
   previewEmoji: { fontSize: 40 },
   previewName: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: colors.text },

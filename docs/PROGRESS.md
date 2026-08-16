@@ -10,6 +10,16 @@
 
 ---
 
+## Iteration 35 (2026-08-16) — Parent-controlled join role (security gap the user spotted)
+User asked: when a kid self-joins via invite code, how do they become a child not a parent? GAP FOUND: the join flow had a self-selected role picker DEFAULTING TO PARENT, and firestore.rules let a member edit their OWN member doc with no field restriction → a kid could join as / self-promote to parent and approve their own tasks/rewards + grant points. User chose the "parent-controlled" model.
+- ✅ **joinFamily CF**: role is now SERVER-AUTHORITATIVE — every code-joiner is created as `role:'child'` (was `d.role==='child'?'child':'parent'`). Client-supplied role ignored.
+- ✅ **firestore.rules members update**: a parent can change any member's role; a member updating their OWN doc must keep role unchanged (`request.resource.data.role == resource.data.role`) → closes self-promotion. +3 rules tests (self can edit name; self CANNOT change own role; parent CAN promote). **rules 35/35.**
+- ✅ **Onboarding**: removed the Parent/Child picker from the join flow (+ its state/styles/unused MemberDoc import); replaced with a note "You'll join as a family member; a parent can give you parent access later." `joinFamily` helper `role` now optional + not sent.
+- ✅ **Family screen**: a self-joined child (non-managed account) is now promotable — children rows get `onRolePress` for admins (managed profiles stay children); RoleModal gained a Child option so admins can demote too.
+- ⚠️ **DEPLOY GATE (needed to go live)**: `firebase deploy --only functions,firestore:rules`. Both additive/safe.
+- ⚠️ Residual (noted, not this iter): `members create` rule is still `if isSignedIn()` — a modified client could inject a member doc directly; true lockdown = move member creation entirely to CFs. Out of scope; the normal app join path is the hardened CF.
+- Client changes need a rebuild to reach the phone; join-role flow itself only shows for NEW accounts (not device-testable with a logged-in user) → rules tests are the verification, like the iter-16 invite hardening.
+
 ## Iteration 33 (2026-08-16) — 6.3 CONFIRMED green + tz-aware missed-task sweep CF
 User: "you decide any order but just do it autonomously." Working down the roadmap; only live prod deploys are gated for when user is present.
 - ✅ **6.3 resolved**: the iter-32 pending question (do v2 Firestore triggers fire in the fb-tools@13 / JDK17 emulator?) → YES. `completionTriggers.test.js` **7/7 pass** against firestore+functions emulators. No prod fallback needed. Phase 6.3 DONE.
