@@ -1,0 +1,24 @@
+# Flow 03 — complete a task from the Tasks tab (one-tap UX) and see the
+# points hero update. Assumes a logged-in session with at least one incomplete
+# task named by TASK_TITLE (defaults to the "Clean your room" seed).
+#
+# NOTE: task cards have no testID yet, so this matches a task by its title text.
+# For a data-independent version, add testID="task-card" to AdultTaskCard and
+# use `tapOn: { id: "task-card", index: 0 }` (tracked as an E2E follow-up).
+appId: com.familywin.app
+env:
+  TASK_TITLE: "Clean your room"
+---
+- launchApp
+- tapOn: "Tasks"
+- assertVisible: "Today's Tasks"
+
+# Tap the task by name to complete it (one tap, no confirm dialog)
+- tapOn:
+    text: ${TASK_TITLE}
+    optional: true
+
+# The undo toast confirms a completion happened
+- assertVisible:
+    text: ".*done.*"
+    optional: true

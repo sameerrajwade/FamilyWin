@@ -1,0 +1,22 @@
+# Flow 04 — a parent creates a task from Home.
+# Assumes a logged-in PARENT session (the create button only renders for parents).
+appId: com.familywin.app
+env:
+  NEW_TASK_TITLE: "E2E Test Task"
+---
+- launchApp
+- tapOn: "Tasks"
+
+# The "Task" pill (accessibilityLabel "Create new task") opens the create screen
+- tapOn:
+    id: "Create new task"
+- assertVisible: "Create Task"
+
+- tapOn: "e.g. Clean your room"
+- inputText: ${NEW_TASK_TITLE}
+- hideKeyboard
+
+- tapOn: "✅ Create Task"
+
+# Back on Home, the new task appears in the list
+- assertVisible: ${NEW_TASK_TITLE}

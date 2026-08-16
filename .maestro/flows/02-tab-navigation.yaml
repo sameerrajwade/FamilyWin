@@ -1,0 +1,22 @@
+# Flow 02 — the five bottom tabs each open their screen.
+# Assumes a logged-in session (run 01-login first, or launch an app that's
+# already signed in). Does NOT clear state.
+appId: com.familywin.app
+---
+- launchApp
+- assertVisible: "Tasks"
+
+- tapOn: "Scores"
+- assertVisible: "Leaderboard"
+
+- tapOn: "Insights"
+- assertVisible: "Insights"
+
+- tapOn: "Rewards"
+- assertVisible: "Rewards"
+
+- tapOn: "Settings"
+- assertVisible: "Settings"
+
+- tapOn: "Tasks"
+- assertVisible: "Today's Tasks"

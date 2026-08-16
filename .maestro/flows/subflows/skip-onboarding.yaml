@@ -1,0 +1,12 @@
+# Subflow — get from a cold, cleared-state launch to the login screen.
+# On first launch the splash carousel shows; "Skip" finishes onboarding and
+# routes to login. All steps are optional so the subflow is a no-op when the
+# splash isn't shown (e.g. onboarding already completed).
+appId: com.familywin.app
+---
+- tapOn:
+    text: "Skip"
+    optional: true
+- assertVisible:
+    text: "Welcome back!"
+    optional: true

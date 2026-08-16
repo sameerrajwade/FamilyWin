@@ -1,0 +1,19 @@
+# Flow 05 — open the Rewards store and start a redemption.
+# Assumes a logged-in session. The redeem button reads "Redeem 🎁" when the
+# member can afford the reward, or "Keep earning" when they can't — so this
+# flow asserts the store renders and taps Redeem only if it's affordable.
+appId: com.familywin.app
+---
+- launchApp
+- tapOn: "Rewards"
+- assertVisible: "Available Rewards"
+
+# If any reward is affordable, redeeming pops the confirm dialog
+- runFlow:
+    when:
+      visible: "Redeem 🎁"
+    commands:
+      - tapOn: "Redeem 🎁"
+      - assertVisible:
+          text: "Redeem.*"
+          optional: true

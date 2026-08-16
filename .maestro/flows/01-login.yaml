@@ -1,0 +1,24 @@
+# Flow 01 — Email/password sign-in lands on the Tasks tab.
+# Requires MAESTRO_EMAIL / MAESTRO_PASSWORD for a real (throwaway) family account.
+appId: com.familywin.app
+env:
+  EMAIL: ${MAESTRO_EMAIL}
+  PASSWORD: ${MAESTRO_PASSWORD}
+---
+- launchApp:
+    clearState: true
+- runFlow: subflows/skip-onboarding.yaml
+
+# On the login screen — fields are matched by their placeholder text
+- assertVisible: "Welcome back!"
+- tapOn: "you@example.com"
+- inputText: ${EMAIL}
+- hideKeyboard
+- tapOn: "••••••••"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: "Sign In"
+
+# Landed inside the app — bottom tab bar is visible
+- assertVisible: "Tasks"
+- assertVisible: "Scores"
