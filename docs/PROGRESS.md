@@ -229,16 +229,15 @@ User chose "more UI polish first, THEN one build." Worked the Iter-23 NEXT FIXES
 - BUILD BLOCKERS CLEARED (all environmental, NOT migration code): (a) TLS PKIX cert fail on dl.google.com/maven → TLS interceptor; curl(Windows) works, JDK17 truststore didn't → added `-Djavax.net.ssl.trustStoreType=Windows-ROOT` to android/gradle.properties jvmargs (+bumped heap 2g→4g there; NOTE expo-build-properties `extraGradleProperties` key did NOT apply — fix the key for persistence). (b) missing android/local.properties → wrote `sdk.dir=C:/Users/samee/AppData/Local/Android/Sdk` (fwd slashes). (c) manifest merger: expo-notifications vs rn-firebase_messaging both set `default_notification_color` → added `tools:replace="android:resource"` to generated AndroidManifest.xml line 21 (GENERATED — wiped on prebuild; needs a persistent config-plugin fix).
 - NEXT: (1) confirm build green, install+launch Pixel, verify no crash + data loads (shim runtime correctness). (2) FIX auto-refresh flicker (task #7: index.tsx onSnapshot→loadTasks sets isLoadingTasks=true every event → skeletons flash; make listener reloads silent). (3) GAMIFY HOME tasks #2-5. (4) Phase 3 finish + photo (Sofra uses react-native-image-picker file://). (5) PERSIST the 2 generated-file fixes (manifest tools:replace via config plugin; gradle jvmargs via correct expo-build-properties key) before any prebuild. react-native-image-picker DROPPED (TS-strip incompat). RN pinned 0.86.2 (expo wants 0.86.0, harmless).
 
-## Current State (as of 2026-08-15) — see Iteration 27 (top) for detail
+## Current State (as of 2026-08-16) — see Iterations 33–36 (top) for detail
 
-- **App:** Lootboard. Code `C:\Users\samee\FW`. Firebase `familywin-35a97`. Branch `autonomous/gamify-home`.
-- **Build:** **bpltxe1dg** INSTALLED + ALL 5 device-verified (light mode, Pixel 10 Pro). Signing by user only.
-- **Device-verified ✅ (all 5):** 5-tab bar (no Family tab); crown cards REDESIGNED — 3 clean identical opaque surface cards w/ colored badge+border+title, NO box-in-box (stale-cache theory CONFIRMED — same source rendered wrong pre-cache-clear, right after); Insights declutter (calm tiles + 1 lead highlight); Rewards ＋Add beside title + full-width vault; Settings hub → Help&Legal + Family sub-screens both push+back correctly.
-- **NOT yet committed** (per rule: commit only when user asks). Branch autonomous/gamify-home. Ready to commit the iter-27 batch on user's go-ahead.
-- **Device hazard:** flaky wireless adb + focus-steal → guard taps by checking mCurrentFocus grep familywin before screenshot. Reconnect: `adb kill-server; adb start-server; adb mdns services` → connect the mDNS name.
-- **NEXT:** user review of iter-27 on device; then commit; then remaining backlog (negative-reward-points feature spec, per memory).
-- **Tests:** 102 jest pass (pointsEngine incl. missed-penalty + insights). firebase.test.ts suite still fails to LOAD (native module) — pre-existing.
-- **Roadmap:** `docs/LAUNCH_ROADMAP.md` (Phases 0–6). Photo upload was fixed+verified earlier (Iter 23).
+- **App:** Lootboard. Code `C:\Users\samee\FW`. Firebase `familywin-35a97`. Branch **main** (all work committed to main; latest `7a321d1`).
+- **Tests GREEN:** full jest **307/307** (18 suites, incl. firebase.test.ts + new taskEmoji/WelcomeTour) + functions **20/20** + rules **35/35** on the emulator (`npx firebase-tools@13 emulators:exec ...`).
+- **Deployed to prod this session (user ran):** CF triggers `missedTaskSweep` + `onCompletionUpdated`; firestore.rules for 4.3 approval + parent-controlled join role.
+- **Device-verified (Pixel):** task icons (parent/child now unified); 4.3 approval flow E2E (create→pending→approve→+10 via CF). Icons user-confirmed.
+- **Latest build installed:** `biyaxmk3l` (icons + repaint + edit-fix + join-role UI + welcome tour + replay). Signing by user only. Build cmd: `GRADLE_OPTS="-Djavax.net.ssl.trustStoreType=Windows-ROOT" ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon` from android/.
+- **NOT visually verified:** welcome tour (phone kept locking; run-as blocked on release build). Verify via Settings → Replay walkthrough.
+- **Device hazard:** phone auto-locks (mDreamingLockscreen=true) + notif-shade focus-steal → needs user to unlock+keep awake. adb `adb-57150DLCH002E1-swDe4l._adb-tls-connect._tcp`.
 
 ## Constraints (permanent)
 1. Never handle keystore passwords (FAMILYWIN_KEYSTORE_PASSWORD / FAMILYWIN_KEY_PASSWORD).
@@ -247,7 +246,11 @@ User chose "more UI polish first, THEN one build." Worked the Iter-23 NEXT FIXES
 4. Verify on device before claiming fixed. adb: `C:\Users\samee\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
 5. Develop → test thoroughly → show results → THEN build APK. Never build-and-hope.
 
-## Last Session (2026-07-11) — Phase 0 build underway
+## Last Session (2026-08-16) — see Iterations 33–36 up top for full detail
+- Shipped + committed to main: tz-aware missed-task sweep CF, 4.3 task-verification (CF+rules+UI, device-verified E2E), full RNTL test-harness revival (307/307), task-icon overhaul (parent/child unified), parent-controlled join role (deployed), first-run welcome tour + "Replay walkthrough".
+- User DEPLOYED functions+rules (approval + join-role live on familywin-35a97). Latest APK `biyaxmk3l` installed. Welcome tour not yet visually confirmed (phone locking) → verify via Settings → Replay walkthrough.
+
+_Historical (Phase 0, 2026-07-11):_
 - DECISIONS: palette = **Purple + Gold** (indigo-violet #6C63FF primary, keep orange #FF6B2C accent, gold #FFD700). Insights = borrow Sofra *layout*, our OWN metrics (streaks/completion-by-day/most-dodged/win-rate). Shared-core library `@family/core` = parked future item (F.1). New roadmap `docs/LAUNCH_ROADMAP_V2.md` + master backlog table given.
 - DONE this session (code written, NOT yet device-verified):
   - Theme → purple in all 3 files: `constants/theme.ts` (Colors + Shadow.lg + Gradients), `lib/theme.tsx` (light/dark/child), `app/_layout.tsx` splash gradient.
@@ -409,11 +412,11 @@ User gave 8 items. Branch autonomous/phase-3-perf-security (UI fixes piggyback h
 5. **Phase 5 paywalls → BUILD UI/entitlement scaffolding, keep everything FREE** (plan defaults to full access; paywalls built but not triggered). No RevenueCat account wiring yet.
 6. **Git: PUSH after EACH phase** (not one bundled push). Commit + push per phase once device-verified.
 
-## Next Up (2026-08-15)
-1. **User is listing small UI glitches** → fix them in ONE batch (agreed: UI glitches BEFORE next phases), tsc + one build to device-verify.
-2. Device-verify build bllo1t1or: undo single-tap (same session), Off/Half/Full penalty, catch-up screen, assign a daily task to Vian to test child catch-up, crown-card look.
-3. THEN next phase (launch prep: Play Store assets/screenshots from real screens, release signing by user, backend/CF hardening incl. timezone-aware missed-penalty sweep for members who never open the app).
-4. Device hazard: notification shade steals focus → `adb shell cmd statusbar collapse`; wireless adb `adb-57150DLCH002E1-swDe4l` (192.168.86.121, port rotates).
+## Next Up (2026-08-16)
+1. **Verify welcome tour on device** — user to open Settings → Replay walkthrough (or unlock+keep-awake so I can screenshot the 6 parent cards / swipe / skip).
+2. **Package rename** `com.familywin.app` → `com.lootboard.app` (AUTHORIZED, self-contained): firebase apps:create ANDROID → sdkconfig → new google-services.json; app.json package/bundleId; prebuild (re-add heap + strings.xml automatic + manifest tools:replace after); rebuild; re-add debug SHA-1 for Google Sign-In.
+3. **Then**: i18n/a11y pass; #14 generic marketing screenshots (Dad/Mom/Alex/Jamie — never real family); security task #6 (members-create → CF-only).
+4. Device hazard: phone auto-locks + notif-shade focus-steal → user must unlock+keep-awake; `adb shell cmd statusbar collapse`; wireless adb `adb-57150DLCH002E1-swDe4l._adb-tls-connect._tcp`.
 
 <details><summary>Older Next Up (pre-2026-08, historical)</summary>
 
