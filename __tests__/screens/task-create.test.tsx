@@ -17,8 +17,12 @@ jest.mock('@/lib/firebase', () => ({
   Col: {
     tasks: jest.fn(() => ({
       add: jest.fn().mockResolvedValue({ id: 'new-task-id' }),
+      doc: jest.fn(() => ({ set: jest.fn().mockResolvedValue(undefined), update: jest.fn().mockResolvedValue(undefined) })),
     })),
   },
+  getActiveTasks: jest.fn().mockResolvedValue([]),
+  updateTask: jest.fn().mockResolvedValue(undefined),
+  deleteTask: jest.fn().mockResolvedValue(undefined),
   auth: jest.fn(() => ({ currentUser: { uid: 'u1' } })),
 }));
 
@@ -69,7 +73,7 @@ describe('CreateTaskScreen', () => {
 
   it('renders Assign To with family members', async () => {
     const { findByText } = render(<CreateTaskScreen />);
-    expect(await findByText('👨‍👩‍👧 Anyone')).toBeTruthy();
+    expect(await findByText('Assign To (select multiple)')).toBeTruthy();
     expect(await findByText('Tommy')).toBeTruthy();
   });
 

@@ -26,7 +26,8 @@ jest.mock('@/lib/firebase', () => ({
 }));
 
 jest.mock('@/store', () => ({
-  useAuthStore: jest.fn(() => ({ member: mockMember, family: mockFamily })),
+  useAuthStore: jest.fn(() => ({ member: mockMember, family: mockFamily, actingAsMember: null })),
+  useFamilyStore: jest.fn(() => ({ members: [mockMember] })),
 }));
 
 describe('HistoryScreen', () => {
@@ -37,9 +38,9 @@ describe('HistoryScreen', () => {
     HistoryScreen = require('@/app/app/tabs/history').default;
   });
 
-  it('renders 📊 History title', async () => {
+  it('renders Insights title', async () => {
     const { findByText } = render(<HistoryScreen />);
-    expect(await findByText('📊 History')).toBeTruthy();
+    expect(await findByText('Insights')).toBeTruthy();
   });
 
   it('shows Mine and Family toggle buttons for parents', async () => {

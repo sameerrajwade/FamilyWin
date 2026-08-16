@@ -60,7 +60,7 @@ describe('DisciplineLogScreen — Parent', () => {
 
   it('shows quick reason section', async () => {
     const { findByText } = render(<DisciplineScreen />);
-    expect(await findByText('3. Quick Reasons')).toBeTruthy();
+    expect(await findByText('3. Your Penalties')).toBeTruthy();
   });
 
   it('shows bonus section label when switching to bonus', async () => {
@@ -68,7 +68,7 @@ describe('DisciplineLogScreen — Parent', () => {
     const bonusBtn = await findByText('Bonus');
     await act(async () => { fireEvent.press(bonusBtn); });
     // In bonus mode: submit button says "⭐ Award Bonus"
-    expect(await findByText('⭐ Award Bonus')).toBeTruthy();
+    expect(await findByText('Award Bonus')).toBeTruthy();
   });
 
   it('shows point amount chips', async () => {
@@ -79,7 +79,7 @@ describe('DisciplineLogScreen — Parent', () => {
 
   it('shows error when no member selected', async () => {
     const { findByText } = render(<DisciplineScreen />);
-    const submitBtn = await findByText('⚠️ Apply Penalty');
+    const submitBtn = await findByText('Apply Penalty');
     await act(async () => { fireEvent.press(submitBtn); });
     expect(Alert.alert).toHaveBeenCalledWith('Select Member', 'Please select a family member.');
   });
@@ -89,7 +89,7 @@ describe('DisciplineLogScreen — Parent', () => {
     // Select Tommy
     const tommyChip = await findByText('Tommy');
     await act(async () => { fireEvent.press(tommyChip); });
-    const submitBtn = await findByText('⚠️ Apply Penalty');
+    const submitBtn = await findByText('Apply Penalty');
     await act(async () => { fireEvent.press(submitBtn); });
     expect(Alert.alert).toHaveBeenCalledWith('Enter Reason', 'Please enter or select a reason.');
   });

@@ -14,6 +14,9 @@ jest.mock('@/lib/firebase', () => ({
   signOut: jest.fn().mockResolvedValue(undefined),
   getFamilyMembers: jest.fn().mockResolvedValue([]),
   updateMemberProfile: jest.fn().mockResolvedValue(undefined),
+  uploadMemberPhoto: jest.fn().mockResolvedValue('https://example.com/p.jpg'),
+  removeMemberPhoto: jest.fn().mockResolvedValue(undefined),
+  deleteMyAccount: jest.fn().mockResolvedValue(undefined),
   upsertNotifConfig: jest.fn().mockResolvedValue(undefined),
   getNotifConfig: jest.fn().mockResolvedValue({ enabled: true, dailyReminderTime: '20:00' }),
 }));
@@ -51,44 +54,44 @@ describe('SettingsScreen — Parent', () => {
     SettingsScreen = require('@/app/app/tabs/settings').default;
   });
 
+  // Settings is now a HUB (iter 27): a profile card + grouped NavRows to
+  // sub-screens (Family & Members, Appearance, Notifications, Parental Controls,
+  // Help & Legal) + inline Account actions. Invite code / managed children /
+  // discipline / notification toggles now live on their own sub-screens.
+
   it('renders Settings title', async () => {
     const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('⚙️ Settings')).toBeTruthy();
+    expect(await findByText('Settings')).toBeTruthy();
   });
 
-  it('shows profile section header', async () => {
+  it('shows the profile card (name + family)', async () => {
     const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('My Profile')).toBeTruthy();
+    expect(await findByText('Dad')).toBeTruthy();
+    expect(await findByText('Smith Family')).toBeTruthy();
   });
 
-  it('shows family invite code', async () => {
+  it('links to Family & Members', async () => {
     const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('XK7P2Q')).toBeTruthy();
+    expect(await findByText('Family & Members')).toBeTruthy();
   });
 
-  it('shows Managed Children section for parents', async () => {
+  it('links to Appearance and Notifications', async () => {
     const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('Managed Children')).toBeTruthy();
+    expect(await findByText('Appearance')).toBeTruthy();
+    expect(await findByText('Notifications')).toBeTruthy();
   });
 
-  it('shows managed children badge count', async () => {
-    const { findAllByText } = render(<SettingsScreen />);
-    // Managed children show "Remove" button
-    const removeButtons = await findAllByText('Remove');
-    expect(removeButtons.length).toBeGreaterThan(0);
-  });
-
-  it('shows Add a Child Profile button', async () => {
+  it('shows the Parental Controls row for parents', async () => {
     const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('Add a Child Profile')).toBeTruthy();
+    expect(await findByText('Parental Controls')).toBeTruthy();
   });
 
-  it('shows Parental Controls section', async () => {
+  it('links to Help & Legal', async () => {
     const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('Log Discipline Event')).toBeTruthy();
+    expect(await findByText('Help & Legal')).toBeTruthy();
   });
 
-  it('shows Log Out button', async () => {
+  it('shows Log Out row', async () => {
     const { findByText } = render(<SettingsScreen />);
     expect(await findByText('Log Out')).toBeTruthy();
   });
@@ -100,15 +103,9 @@ describe('SettingsScreen — Parent', () => {
     expect(Alert.alert).toHaveBeenCalledWith('Log Out', expect.any(String), expect.any(Array));
   });
 
-  it('shows notifications section', async () => {
+  it('shows Delete My Account row', async () => {
     const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('Enable Notifications')).toBeTruthy();
-  });
-
-  it('shows Remove button for managed children', async () => {
-    const { findAllByText } = render(<SettingsScreen />);
-    const removeButtons = await findAllByText('Remove');
-    expect(removeButtons.length).toBeGreaterThan(0);
+    expect(await findByText('Delete My Account')).toBeTruthy();
   });
 });
 
@@ -127,19 +124,11 @@ describe('SettingsScreen — Child (no parental controls)', () => {
     });
   });
 
-  it('does NOT show Managed Children section', async () => {
+  it('does NOT show the Parental Controls row for a child', async () => {
     const SettingsScreen = require('@/app/app/tabs/settings').default;
     const { queryByText } = render(<SettingsScreen />);
     await waitFor(() => {
-      expect(queryByText('Managed Children')).toBeNull();
-    });
-  });
-
-  it('does NOT show Parental Controls section', async () => {
-    const SettingsScreen = require('@/app/app/tabs/settings').default;
-    const { queryByText } = render(<SettingsScreen />);
-    await waitFor(() => {
-      expect(queryByText('Log Discipline Event')).toBeNull();
+      expect(queryByText('Parental Controls')).toBeNull();
     });
   });
 

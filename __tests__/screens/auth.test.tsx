@@ -72,9 +72,9 @@ describe('LoginScreen', () => {
     expect(getByText('Sign Up')).toBeTruthy();
   });
 
-  it('renders FamilyWin branding', () => {
+  it('renders Lootboard branding', () => {
     const { getByText } = render(<LoginScreen />);
-    expect(getByText('FamilyWin')).toBeTruthy();
+    expect(getByText('Lootboard')).toBeTruthy();
   });
 
   it('shows error alert when fields are empty', async () => {
@@ -194,7 +194,7 @@ describe('RegisterScreen', () => {
 describe('SplashScreen', () => {
   it('renders the first slide title', () => {
     const { getByText } = render(<SplashScreen />);
-    expect(getByText('Welcome to\nFamilyWin!')).toBeTruthy();
+    expect(getByText('Welcome to\nLootboard!')).toBeTruthy();
   });
 
   it('renders feature chips on first slide', () => {

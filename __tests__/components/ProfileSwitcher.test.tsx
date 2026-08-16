@@ -35,13 +35,13 @@ describe('ProfileSwitcherBanner', () => {
 
   it('shows Switch button', () => {
     const { getByText } = render(<ProfileSwitcherBanner onPress={jest.fn()} />);
-    expect(getByText('Switch 🔄')).toBeTruthy();
+    expect(getByText('Switch')).toBeTruthy();
   });
 
   it('calls onPress when tapped', () => {
     const onPress = jest.fn();
     const { getByText } = render(<ProfileSwitcherBanner onPress={onPress} />);
-    fireEvent.press(getByText('Switch 🔄'));
+    fireEvent.press(getByText('Switch'));
     expect(onPress).toHaveBeenCalled();
   });
 

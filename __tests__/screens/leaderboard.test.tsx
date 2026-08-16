@@ -71,13 +71,13 @@ describe('LeaderboardScreen', () => {
 
   it('renders the Leaderboard title', async () => {
     const { findByText } = render(<LeaderboardScreen />);
-    expect(await findByText('🏆 Leaderboard')).toBeTruthy();
+    expect(await findByText('Leaderboard')).toBeTruthy();
   });
 
   it('renders leaderboard entries', async () => {
     const { findByText } = render(<LeaderboardScreen />);
     // At least the title should render and loading finishes
-    expect(await findByText('🏆 Leaderboard')).toBeTruthy();
+    expect(await findByText('Leaderboard')).toBeTruthy();
   });
 
   it('highlights current user row', async () => {
@@ -94,6 +94,6 @@ describe('LeaderboardScreen', () => {
 
   it('renders without crashing', async () => {
     const { findByText } = render(<LeaderboardScreen />);
-    expect(await findByText('🏆 Leaderboard')).toBeTruthy();
+    expect(await findByText('Leaderboard')).toBeTruthy();
   });
 });

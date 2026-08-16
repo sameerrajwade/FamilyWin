@@ -18,7 +18,9 @@ jest.mock('@/lib/firebase', () => ({
   getActiveRewards: jest.fn().mockResolvedValue(mockRewards),
   requestRedemption: jest.fn().mockResolvedValue(undefined),
   approveRedemption: jest.fn().mockResolvedValue(undefined),
+  rejectRedemption: jest.fn().mockResolvedValue(undefined),
   createReward: jest.fn().mockResolvedValue(undefined),
+  getFamilyMembers: jest.fn().mockResolvedValue([]),
   Col: {
     redemptions: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),
@@ -39,7 +41,8 @@ jest.mock('@/lib/firebase', () => ({
 }));
 
 jest.mock('@/store', () => ({
-  useAuthStore: jest.fn(() => ({ member: mockMember, family: mockFamily })),
+  useAuthStore: jest.fn(() => ({ member: mockMember, family: mockFamily, actingAsMember: null })),
+  useFamilyStore: jest.fn(() => ({ members: [mockMember] })),
   usePointsStore: jest.fn(() => ({ weeklyTotals: { m1: 100 } })),
 }));
 
@@ -53,9 +56,9 @@ describe('RewardsScreen — Parent view', () => {
     RewardsScreen = require('@/app/app/tabs/rewards').default;
   });
 
-  it('renders Rewards Store title', async () => {
+  it('renders Rewards title', async () => {
     const { findByText } = render(<RewardsScreen />);
-    expect(await findByText('🎁 Rewards Store')).toBeTruthy();
+    expect(await findByText('Rewards')).toBeTruthy();
   });
 
   it('displays available rewards', async () => {
@@ -75,8 +78,8 @@ describe('RewardsScreen — Parent view', () => {
   });
 
   it('shows current points balance', async () => {
-    const { findByText } = render(<RewardsScreen />);
-    expect(await findByText(/pts/)).toBeTruthy();
+    const { findAllByText } = render(<RewardsScreen />);
+    expect((await findAllByText(/pts/)).length).toBeGreaterThan(0);
   });
 
   it('opens create reward modal when + Add is tapped', async () => {
@@ -100,7 +103,7 @@ describe('RewardsScreen — Child view (not enough points)', () => {
     const RewardsScreen = require('@/app/app/tabs/rewards').default;
     const { findAllByText } = render(<RewardsScreen />);
     // With only 10 pts, no rewards are affordable
-    const needMore = await findAllByText('Need More');
+    const needMore = await findAllByText('Keep earning');
     expect(needMore.length).toBeGreaterThan(0);
   });
 
@@ -112,10 +115,10 @@ describe('RewardsScreen — Child view (not enough points)', () => {
     });
   });
 
-  it('shows Need More on rewards the child cannot afford', async () => {
+  it('shows Keep earning on rewards the child cannot afford', async () => {
     const RewardsScreen = require('@/app/app/tabs/rewards').default;
     const { findAllByText } = render(<RewardsScreen />);
-    const needMoreBtns = await findAllByText('Need More');
+    const needMoreBtns = await findAllByText('Keep earning');
     // With 10 pts, all rewards (30+ pts) should show "Need More"
     expect(needMoreBtns.length).toBeGreaterThan(0);
   });

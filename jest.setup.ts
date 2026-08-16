@@ -275,6 +275,37 @@ jest.mock('@/lib/fb', () => {
   return { firestore, auth, storage, functions, analytics, crashlytics, messaging, __esModule: true };
 });
 
+// ─── Theme (lib/theme.tsx) ────────────────────────────────────────────────────
+// Screens/components call useTheme(), which throws outside a ThemeProvider.
+// Provide a default light-theme context globally so unit tests don't each need
+// to wrap in a provider. Tests that assert theme behavior can override this.
+jest.mock('@/lib/theme', () => {
+  const colors = {
+    primary: '#6C63FF', primaryLight: '#9D97FF', primaryDark: '#4A42CC', accent: '#FF6B2C',
+    success: '#00E676', successLight: '#B9F6CA', warning: '#FFAB00', warningLight: '#FFE082',
+    danger: '#FF1744', dangerLight: '#FF8A80', background: '#F5F5FF', surface: '#FFFFFF',
+    surfaceElevated: '#FFFFFF', card: '#FFFFFF', text: '#1A1830', textSecondary: '#6B7280',
+    textMuted: '#9CA3AF', border: '#E7E5F2', borderLight: '#F3F2FB', tabBar: '#FFFFFF',
+    statusBar: 'dark', gold: '#FFD700', silver: '#B0BEC5', bronze: '#D4853B',
+  };
+  return {
+    __esModule: true,
+    ThemeProvider: ({ children }: any) => children,
+    useTheme: jest.fn(() => ({
+      colors,
+      themeMode: 'light',
+      uiMode: 'adult',
+      isDark: false,
+      isChildMode: false,
+      setThemeMode: jest.fn(),
+      setUIMode: jest.fn(),
+      fontSize: (b: number) => b,
+      spacing: (b: number) => b,
+      iconSize: (b: number) => b,
+    })),
+  };
+});
+
 // ─── Async Storage ────────────────────────────────────────────────────────────
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn().mockResolvedValue(null),

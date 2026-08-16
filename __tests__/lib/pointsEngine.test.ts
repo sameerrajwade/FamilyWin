@@ -150,15 +150,20 @@ describe('calculateWeeklyPoints', () => {
   weekEnd.setDate(weekStart.getDate() + 6);
   weekEnd.setHours(23, 59, 59, 999);
 
-  const makeTx = (delta: number, daysAgo: number): PointTransaction => {
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
-    // PointTransaction from @/types uses created_at as string
+  // Build a tx at a fixed offset (in days) from the start of THIS week, so the
+  // in/out-of-week classification is deterministic regardless of which weekday
+  // the test runs on (the old "days ago from now" version fell out of the week
+  // whenever it ran on the first day of the week).
+  const makeTxFromWeekStart = (delta: number, daysFromWeekStart: number): PointTransaction => {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate() + daysFromWeekStart);
+    date.setHours(12, 0, 0, 0);
     return { id: '1', family_id: 'f1', member_id: 'm1', delta, reason: '', source: 'task', created_at: date.toISOString() } as any;
   };
+  const makeTx = makeTxFromWeekStart;
 
   it('counts only this-week transactions', () => {
-    const txs = [makeTx(25, 0), makeTx(10, 1), makeTx(50, 30)]; // 30 days ago excluded
+    const txs = [makeTx(25, 0), makeTx(10, 1), makeTx(50, 30)]; // +30d is past weekEnd → excluded
     expect(calculateWeeklyPoints(txs, weekStart, weekEnd)).toBe(35);
   });
 
