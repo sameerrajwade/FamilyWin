@@ -12,10 +12,12 @@ import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/store';
 import { createTasksFromPack } from '@/lib/firebase';
 import { detectTaskEmoji } from '@/lib/taskEmoji';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { TASK_PACKS } from '@/constants/taskPacks';
 import type { PackTask } from '@/constants/taskPacks';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, DIFFICULTY_POINTS } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 
 const key = (packId: string, i: number) => `${packId}:${i}`;
 const recurrenceLabel: Record<string, string> = { daily: '🔄 daily', weekly: '📅 weekly', monthly: '🗓️ monthly', once: '1️⃣ once' };
@@ -76,13 +78,7 @@ export default function TaskPacksScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={[styles.back, { color: colors.primary }]}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Starter Packs</Text>
-        <View style={{ width: 56 }} />
-      </View>
+      <ScreenHeader variant="modal" title="Starter Packs" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Text style={[styles.intro, { color: colors.textSecondary }]}>
@@ -108,7 +104,7 @@ export default function TaskPacksScreen() {
                     <View style={[styles.checkbox, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary : 'transparent' }]}>
                       {on && <Text style={styles.checkmark}>✓</Text>}
                     </View>
-                    <Text style={styles.taskEmoji}>{detectTaskEmoji(t.title, t.category)}</Text>
+                    <EmojiIcon emoji={detectTaskEmoji(t.title, t.category)} size={26} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.taskTitle, { color: colors.text }, !on && { opacity: 0.4, textDecorationLine: 'line-through' }]} numberOfLines={1}>{t.title}</Text>
                       <Text style={[styles.taskMeta, { color: colors.textMuted }]}>

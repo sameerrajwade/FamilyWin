@@ -1,39 +1,81 @@
-# Lootboard — Privacy Policy
+# Lootboard Privacy Policy
 
-**Effective date:** 12 July 2026
-**Contact:** sameerrajwade@gmail.com
+_Last updated: 2026-08-26_
 
-Lootboard ("we", "the app") is a family chore-and-rewards app. This policy explains what we collect, why, and your choices. We are committed to protecting children's privacy and comply with the Google Play Families Policy and COPPA.
+> **For the owner:** host this at a public URL (GitHub Pages or termly.io) and paste
+> that URL into Play Console → Store listing → Privacy Policy, and into the app's
+> About screen if you switch it to a link. Replace `[EFFECTIVE DATE]` and confirm
+> the support email before publishing. Keep in sync with `docs/DATA_SAFETY.md`.
+
+Lootboard ("we", "us") is a family chore-tracking app. This policy explains what
+we collect, why, and your choices. Contact: **sameerrajwade@gmail.com**.
 
 ## Who uses Lootboard
-Accounts are created and controlled by **parents/guardians (adults)**. Children do **not** create accounts or sign in. A parent creates "child profiles" within their family and manages that data on the child's behalf.
+Lootboard is set up and operated by an adult account holder (a parent or
+guardian). Children usually participate as **parent-managed profiles** that do not
+have their own login. Where an older child joins with their own account via an
+invite code, they join with a limited "child" role. Lootboard is intended for ages
+13 and up; younger children should be added by a parent as managed profiles.
 
 ## Information we collect
-- **Account info:** email address and display name (for the parent account).
-- **Family & profile info:** family name, member display names, child ages, and optional profile photos — all entered by the parent.
-- **App activity:** tasks, completions, points, rewards, and redemptions you create in the app.
-- **Notifications:** a push token (Firebase Cloud Messaging) and your reminder-time/timezone, if you enable notifications.
-- **Diagnostics:** pseudonymous crash and stability logs (Firebase Crashlytics).
+- **Account info:** email address (via Firebase Authentication — email/password or
+  Google Sign-In) for account holders.
+- **Profile info:** display name, optional age, and an optional profile photo for
+  each family member (entered by the account holder).
+- **Family & gameplay data:** tasks, completions, points, rewards, redemptions, and
+  penalties — the data that makes the app work.
+- **Notification token & timezone:** if you enable notifications, a Firebase Cloud
+  Messaging token and your device's timezone (e.g. `America/Chicago`) so reminders
+  and daily deadlines are timed correctly. This is not precise location.
+- **Identifiers:** internal account/family/member IDs used to keep each family's
+  data separate.
+- **Usage & diagnostics:** we use Google Firebase Analytics and Crashlytics to
+  understand how the app is used and to detect crashes (screen views, feature
+  events, crash reports, and device/OS diagnostics). This is used only to operate
+  and improve Lootboard — never for advertising.
 
-We do **not** collect location, contacts, messages, browsing history, or payment/financial information. We do **not** use advertising identifiers.
+We do **not** collect precise location, contacts, browsing history, or financial
+information, and we do **not** use advertising SDKs or sell/share your data.
+<!-- OWNER: if AAID collection is left enabled (Firebase default), add a line
+     disclosing the Android Advertising ID here; recommended is to disable it —
+     see docs/DATA_SAFETY.md "Advertising ID — DECISION NEEDED". -->
 
 ## How we use information
-Solely to provide the app: authentication, showing your family's leaderboard and rewards, sending reminders/weekly-win notifications you opt into, and improving stability. We do **not** use data for advertising or profiling.
+Only to provide the app: authenticate you, sync your family's tasks and points,
+send the notifications you opt into, and keep each family's data private to that
+family. We do not sell or share your data with third parties for their own
+purposes.
 
-## Sharing
-We do **not** sell or share personal data with third parties for advertising. Data is stored on Google Firebase (Authentication, Firestore, Storage, Cloud Messaging, Crashlytics) acting as our processor. We disclose data only if required by law.
+## How data is stored and protected
+Data is stored in Google Firebase (Cloud Firestore, Firebase Storage, Firebase
+Authentication). It is encrypted in transit (HTTPS/TLS) and at rest, and access is
+restricted by security rules so only members of your family can read your family's
+data. Google acts as our infrastructure provider (data processor).
 
-## Children's privacy (COPPA / Families)
-Child profile data is provided and controlled by the parent account holder. There is no behavioral advertising, no ad personalization, and no third-party ad SDKs. Parents can view, edit, or delete any child profile and its photo at any time in Settings → Family.
+## Children's privacy
+Information about a child (first name, optional age, optional photo, and gameplay
+activity) is provided and controlled by the parent/guardian account holder. We do
+not knowingly collect personal information directly from children under 13, show
+them ads, or use their data for profiling. A parent can view, edit, or delete a
+child's profile at any time in the app, and deleting the account removes the
+associated data (see below).
 
-## Data retention & deletion
-You can delete your account and all associated family data at any time from **Settings → Delete account**, or by emailing sameerrajwade@gmail.com. Web deletion request: see the deletion URL published on our Play listing. Deletion removes your auth account, user record, member profiles, and uploaded photos.
+## Your choices and rights
+- **Access/edit:** manage member profiles in the app (Family and Settings screens).
+- **Notifications:** turn off anytime in Settings; we then stop using your push token.
+- **Delete your data:** use **Settings → Delete account** in the app. This deletes
+  your account and, if you are the family's last account holder, the entire family
+  (all profiles, tasks, points, and photos). You may also email
+  **sameerrajwade@gmail.com** to request deletion.
 
-## Security
-All data is encrypted in transit (TLS). Access is restricted by Firebase Security Rules so only members of your own family can read or write your family's data.
+## Data retention
+We keep your data while your account exists. When you delete your account, the
+associated data is removed as described above. Backups are purged on our provider's
+routine cycle.
 
-## Changes
-We'll update this policy as needed and revise the effective date above.
+## Changes to this policy
+We may update this policy; we'll change the "Last updated" date and, for material
+changes, notify you in the app.
 
 ## Contact
-Questions or requests: **sameerrajwade@gmail.com**
+Questions or requests: **sameerrajwade@gmail.com**.

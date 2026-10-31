@@ -27,6 +27,8 @@ import {
   createFamily, joinFamily, createMember, createManagedMember,
   getFamilyMembers, upsertNotifConfig, uploadMemberPhoto, type FamilyDoc,
 } from '@/lib/firebase';
+import { ensureReminders, DEFAULT_EVENING_REMINDER, DEFAULT_MORNING_REMINDER } from '@/lib/notifications';
+import { AvatarPicker } from '@/components/ui/AvatarPicker';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
@@ -145,15 +147,30 @@ export default function OnboardingScreen() {
       });
       await upsertNotifConfig(family.id, member.id, {
         enabled: true,
-        dailyReminderTime: '20:00',
+        dailyReminderTime: DEFAULT_EVENING_REMINDER,
+        morningReminderTime: DEFAULT_MORNING_REMINDER,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
+      // Ask for notification permission and schedule the always-on reminders
+      // now, so the family is nudged to plan + check off tasks from day one.
+      ensureReminders({
+        name: displayName.trim(),
+        isParent: member.role === 'parent' || member.role === 'admin_parent',
+        prompt: true,
+      }).catch(() => {});
 
       if (profilePhotoUri) {
         try {
           const url = await uploadMemberPhoto(profilePhotoUri, family.id, member.id);
           (member as any).photoURL = url;
-        } catch (e) { if (__DEV__) console.error('[Onboarding Photo Upload]', e); }
+        } catch (e) {
+          if (__DEV__) console.error('[Onboarding Photo Upload]', e);
+          // Surface the failure instead of silently dropping the photo — this is
+          // why a photo picked during onboarding sometimes "disappeared" and had
+          // to be re-added in Settings. The account/profile is already created,
+          // so keep going; just tell the user their photo didn't save.
+          Alert.alert('Photo not saved', 'Your profile is ready, but the photo upload didn\'t go through. You can add it anytime from Settings → your profile.');
+        }
       }
 
       setGeneratedCode(family.inviteCode);
@@ -232,15 +249,30 @@ export default function OnboardingScreen() {
       });
       await upsertNotifConfig(family.id, member.id, {
         enabled: true,
-        dailyReminderTime: '20:00',
+        dailyReminderTime: DEFAULT_EVENING_REMINDER,
+        morningReminderTime: DEFAULT_MORNING_REMINDER,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
+      // Ask for notification permission and schedule the always-on reminders
+      // now, so the family is nudged to plan + check off tasks from day one.
+      ensureReminders({
+        name: displayName.trim(),
+        isParent: member.role === 'parent' || member.role === 'admin_parent',
+        prompt: true,
+      }).catch(() => {});
 
       if (profilePhotoUri) {
         try {
           const url = await uploadMemberPhoto(profilePhotoUri, family.id, member.id);
           (member as any).photoURL = url;
-        } catch (e) { if (__DEV__) console.error('[Onboarding Photo Upload]', e); }
+        } catch (e) {
+          if (__DEV__) console.error('[Onboarding Photo Upload]', e);
+          // Surface the failure instead of silently dropping the photo — this is
+          // why a photo picked during onboarding sometimes "disappeared" and had
+          // to be re-added in Settings. The account/profile is already created,
+          // so keep going; just tell the user their photo didn't save.
+          Alert.alert('Photo not saved', 'Your profile is ready, but the photo upload didn\'t go through. You can add it anytime from Settings → your profile.');
+        }
       }
 
       setFamily(family);
@@ -332,19 +364,7 @@ export default function OnboardingScreen() {
             )}
           </View>
           <Text style={styles.label}>{profilePhotoUri ? 'Or Pick a Backup Avatar' : 'Pick Your Avatar'}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiScroll}>
-            <View style={styles.emojiRow}>
-              {AVATAR_EMOJIS.map((emoji) => (
-                <TouchableOpacity
-                  key={emoji}
-                  style={[styles.emojiOption, selectedEmoji === emoji && styles.emojiSelected]}
-                  onPress={() => { setSelectedEmoji(emoji); Haptics.selectionAsync(); }}
-                >
-                  <Text style={styles.emojiText}>{emoji}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+          <AvatarPicker value={selectedEmoji} onChange={setSelectedEmoji} />
           <Text style={styles.label}>Display Name</Text>
           <TextInput style={styles.input} value={displayName} onChangeText={setDisplayName} placeholder="e.g. Dad, Mom, Tommy..." placeholderTextColor={colors.textMuted} maxLength={20} />
           {flow === 'join' && (
@@ -503,15 +523,7 @@ export default function OnboardingScreen() {
             )}
           </View>
           <Text style={styles.label}>{childPhotoUri ? 'Or Pick a Backup Avatar' : 'Pick Avatar'}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiScroll}>
-            <View style={styles.emojiRow}>
-              {['🐼', '🦊', '🐸', '🦁', '🐯', '🐨', '🐻', '🐮', '🐷', '🐙', '🦋', '🐬'].map((em) => (
-                <TouchableOpacity key={em} style={[styles.emojiOption, childEmoji === em && styles.emojiSelected]} onPress={() => { setChildEmoji(em); Haptics.selectionAsync(); }}>
-                  <Text style={styles.emojiText}>{em}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+          <AvatarPicker value={childEmoji} onChange={setChildEmoji} />
           <Text style={styles.label}>Child's Name *</Text>
           <TextInput style={styles.input} value={childName} onChangeText={setChildName} placeholder="e.g. Tommy, Emma..." placeholderTextColor={colors.textMuted} maxLength={20} />
           <Text style={styles.label}>Age (optional)</Text>

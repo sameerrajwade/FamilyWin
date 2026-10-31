@@ -16,9 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/store';
-import { syncMissedPenalties, completeTaskForDate, missedPenaltyMode, type CatchUpItem } from '@/lib/firebase';
+import { syncMissedPenalties, completeTaskForDate, undoTaskCompletion, missedPenaltyMode, penaltyPauseActive, type CatchUpItem } from '@/lib/firebase';
 import { missedTaskPenaltyAmount } from '@/lib/pointsEngine';
 import { useTheme, type ThemeColors } from '@/lib/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 
@@ -42,9 +43,15 @@ export default function CatchUpScreen() {
   const [items, setItems] = useState<CatchUpItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  // Tasks just marked done in THIS session, kept on-screen so a mis-tap can be
+  // undone right here (feedback #8: "no way going back — the task is gone").
+  // Maps `${taskId}::${dateKey}` → the created completion id used to reverse it.
+  const [doneKeys, setDoneKeys] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     if (!family?.id || !effectiveMember?.id) { setItems([]); setLoading(false); return; }
+    // Penalties paused (vacation/sick) → nothing to catch up, apply nothing.
+    if (penaltyPauseActive(family, effectiveMember)) { setItems([]); setLoading(false); return; }
     try {
       const next = await syncMissedPenalties({ familyId: family.id, memberId: effectiveMember.id, mode });
       setItems(next);
@@ -63,13 +70,15 @@ export default function CatchUpScreen() {
     setBusyKey(key);
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-      await completeTaskForDate({
+      const { completionId } = await completeTaskForDate({
         familyId: family.id, memberId: effectiveMember.id,
         taskId: item.task.id, pointValue: item.task.pointValue,
         taskTitle: item.task.title, dateKey: item.dateKey,
       });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      setItems((prev) => prev.filter((i) => !(i.task.id === item.task.id && i.dateKey === item.dateKey)));
+      // Keep the row on screen in a "Done · Undo" state (don't remove it) so a
+      // mistaken tap is recoverable right here.
+      setDoneKeys((prev) => ({ ...prev, [key]: completionId }));
     } catch (e) {
       if (__DEV__) console.error('catch-up mark done failed:', e);
       Alert.alert('Could not update', 'Please try again.');
@@ -78,19 +87,36 @@ export default function CatchUpScreen() {
     }
   }, [family?.id, effectiveMember?.id, busyKey]);
 
+  const undoDone = useCallback(async (item: CatchUpItem) => {
+    if (!family?.id || !effectiveMember?.id || busyKey) return;
+    const key = `${item.task.id}::${item.dateKey}`;
+    const completionId = doneKeys[key];
+    if (!completionId) return;
+    setBusyKey(key);
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      await undoTaskCompletion({
+        familyId: family.id, completionId,
+        taskId: item.task.id, memberId: effectiveMember.id,
+        pointsAwarded: item.task.pointValue, taskTitle: item.task.title,
+      });
+      // Return the row to its actionable state. (The task is missed again; the
+      // penalty re-applies on the next load — consistent with never marking it.)
+      setDoneKeys((prev) => { const next = { ...prev }; delete next[key]; return next; });
+    } catch (e) {
+      if (__DEV__) console.error('catch-up undo failed:', e);
+      Alert.alert('Could not undo', 'Please try again.');
+    } finally {
+      setBusyKey(null);
+    }
+  }, [family?.id, effectiveMember?.id, busyKey, doneKeys]);
+
   // Group by day, most-recent first (items already come grouped by grace day).
   const days = Array.from(new Set(items.map((i) => i.dateKey)));
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.backBtn}>
-          <Icon name="chevron-back" size={22} color={colors.primary} />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Catch up</Text>
-        <View style={{ width: 60 }} />
-      </View>
+      <ScreenHeader title="Catch up" />
 
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: Spacing.xxl }} />
@@ -111,24 +137,41 @@ export default function CatchUpScreen() {
               {items.filter((i) => i.dateKey === dateKey).map((item) => {
                 const key = `${item.task.id}::${item.dateKey}`;
                 const penalty = missedTaskPenaltyAmount(item.task.pointValue, mode);
+                const isDone = key in doneKeys;
                 return (
-                  <View key={key} style={styles.row}>
+                  <View key={key} style={[styles.row, isDone && styles.rowDone]}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.taskTitle} numberOfLines={1}>{item.task.title}</Text>
                       <Text style={styles.taskMeta}>
-                        +{item.task.pointValue} pts{item.penalized ? `  ·  −${penalty} penalty` : ''}
+                        {isDone
+                          ? `✓ Caught up  ·  +${item.task.pointValue} pts back`
+                          : `+${item.task.pointValue} pts${item.penalized ? `  ·  −${penalty} penalty` : ''}`}
                       </Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.doneBtn}
-                      onPress={() => markDone(item)}
-                      disabled={!!busyKey}
-                      activeOpacity={0.85}
-                    >
-                      {busyKey === key
-                        ? <ActivityIndicator color="#FFF" size="small" />
-                        : <Text style={styles.doneBtnText}>Mark done</Text>}
-                    </TouchableOpacity>
+                    {isDone ? (
+                      <TouchableOpacity
+                        style={styles.undoBtn}
+                        onPress={() => undoDone(item)}
+                        disabled={!!busyKey}
+                        activeOpacity={0.85}
+                        accessibilityLabel={`Undo catch-up for ${item.task.title}`}
+                      >
+                        {busyKey === key
+                          ? <ActivityIndicator color={colors.danger} size="small" />
+                          : <Text style={styles.undoBtnText}>↩ Undo</Text>}
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.doneBtn}
+                        onPress={() => markDone(item)}
+                        disabled={!!busyKey}
+                        activeOpacity={0.85}
+                      >
+                        {busyKey === key
+                          ? <ActivityIndicator color="#FFF" size="small" />
+                          : <Text style={styles.doneBtnText}>Mark done</Text>}
+                      </TouchableOpacity>
+                    )}
                   </View>
                 );
               })}
@@ -151,10 +194,13 @@ function createStyles(colors: ThemeColors) {
     dayGroup: { marginBottom: Spacing.lg },
     dayHeading: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: Spacing.sm },
     row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.sm, ...Shadow.sm },
+    rowDone: { backgroundColor: (colors.successLight ?? colors.surface), borderWidth: 1.5, borderColor: colors.success + '55' },
     taskTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.text },
     taskMeta: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.textMuted, marginTop: 3 },
     doneBtn: { backgroundColor: colors.success, borderRadius: BorderRadius.md, paddingHorizontal: 16, paddingVertical: 10, minWidth: 104, alignItems: 'center' },
     doneBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFFFFF' },
+    undoBtn: { backgroundColor: colors.danger + '18', borderWidth: 1.5, borderColor: colors.danger + '55', borderRadius: BorderRadius.md, paddingHorizontal: 16, paddingVertical: 9, minWidth: 104, alignItems: 'center' },
+    undoBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.danger },
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, gap: Spacing.sm },
     emptyTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, color: colors.text, marginTop: Spacing.sm },
     emptySub: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },

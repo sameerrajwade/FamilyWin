@@ -49,14 +49,13 @@ export type FeatureKey =
   | 'photo_proof';
 
 /** The Plus feature list — shown on the Plus screen and used for PLUS badges. */
+// NOTE: the FeatureKey union above intentionally keeps keys that aren't shown
+// here yet (reward_images, streak_insurance, premium_themes, photo_proof) — those
+// are MVP2 and deliberately omitted from the displayed list until they ship.
 export const PLUS_FEATURES: { key: FeatureKey; icon: string; title: string; desc: string }[] = [
   { key: 'unlimited_members', icon: 'people', title: 'Unlimited members', desc: 'Add the whole family — beyond the free 4.' },
   { key: 'full_history', icon: 'stats-chart', title: 'Full history & trends', desc: 'See every week and long-term insights, not just the last 2.' },
   { key: 'unlimited_rewards', icon: 'gift', title: 'Unlimited rewards', desc: 'Create as many rewards as you like.' },
-  { key: 'reward_images', icon: 'image', title: 'Reward images', desc: 'Add photos to rewards to make them pop.' },
-  { key: 'streak_insurance', icon: 'flame', title: 'Streak insurance', desc: 'One streak freeze a week so a busy day doesn’t break the run.' },
   { key: 'co_admin', icon: 'shield-checkmark', title: 'Co-admin & approvals', desc: 'Share admin with another parent, route approvals.' },
   { key: 'custom_points', icon: 'options', title: 'Custom points & goals', desc: 'Custom point values, penalty rules and per-child weekly goals.' },
-  { key: 'premium_themes', icon: 'color-palette', title: 'Premium themes & icons', desc: 'Exclusive themes, app icons, avatars and mascots.' },
-  { key: 'photo_proof', icon: 'camera', title: 'Photo proof', desc: 'Kids attach a photo to a task; a parent verifies it.' },
 ];

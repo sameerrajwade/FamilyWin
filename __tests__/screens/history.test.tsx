@@ -38,9 +38,9 @@ describe('HistoryScreen', () => {
     HistoryScreen = require('@/app/app/tabs/history').default;
   });
 
-  it('renders Insights title', async () => {
+  it('renders the insights view toggle (tab-name title removed)', async () => {
     const { findByText } = render(<HistoryScreen />);
-    expect(await findByText('Insights')).toBeTruthy();
+    expect(await findByText('Mine')).toBeTruthy();
   });
 
   it('shows Mine and Family toggle buttons for parents', async () => {
@@ -49,10 +49,10 @@ describe('HistoryScreen', () => {
     expect(await findByText('Family')).toBeTruthy();
   });
 
-  it('shows All Time and This Week stat cards', async () => {
+  it('shows All Time and Net This Week stat cards', async () => {
     const { findByText } = render(<HistoryScreen />);
     expect(await findByText('All Time')).toBeTruthy();
-    expect(await findByText('This Week')).toBeTruthy();
+    expect(await findByText('Net This Week')).toBeTruthy();
   });
 
   it('shows 6-Week bar chart section', async () => {
@@ -83,8 +83,8 @@ describe('HistoryScreen', () => {
     expect(negativeDelta).toBeTruthy();
   });
 
-  it('shows events count stat card', async () => {
+  it('shows tasks-done stat card', async () => {
     const { findByText } = render(<HistoryScreen />);
-    expect(await findByText('Events')).toBeTruthy();
+    expect(await findByText('Tasks Done')).toBeTruthy();
   });
 });

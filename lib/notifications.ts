@@ -85,36 +85,177 @@ export async function getFCMToken(): Promise<string | null> {
   }
 }
 
-// ─── LOCAL SCHEDULED NOTIFICATIONS (unchanged — handled by expo-notifications)
+// ─── DAILY REMINDERS (always on) ─────────────────────────────────────────────
+//
+// Two local reminders, both ALWAYS ON (there is deliberately no off switch —
+// the reminder IS the habit loop; only the times are adjustable):
+//   • Morning plan  — parents only: "plan today's tasks"
+//   • Evening check — everyone:     "check off what's done"
+//
+// ⚠️ Expo SDK 53+ REQUIRES an explicit trigger `type`. The old untyped
+// `{ hour, minute, repeats }` trigger silently fell through to an Android
+// "channel" trigger, which fires IMMEDIATELY instead of daily — so the old
+// "8 PM reminder" never actually repeated at 8 PM.
 
-/** Schedule a repeating daily reminder */
-export async function scheduleDailyReminder(
-  hour: number,
-  minute: number,
-  memberName: string,
-  taskCount: number,
-): Promise<void> {
-  // Cancel any existing daily reminders
+export const DEFAULT_MORNING_REMINDER = '08:00';
+export const DEFAULT_EVENING_REMINDER = '20:00';
+/** Parent Report lands on the LAST evening of the family's week. */
+export const PARENT_REPORT_TIME = '19:00';
+const REMINDER_TYPES = ['daily_reminder', 'morning_plan', 'parent_report'];
+
+/**
+ * Expo weekday (1 = Sunday … 7 = Saturday) for the last day of a week that
+ * starts on `weekStartDay` (JS getDay: 0 = Sunday … 6 = Saturday). A Monday
+ * week (1) ends Sunday → 1.
+ */
+export function reportWeekday(weekStartDay: number = 1): number {
+  const lastJsDay = ((weekStartDay - 1) % 7 + 7) % 7;
+  return lastJsDay + 1;
+}
+
+export type ReminderPermission = 'granted' | 'denied' | 'unavailable';
+
+/** "HH:MM" → minutes after midnight, or -1 if malformed. */
+function toMinutes(t: string | null | undefined): number {
+  if (!t) return -1;
+  const [h, m] = t.split(':').map((n) => parseInt(n, 10));
+  return Number.isNaN(h) || Number.isNaN(m) ? -1 : h * 60 + m;
+}
+function fromMinutes(mins: number): string {
+  const m = ((mins % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Phase 5 #5 — is a "HH:MM" time inside the quiet-hours window? Handles windows
+ * that wrap past midnight (e.g. 22:00 → 07:00). Missing/blank window = never.
+ */
+export function isInQuietHours(hhmm: string, start?: string | null, end?: string | null): boolean {
+  if (!start || !end) return false;
+  const t = toMinutes(hhmm), s = toMinutes(start), e = toMinutes(end);
+  if (t < 0 || s < 0 || e < 0) return false;
+  return s <= e ? (t >= s && t < e) : (t >= s || t < e); // wrap past midnight
+}
+
+/**
+ * Quiet hours MOVE an always-on reminder instead of cancelling it: an evening
+ * reminder that lands inside the window fires 30 min before quiet starts; a
+ * morning one fires right as quiet ends.
+ */
+export function placeOutsideQuiet(
+  time: string, kind: 'morning' | 'evening', start?: string | null, end?: string | null,
+): string {
+  if (!isInQuietHours(time, start, end)) return time;
+  return kind === 'evening' ? fromMinutes(toMinutes(start) - 30) : (end as string);
+}
+
+/**
+ * Make sure we're ALLOWED to show notifications. With `prompt`, asks the OS only
+ * when it still can (never-asked / ask-again) — the OS itself rate-limits this,
+ * so calling it on launch never nags someone who said no.
+ */
+export async function ensureNotificationPermission(prompt: boolean): Promise<ReminderPermission> {
+  if (!Device.isDevice) return 'unavailable';
+  await createAndroidChannels();
+  const current = await Notifications.getPermissionsAsync();
+  if (current.granted) return 'granted';
+  if (!prompt || !current.canAskAgain) return 'denied';
+  const asked = await Notifications.requestPermissionsAsync();
+  return asked.granted ? 'granted' : 'denied';
+}
+
+async function cancelReminders(): Promise<void> {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  for (const notif of scheduled) {
-    if (notif.content.data?.type === 'daily_reminder') {
-      await Notifications.cancelScheduledNotificationAsync(notif.identifier);
+  for (const n of scheduled) {
+    if (REMINDER_TYPES.includes(n.content.data?.type as string)) {
+      await Notifications.cancelScheduledNotificationAsync(n.identifier);
     }
   }
+}
 
+async function scheduleDaily(time: string, content: Notifications.NotificationContentInput): Promise<void> {
+  const mins = toMinutes(time);
+  if (mins < 0) return;
   await Notifications.scheduleNotificationAsync({
-    content: {
-      title: `Hey ${memberName}! 📋`,
-      body: `You have ${taskCount} task${taskCount !== 1 ? 's' : ''} left today. Don't forget!`,
-      data: { type: 'daily_reminder', screen: 'tasks', channelId: 'daily-reminders' },
-      sound: true,
-    } as any,
+    content,
     trigger: {
-      hour,
-      minute,
-      repeats: true,
-    } as any,
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: Math.floor(mins / 60),
+      minute: mins % 60,
+      channelId: 'daily-reminders',
+    },
   });
+}
+
+/**
+ * Schedule (or reschedule) the always-on reminders for this device's account
+ * holder. Idempotent — cancels the previous reminders first — so it is safe to
+ * call on every launch and after any settings change. Returns the permission
+ * state so the UI can surface "notifications are blocked" instead of failing
+ * silently.
+ */
+export async function ensureReminders(opts: {
+  name: string;
+  isParent: boolean;
+  morning?: string | null;
+  evening?: string | null;
+  quiet?: { start?: string | null; end?: string | null };
+  prompt?: boolean;
+  /** Family week start (JS getDay) — the Parent Report fires on its last day. */
+  weekStartDay?: number;
+}): Promise<ReminderPermission> {
+  try {
+    const permission = await ensureNotificationPermission(!!opts.prompt);
+    if (permission !== 'granted') return permission;
+    await cancelReminders();
+
+    const first = opts.name?.split(' ')[0] || 'there';
+    const qs = opts.quiet?.start, qe = opts.quiet?.end;
+    const evening = placeOutsideQuiet(opts.evening || DEFAULT_EVENING_REMINDER, 'evening', qs, qe);
+    await scheduleDaily(evening, {
+      title: `Lootboard time, ${first}! ✅`,
+      body: "Check off what's done before the day ends — your points are waiting.",
+      data: { type: 'daily_reminder', screen: 'tasks' },
+      sound: true,
+    });
+
+    if (opts.isParent) {
+      const morning = placeOutsideQuiet(opts.morning || DEFAULT_MORNING_REMINDER, 'morning', qs, qe);
+      await scheduleDaily(morning, {
+        title: `Plan today's quests, ${first} ☀️`,
+        body: "Add or tweak today's tasks so everyone can start earning.",
+        data: { type: 'morning_plan', screen: 'tasks' },
+        sound: true,
+      });
+
+      // Bet 2: the weekly payoff — "here's what the app did for you".
+      const mins = toMinutes(placeOutsideQuiet(PARENT_REPORT_TIME, 'evening', qs, qe));
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Your family’s week is in 📊',
+          body: 'See how many chores the kids handled — and how much time it saved you.',
+          data: { type: 'parent_report', screen: 'report' },
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday: reportWeekday(opts.weekStartDay ?? 1),
+          hour: Math.floor(mins / 60),
+          minute: mins % 60,
+          channelId: 'daily-reminders',
+        },
+      });
+    }
+    return 'granted';
+  } catch (e) {
+    if (__DEV__) console.warn('ensureReminders failed:', e);
+    return 'denied';
+  }
+}
+
+/** Mute the daily reminders (vacation/sick hold) without touching other alerts. */
+export async function pauseReminders(): Promise<void> {
+  try { await cancelReminders(); } catch { /* best-effort */ }
 }
 
 /** Cancel all scheduled local notifications */
@@ -122,15 +263,15 @@ export async function cancelAllLocalNotifications(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
-/** Schedule a streak warning for day 6 */
+/** Schedule a streak warning, shown a minute from now — caller decides when. */
 export async function scheduleStreakNotification(memberName: string): Promise<void> {
   await Notifications.scheduleNotificationAsync({
     content: {
       title: `🔥 Don't break your streak, ${memberName}!`,
       body: "You're on a 6-day streak. Complete a task today to keep it alive!",
-      data: { type: 'streak_warning', screen: 'tasks', channelId: 'alerts' },
-    } as any,
-    trigger: { seconds: 60 } as any, // shown immediately — caller decides when
+      data: { type: 'streak_warning', screen: 'tasks' },
+    },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 60, channelId: 'alerts' },
   });
 }
 

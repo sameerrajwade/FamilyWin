@@ -69,20 +69,24 @@ describe('LeaderboardScreen', () => {
     LeaderboardScreen = require('@/app/app/tabs/leaderboard').default;
   });
 
-  it('renders the Leaderboard title', async () => {
+  it('renders the This week header', async () => {
     const { findByText } = render(<LeaderboardScreen />);
-    expect(await findByText('Leaderboard')).toBeTruthy();
+    expect(await findByText('This week')).toBeTruthy();
   });
 
   it('renders leaderboard entries', async () => {
     const { findByText } = render(<LeaderboardScreen />);
     // At least the title should render and loading finishes
-    expect(await findByText('Leaderboard')).toBeTruthy();
+    expect(await findByText('This week')).toBeTruthy();
   });
 
-  it('highlights current user row', async () => {
-    const { findByText } = render(<LeaderboardScreen />);
-    expect(await findByText(/\(You\)/)).toBeTruthy();
+  // Phase B, Bet 3: kids are the players, parents are coaches. The current
+  // user here is a parent, so they appear in the Coaches strip — not ranked.
+  it('ranks kids and lists parents as coaches', async () => {
+    const { findByText, queryByText } = render(<LeaderboardScreen />);
+    expect(await findByText('Tommy')).toBeTruthy();
+    expect(await findByText(/COACHES/)).toBeTruthy();
+    expect(queryByText(/\(You\)/)).toBeNull();
   });
 
   it('shows week label', async () => {
@@ -94,6 +98,6 @@ describe('LeaderboardScreen', () => {
 
   it('renders without crashing', async () => {
     const { findByText } = render(<LeaderboardScreen />);
-    expect(await findByText('Leaderboard')).toBeTruthy();
+    expect(await findByText('This week')).toBeTruthy();
   });
 });

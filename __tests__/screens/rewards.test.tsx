@@ -56,9 +56,9 @@ describe('RewardsScreen — Parent view', () => {
     RewardsScreen = require('@/app/app/tabs/rewards').default;
   });
 
-  it('renders Rewards title', async () => {
+  it('renders the rewards header (Add button; tab-name title removed)', async () => {
     const { findByText } = render(<RewardsScreen />);
-    expect(await findByText('Rewards')).toBeTruthy();
+    expect(await findByText('＋ Add')).toBeTruthy();
   });
 
   it('displays available rewards', async () => {

@@ -1,7 +1,5 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
-import { firestore } from '@/lib/fb';
-import { getCurrentWeekId } from '@/lib/firebase';
 
 export const AUTO_FAIL_TASK_NAME = 'familywin-auto-fail';
 
@@ -20,95 +18,22 @@ export async function registerBackgroundTasks() {
 
 // ─── AUTO-FAIL TASK ──────────────────────────────────────────────────────────
 
+// NOTE (feedback #1): this on-device auto-fail is intentionally a NO-OP.
+//
+// It used to write `penaltyKind:'autofail'` completions that deducted the FULL
+// point value, keyed off the DEVICE-LOCAL hour and the per-task `autoFailHour`,
+// scanning ALL families. That path (a) ignored the family's Off/Half/Full
+// missed-task setting, (b) ignored the parent-configured deadline, (c) ran in
+// whatever timezone/hour the phone happened to be in, and (d) conflicted with
+// the server-side `missedTaskSweep`, which is timezone-aware, deadline-aware,
+// and respects the family penalty mode. Two overlapping fail systems is exactly
+// what produced premature red-X failures and negative balances.
+//
+// The server sweep (firebase/functions/sweep.js) is now the single source of
+// truth for missed daily tasks. We keep the task registered (harmless) so
+// unregister still works cleanly on existing installs, but it does no writes.
 TaskManager.defineTask(AUTO_FAIL_TASK_NAME, async () => {
-  try {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const weekId = getCurrentWeekId();
-
-    // Get all families (the background task has no user context — scans all)
-    const familiesSnap = await firestore().collection('families').get();
-
-    for (const familyDoc of familiesSnap.docs) {
-      const familyId = familyDoc.id;
-
-      // Get active tasks with an autoFailHour <= current hour
-      const tasksSnap = await firestore()
-        .collection('families').doc(familyId)
-        .collection('tasks')
-        .where('isActive', '==', true)
-        .get();
-
-      const dueTasks = tasksSnap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((t: any) => t.autoFailHour != null && t.autoFailHour <= currentHour) as any[];
-
-      if (!dueTasks.length) continue;
-
-      // Get members in this family
-      const membersSnap = await firestore()
-        .collection('families').doc(familyId)
-        .collection('members').get();
-      const members = membersSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
-
-      // Get all completions for this week to avoid double-failing
-      const completionsSnap = await firestore()
-        .collection('families').doc(familyId)
-        .collection('completions')
-        .where('weekId', '==', weekId)
-        .get();
-      const completedPairs = new Set(
-        completionsSnap.docs.map((d) => `${d.data().taskId}::${d.data().memberId}`),
-      );
-
-      const batch = firestore().batch();
-      let batchCount = 0;
-
-      for (const task of dueTasks) {
-        const eligibleMembers = task.assignedTo
-          ? members.filter((m: any) => m.id === task.assignedTo)
-          : members;
-
-        for (const member of eligibleMembers) {
-          const pairKey = `${task.id}::${member.id}`;
-          if (completedPairs.has(pairKey)) continue;
-
-          // Auto-fail: write ONLY the completion (Phase 1.8). The
-          // onCompletionCreated Cloud Function deducts the full point value
-          // server-side (penaltyKind:'autofail') — clients no longer write
-          // source:'task' transactions.
-          const completionRef = firestore()
-            .collection('families').doc(familyId)
-            .collection('completions').doc();
-          batch.set(completionRef, {
-            taskId: task.id,
-            memberId: member.id,
-            weekId,
-            completedAt: null,
-            wasAutoFailed: true,
-            pointsAwarded: -task.pointValue, // display hint; server recomputes
-            serverAward: true,
-            penaltyKind: 'autofail',
-          });
-
-          batchCount++;
-
-          // Firestore batch limit is 500 operations (2 ops per member above)
-          if (batchCount >= 240) {
-            await batch.commit();
-            batchCount = 0;
-          }
-        }
-      }
-
-      if (batchCount > 0) await batch.commit();
-    }
-
-    return BackgroundFetch.BackgroundFetchResult.NewData;
-  } catch (error) {
-    if (__DEV__) console.error('Auto-fail background task error:', error);
-    return BackgroundFetch.BackgroundFetchResult.Failed;
-  }
+  return BackgroundFetch.BackgroundFetchResult.NoData;
 });
 
 export async function unregisterBackgroundTasks() {

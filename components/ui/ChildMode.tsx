@@ -14,7 +14,8 @@ import Animated, {
   interpolate,
 } from 'react-native-reanimated';
 import { useTheme } from '@/lib/theme';
-import { detectTaskEmoji } from '@/lib/taskEmoji';
+import { resolveTaskEmoji } from '@/lib/taskEmoji';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import type { TaskWithCompletion } from '@/types';
 
 const { width: W } = Dimensions.get('window');
@@ -137,7 +138,7 @@ export function ChildTaskCard({ task, onComplete, onUndo, isCompleting, index }:
   };
 
   const config = {
-    emoji: detectTaskEmoji(task.title, task.category),
+    emoji: resolveTaskEmoji(task),
     bg: categoryBg[task.category] ?? '#F5F5F5',
   };
 
@@ -155,7 +156,7 @@ export function ChildTaskCard({ task, onComplete, onUndo, isCompleting, index }:
       >
         {/* Big emoji + title */}
         <View style={styles.childCardTop}>
-          <Text style={styles.childCardEmoji}>{config.emoji}</Text>
+          <EmojiIcon emoji={config.emoji} size={56} style={styles.childCardEmoji} />
           <View style={styles.childCardInfo}>
             <Text style={[styles.childCardTitle, isDone && styles.childCardTitleDone]}>
               {task.title}
@@ -406,7 +407,7 @@ const styles = StyleSheet.create({
   childCard: { borderRadius: 20, marginBottom: 12, overflow: 'hidden' },
   childCardInner: { padding: 16 },
   childCardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  childCardEmoji: { fontSize: 48, marginRight: 12 },
+  childCardEmoji: { marginRight: 12 },
   childCardInfo: { flex: 1 },
   childCardTitle: { fontSize: 20, fontFamily: 'Nunito-ExtraBold', color: '#1A1A2E', lineHeight: 26 },
   childCardTitleDone: { textDecorationLine: 'line-through', opacity: 0.6 },

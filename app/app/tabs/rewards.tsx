@@ -24,7 +24,10 @@ import { useFocusEffect, router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Sounds } from '@/lib/sounds';
 import { SlideIn, ScalePress } from '@/components/ui/Animations';
-import { Col, getActiveRewards, requestRedemption, approveRedemption, rejectRedemption, createReward, getFamilyMembers } from '@/lib/firebase';
+import { Col, getActiveRewards, requestRedemption, approveRedemption, rejectRedemption, createReward, deactivateReward, getFamilyMembers, requestPayout } from '@/lib/firebase';
+import { pointsToCash, formatCash, pointsForOneUnit } from '@/lib/pointsEngine';
+import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { useAuthStore, usePointsStore, useFamilyStore } from '@/store';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
@@ -43,7 +46,7 @@ export default function RewardsScreen() {
   const [rewards, setRewards] = useState<RewardDoc[]>([]);
   const [redemptions, setRedemptions] = useState<(RedemptionDoc & { rewardTitle?: string })[]>([]);
   const [pendingRedemptions, setPendingRedemptions] = useState<(RedemptionDoc & {
-    rewardTitle?: string; rewardCost?: number; memberName?: string; memberEmoji?: string; memberPhotoURL?: string;
+    rewardTitle?: string; rewardCost?: number; memberName?: string; memberEmoji?: string; memberPhotoURL?: string; isPayout?: boolean;
   })[]>([]);
 
   // weekPoints: from Zustand (fast, same as leaderboard)
@@ -56,15 +59,12 @@ export default function RewardsScreen() {
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [rejectModal, setRejectModal] = useState<{ id: string; memberName?: string } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [showAllRedemptions, setShowAllRedemptions] = useState(false);
 
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
+  const [shareData, setShareData] = useState<ShareCardData | null>(null);
 
-  // Reload members when screen is focused
-  useFocusEffect(useCallback(() => {
-    if (family?.id) {
-      getFamilyMembers(family.id).then((list) => setMembers(list as any)).catch(() => {});
-    }
-  }, [family?.id]));
+  // Members come from the shared listener in tabs/_layout.tsx (Phase 4 read-min).
 
   const loadData = useCallback(async () => {
     if (!family?.id || !effectiveMember?.id) return;
@@ -134,12 +134,15 @@ export default function RewardsScreen() {
         const allMembers = members.length > 0 ? members : await getFamilyMembers(family.id);
         const pendingList = pendingSnap.docs.map((d) => {
           const red = { id: d.id, ...d.data() } as RedemptionDoc;
-          const matchedReward = rewardsList.find((r) => r.id === red.rewardId);
           const matchedMember = allMembers.find((m) => m.id === red.memberId);
+          // A payout (cash-out) has no reward — label it with its cash value.
+          const isPayout = red.kind === 'payout';
+          const matchedReward = isPayout ? undefined : rewardsList.find((r) => r.id === red.rewardId);
           return {
             ...red,
-            rewardTitle: matchedReward?.title ?? 'Reward',
-            rewardCost: matchedReward?.pointCost ?? 0,
+            isPayout,
+            rewardTitle: isPayout ? `💸 Cash out ${formatCash(red.cashAmount ?? 0, red.currency ?? '$')}` : (matchedReward?.title ?? 'Reward'),
+            rewardCost: isPayout ? (red.points ?? 0) : (matchedReward?.pointCost ?? 0),
             memberName: matchedMember?.displayName,
             memberEmoji: matchedMember?.avatarEmoji,
             memberPhotoURL: matchedMember?.photoURL,
@@ -166,6 +169,36 @@ export default function RewardsScreen() {
   // Points to use for "can afford" check:
   // Prefer all-time bank balance; fall back to this week's points from Zustand
   const spendablePoints = bankBalance !== null ? bankBalance : weekPoints;
+
+  // Virtual allowance (Phase 5 #3)
+  const allowanceOn = !!family?.allowanceEnabled;
+  const rate = family?.allowancePointsPerUnit ?? 100;
+  const currency = family?.allowanceCurrency ?? '$';
+  const cashValue = pointsToCash(spendablePoints, rate);
+  const canCashOut = allowanceOn && spendablePoints >= pointsForOneUnit(rate);
+
+  async function handleCashOut() {
+    if (!effectiveMember?.id || !family?.id) return;
+    const name = actingAsMember ? actingAsMember.displayName.split(' ')[0] : 'You';
+    Alert.alert(
+      `Cash out ${formatCash(cashValue, currency)}?`,
+      `${name} will request ${spendablePoints} pts (${formatCash(cashValue, currency)}). A parent approves it, then the points are spent.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Request payout',
+          onPress: async () => {
+            try {
+              await requestPayout({ familyId: family.id, memberId: effectiveMember.id, points: spendablePoints, cashAmount: cashValue, currency });
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert('Payout requested 💸', 'A parent will approve it from the Rewards screen.');
+              loadData();
+            } catch { Alert.alert('Error', 'Could not request the payout.'); }
+          },
+        },
+      ],
+    );
+  }
 
   async function handleRedeem(reward: RewardDoc) {
     if (!effectiveMember?.id || !family?.id) return;
@@ -208,25 +241,72 @@ export default function RewardsScreen() {
     );
   }
 
-  async function handleApprove(redemptionId: string, memberId: string, pointCost: number, memberName?: string, rewardTitle?: string) {
-    if (!family?.id || !member?.id) return;
+  function handleRemove(reward: RewardDoc) {
+    if (!family?.id) return;
     Alert.alert(
-      'Approve Reward?',
-      `Approve "${rewardTitle}" for ${memberName ?? 'member'}? This deducts ${pointCost} pts from their balance.`,
+      'Remove Reward?',
+      `Remove "${reward.title}" from the rewards store? Past redemptions stay in history.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: '✓ Approve',
+          text: 'Remove', style: 'destructive',
+          onPress: async () => {
+            try {
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              // Optimistic: drop it from the list immediately.
+              setRewards((prev) => prev.filter((r) => r.id !== reward.id));
+              await deactivateReward(family.id, reward.id);
+            } catch {
+              Alert.alert('Error', 'Could not remove the reward. Pull to refresh and try again.');
+              loadData();
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  async function handleApprove(redemptionId: string, memberId: string, pointCost: number, memberName?: string, rewardTitle?: string, isPayout?: boolean) {
+    if (!family?.id || !member?.id) return;
+    Alert.alert(
+      isPayout ? 'Approve payout?' : 'Approve Reward?',
+      isPayout
+        ? `Mark ${rewardTitle} as paid to ${memberName ?? 'them'}? This spends ${pointCost} pts.`
+        : `Approve "${rewardTitle}" for ${memberName ?? 'member'}? This deducts ${pointCost} pts from their balance.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: isPayout ? '✓ Mark paid' : '✓ Approve',
           onPress: async () => {
             try {
               await approveRedemption({
                 familyId: family!.id, redemptionId, memberId, pointCost, approvedBy: member!.id,
+                ...(isPayout ? { reason: `Cashed out (${pointCost} pts)` } : {}),
               });
               await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Sounds.rewardApproved();
               loadData();
+              const who = (memberName ?? 'They').split(' ')[0];
+              if (isPayout) {
+                Alert.alert('Paid out 💸', `${who}'s ${rewardTitle?.replace('💸 ', '')} is done.`);
+              } else {
+                Alert.alert('Reward approved! 🎉', `${who} unlocked "${rewardTitle}".`, [
+                  { text: 'Not now', style: 'cancel' },
+                  {
+                    text: 'Share 🎉',
+                    onPress: () => setShareData({
+                      icon: 'coin',
+                      eyebrow: 'REWARD UNLOCKED',
+                      title: `${who} unlocked "${rewardTitle}"!`,
+                      subtitle: 'Points well spent.',
+                      stats: [{ value: `${pointCost}`, label: 'points spent' }],
+                      shareMessage: `${who} just redeemed "${rewardTitle}" on Lootboard! 🎁`,
+                    }),
+                  },
+                ]);
+              }
             } catch {
-              Alert.alert('Error', 'Could not approve redemption.');
+              Alert.alert('Error', 'Could not approve.');
             }
           },
         },
@@ -280,7 +360,9 @@ export default function RewardsScreen() {
         {/* Header — points summary */}
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Rewards</Text>
+            {/* Tab name intentionally omitted — the bottom "Rewards" tab + the
+                Points Vault below already identify this screen. */}
+            <View style={{ flex: 1 }} />
             {isParent && (
               <TouchableOpacity
                 style={[styles.addBtn, { backgroundColor: colors.primary }]}
@@ -320,6 +402,23 @@ export default function RewardsScreen() {
                   )}
                 </View>
               </View>
+              {allowanceOn && (
+                <View style={[styles.cashRow, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.cashValue, { color: colors.success }]}>
+                    ≈ {formatCash(cashValue, currency)}
+                    <Text style={[styles.pointsHint, { color: colors.textMuted }]}>  ({rate} pts = {currency}1)</Text>
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.cashOutBtn, { backgroundColor: canCashOut ? colors.success : colors.border }]}
+                    onPress={handleCashOut}
+                    disabled={!canCashOut}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cash out points"
+                  >
+                    <Text style={[styles.cashOutText, { color: canCashOut ? '#FFF' : colors.textMuted }]}>💸 Cash out</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
         </View>
 
@@ -365,6 +464,8 @@ export default function RewardsScreen() {
                           spendablePoints={spendablePoints}
                           isRedeeming={redeemingId === reward.id}
                           onRedeem={() => handleRedeem(reward)}
+                          isParent={isParent}
+                          onRemove={() => handleRemove(reward)}
                           colors={colors}
                         />
                       </ScalePress>
@@ -392,7 +493,7 @@ export default function RewardsScreen() {
                     <View style={{ gap: 6 }}>
                       <TouchableOpacity
                         style={styles.approveBtn}
-                        onPress={() => handleApprove(r.id, r.memberId, r.rewardCost ?? 0, r.memberName, r.rewardTitle)}
+                        onPress={() => handleApprove(r.id, r.memberId, r.rewardCost ?? 0, r.memberName, r.rewardTitle, r.isPayout)}
                         accessibilityLabel={`Approve ${r.rewardTitle} for ${r.memberName}`}
                         accessibilityRole="button"
                       >
@@ -418,7 +519,7 @@ export default function RewardsScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
                   {actingAsMember ? `${actingAsMember.displayName.split(' ')[0]}'s History` : 'My Redemption History'}
                 </Text>
-                {redemptions.slice(0, 8).map((r) => (
+                {(showAllRedemptions ? redemptions : redemptions.slice(0, 5)).map((r) => (
                   <View key={r.id} style={[styles.historyRow, { backgroundColor: colors.surface }]}>
                     <Text style={styles.historyEmoji}>
                       {r.status === 'approved' ? '✅' : r.status === 'rejected' ? '❌' : '⏳'}
@@ -437,6 +538,13 @@ export default function RewardsScreen() {
                     <StatusBadge status={r.status} />
                   </View>
                 ))}
+                {redemptions.length > 5 && (
+                  <TouchableOpacity style={[styles.seeAllBtn, { borderColor: colors.border }]} onPress={() => setShowAllRedemptions((v) => !v)} accessibilityRole="button">
+                    <Text style={[styles.seeAllText, { color: colors.primary }]}>
+                      {showAllRedemptions ? 'Show less' : `See all ${redemptions.length}`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </>
@@ -487,6 +595,9 @@ export default function RewardsScreen() {
           onCreated={() => { setShowCreateModal(false); loadData(); }}
         />
       )}
+
+      {/* Branded reward-unlocked share card */}
+      <ShareCardModal visible={!!shareData} data={shareData} onClose={() => setShareData(null)} />
     </SafeAreaView>
   );
 }
@@ -555,9 +666,9 @@ function rewardIcon(reward: RewardDoc): string {
   return '🎁';
 }
 
-function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, colors }: {
+function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, isParent, onRemove, colors }: {
   reward: RewardDoc; spendablePoints: number; isRedeeming: boolean;
-  onRedeem: () => void; colors: any;
+  onRedeem: () => void; isParent?: boolean; onRemove?: () => void; colors: any;
 }) {
   const canAfford = spendablePoints >= reward.pointCost;
   const remaining = Math.max(0, reward.pointCost - spendablePoints);
@@ -568,7 +679,7 @@ function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, colors }: 
     <View style={[styles.rewardCard, { backgroundColor: colors.surface }, !canAfford && styles.rewardCardDisabled]}>
       <View style={styles.rewardTop}>
         <View style={[styles.rewardIconBox, { backgroundColor: colors.primary + '18' }]}>
-          <Text style={styles.rewardIcon}>{rewardIcon(reward)}</Text>
+          <EmojiIcon emoji={rewardIcon(reward)} size={32} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.rewardTitle, { color: colors.text }]}>{reward.title}</Text>
@@ -605,6 +716,17 @@ function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, colors }: 
             }
           </View>
         </ScalePress>
+        {isParent && onRemove && (
+          <TouchableOpacity
+            style={[styles.removeBtn, { borderColor: colors.danger + '55' }]}
+            onPress={onRemove}
+            accessibilityLabel={`Remove ${reward.title}`}
+            accessibilityRole="button"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Text style={[styles.removeBtnText, { color: colors.danger }]}>🗑 Remove</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -654,7 +776,7 @@ function CreateRewardModal({ familyId, memberId, colors, onClose, onCreated }: {
     if (!cost || cost <= 0) { Alert.alert('Invalid Points', 'Please enter a valid point cost.'); return; }
     try {
       setIsLoading(true);
-      await createReward({
+      const { deduped } = await createReward({
         familyId,
         title: title.trim(),
         ...(description.trim() ? { description: description.trim() } : {}),
@@ -662,6 +784,12 @@ function CreateRewardModal({ familyId, memberId, colors, onClose, onCreated }: {
         createdBy: memberId,
       });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (deduped) {
+        // A reward with this name already existed — we updated it instead of
+        // stacking a duplicate. Tell the parent so the "nothing new appeared"
+        // isn't confusing.
+        Alert.alert('Reward updated', `"${title.trim()}" already existed, so its cost and details were updated instead of adding a duplicate.`);
+      }
       onCreated();
     } catch (err) {
       if (__DEV__) console.error('createReward error:', err);
@@ -777,6 +905,10 @@ const styles = StyleSheet.create({
   pointsBig: { fontSize: 32, fontFamily: FontFamily.extraBold },
   pointsSuffix: { fontSize: FontSize.md, fontFamily: FontFamily.regular },
   pointsHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2 },
+  cashRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, marginTop: Spacing.md, paddingTop: Spacing.md },
+  cashValue: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold },
+  cashOutBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 9 },
+  cashOutText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
   pointsBreakdown: { alignItems: 'flex-end', gap: 4 },
   pointsBreakdownItem: { fontSize: FontSize.xs, fontFamily: FontFamily.regular },
 
@@ -808,6 +940,8 @@ const styles = StyleSheet.create({
   affordLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, marginTop: 5 },
   redeemBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, alignItems: 'center' },
   redeemBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFF' },
+  removeBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, marginLeft: Spacing.sm },
+  removeBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold },
 
   historyRow: { flexDirection: 'row', alignItems: 'center', borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.sm, gap: Spacing.sm, ...Shadow.sm },
   pendingRow: { borderWidth: 1.5, borderColor: Colors.warning + '66' },
@@ -820,6 +954,8 @@ const styles = StyleSheet.create({
 
   statusBadge: { borderRadius: 20, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
   statusText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold },
+  seeAllBtn: { borderWidth: 1.5, borderRadius: BorderRadius.md, paddingVertical: 11, alignItems: 'center', marginTop: 2 },
+  seeAllText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
 
   emptyState: { alignItems: 'center', paddingVertical: Spacing.xxl },
   emptyEmoji: { fontSize: 48, marginBottom: Spacing.md },

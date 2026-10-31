@@ -25,6 +25,7 @@
  */
 
 const MISSED_TASK_GRACE_DAYS = 2; // mirrors lib/pointsEngine.ts
+const DEFAULT_MISSED_DEADLINE_HOUR = 21; // 9 PM (mirrors lib/firebase.ts)
 
 /** Points to deduct for a missed daily task (mirrors lib/pointsEngine.ts). */
 function missedTaskPenaltyAmount(pointValue, mode) {
@@ -56,6 +57,35 @@ function localDateKey(now, timeZone) {
     // Invalid/unknown timezone → treat as UTC so a bad config never throws.
     return now.toISOString().slice(0, 10);
   }
+}
+
+/**
+ * Local date key (YYYY-MM-DD) AND local hour (0–23) for `now` in `timeZone`.
+ * Falls back to UTC. Used to decide whether a member's deadline has passed today.
+ */
+function localParts(now, timeZone) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false,
+    }).formatToParts(now);
+    const get = (t) => parts.find((p) => p.type === t).value;
+    let hour = parseInt(get('hour'), 10);
+    if (!Number.isFinite(hour) || hour === 24) hour = 0; // some ICU builds emit '24' at midnight
+    return { dateKey: `${get('year')}-${get('month')}-${get('day')}`, hour };
+  } catch (_e) {
+    return { dateKey: now.toISOString().slice(0, 10), hour: now.getUTCHours() };
+  }
+}
+
+/** Clamp a stored deadline hour to 0–23, defaulting to 9 PM. */
+function resolveDeadlineHour(family) {
+  const h = family && family.missedTaskDeadlineHour;
+  return typeof h === 'number' && h >= 0 && h <= 23 ? Math.round(h) : DEFAULT_MISSED_DEADLINE_HOUR;
 }
 
 /** The up-to-N calendar days strictly BEFORE `todayKey` (most recent first). */
@@ -93,6 +123,19 @@ function isDailyAssignedTo(task, memberId) {
 }
 
 /**
+ * Is a penalty pause active — i.e. is the stored `penaltyPausedUntil` Timestamp
+ * in the future? Used to honour the vacation/sick hold at both family and member
+ * level so the sweep writes NO penalties while paused.
+ */
+function pausedActive(pausedUntil, now) {
+  if (!pausedUntil) return false;
+  const ms = typeof pausedUntil.toMillis === 'function'
+    ? pausedUntil.toMillis()
+    : (pausedUntil.toDate ? pausedUntil.toDate().getTime() : 0);
+  return ms > now.getTime();
+}
+
+/**
  * Run the missed-task sweep once. Pure over the passed `db` + `now` so a test can
  * drive it deterministically (inject a fixed clock and per-member timezones).
  *
@@ -108,6 +151,9 @@ async function runMissedTaskSweep(db, now = new Date()) {
     const familyId = familyDoc.id;
     const mode = missedPenaltyMode(familyDoc.data());
     if (mode === 'off') continue; // feature disabled for this family
+    // Vacation/sick hold at the family level → skip the whole family.
+    if (pausedActive(familyDoc.data().penaltyPausedUntil, now)) continue;
+    const deadlineHour = resolveDeadlineHour(familyDoc.data());
 
     const famRef = db.collection('families').doc(familyId);
 
@@ -125,18 +171,30 @@ async function runMissedTaskSweep(db, now = new Date()) {
       const tz = d.data().timezone;
       if (tz) tzByMember[d.id] = tz;
     });
+    // Fallback for members with no stored timezone (e.g. managed kids created
+    // before we stamped one): use ANY known family timezone before dropping to
+    // UTC. UTC for a non-UTC family is exactly what penalized the current day
+    // early (evenings roll into the next UTC day). See user feedback #1.
+    const familyTz = Object.values(tzByMember)[0] || 'UTC';
 
     for (const memberDoc of membersSnap.docs) {
       const memberId = memberDoc.id;
-      const tz = tzByMember[memberId] || 'UTC';
+      // Per-member vacation/sick hold → skip just this member.
+      if (pausedActive(memberDoc.data().penaltyPausedUntil, now)) continue;
+      const tz = tzByMember[memberId] || familyTz;
 
       const myTasks = dailyTasks.filter((t) => isDailyAssignedTo(t, memberId));
       if (!myTasks.length) continue;
 
-      const todayKey = localDateKey(now, tz);
-      const graceDays = graceDaysBefore(todayKey);
+      // A daily task is "missed" for a day only once that day's deadline hour has
+      // passed in the member's LOCAL time. So we penalize the recent grace days
+      // (their deadline is long gone) plus TODAY, but today only after the
+      // deadline hour — never in the morning, never at UTC midnight.
+      const { dateKey: todayKey, hour: localHour } = localParts(now, tz);
+      const penalizeDays = graceDaysBefore(todayKey);
+      if (localHour >= deadlineHour) penalizeDays.unshift(todayKey);
 
-      for (const dateKey of graceDays) {
+      for (const dateKey of penalizeDays) {
         // One read per (member, day): all that day's completions for this member.
         const daySnap = await famRef
           .collection('completions')
@@ -201,6 +259,8 @@ module.exports = {
   runMissedTaskSweep,
   // exported for unit tests
   localDateKey,
+  localParts,
+  resolveDeadlineHour,
   graceDaysBefore,
   weekIdForKey,
   missedTaskPenaltyAmount,

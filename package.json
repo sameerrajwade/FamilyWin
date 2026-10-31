@@ -124,6 +124,7 @@
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@react-native-firebase/.*|@react-native-google-signin/.*)"
     ],
     "moduleNameMapper": {
+      "assets/emoji3d/.+\\.png$": "<rootDir>/test-stubs/emojiImage.js",
       "^@/(.*)$": "<rootDir>/$1"
     }
   },

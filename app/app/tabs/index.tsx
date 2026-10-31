@@ -1,25 +1,32 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, Alert, Pressable,
+  RefreshControl, ActivityIndicator, Alert, Pressable, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { Sounds } from '@/lib/sounds';
 import { router, useFocusEffect } from 'expo-router';
-import { firestore } from '@/lib/fb';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence, withDelay, interpolateColor } from 'react-native-reanimated';
 import { useAuthStore, useTaskStore, useFamilyStore, usePointsStore } from '@/store';
 import {
   getActiveTasks, getWeekCompletions, completeTask as fbCompleteTask,
-  undoTaskCompletion,
+  undoTaskCompletion, recoverFailedTask,
   getCurrentWeekId, getTodayDateString, getCurrentMonthId,
-  Col, getFamilyMembers, deleteTask, getRecentCompletions,
-  syncMissedPenalties, missedPenaltyMode, type CatchUpItem,
+  Col, deleteTask, getRecentCompletions, uploadCompletionProof,
+  syncMissedPenalties, missedPenaltyMode, penaltyPauseActive, type CatchUpItem,
 } from '@/lib/firebase';
-import { getCurrentWeekRange, dailyStreak, getLevel } from '@/lib/pointsEngine';
-import { detectTaskEmoji } from '@/lib/taskEmoji';
+import { pickPhotoUri } from '@/lib/photoPicker';
+import { getCurrentWeekRange, dailyStreak, getLevel, summarizeMemberPoints } from '@/lib/pointsEngine';
+import { effectiveAssignee, isDueToday } from '@/lib/rotation';
+import { resolveTaskEmoji } from '@/lib/taskEmoji';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
+import { useReminderStatus } from '@/lib/reminderStatus';
+import { findCompletionForPeriod, dayKey } from '@/lib/completionMatch';
+import { useKidMode } from '@/lib/kidMode';
+import { isKid } from '@/lib/familyGame';
+import { FamilyGoalCard } from '@/components/ui/FamilyGoal';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
@@ -45,8 +52,10 @@ export default function HomeScreen() {
   // effectiveMember = who we're doing tasks for (self or a managed child)
   const effectiveMember = actingAsMember ?? member;
   const { todaysTasks, setTodaysTasks, isLoadingTasks, setLoadingTasks, markTaskComplete } = useTaskStore();
-  const { updateMemberPoints, members, setMembers } = useFamilyStore();
+  const { updateMemberPoints, members } = useFamilyStore();
+  const kidProfiles = (members as any[]).filter(isKid);
   const { addTransaction } = usePointsStore();
+  const reminderPermission = useReminderStatus((s) => s.permission);
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
   const { colors, isDark, isChildMode, fontSize } = useTheme();
 
@@ -78,6 +87,12 @@ export default function HomeScreen() {
   const hasLoadedRef = useRef(false);
 
   const weekId = getCurrentWeekId();
+  // Day N of 7 within the family's week (weekStartDay uses getDay(): 0=Sun,1=Mon).
+  const weekProgress = (() => {
+    const startDay = family?.weekStartDay ?? 1;
+    const diff = ((new Date().getDay() - startDay) % 7 + 7) % 7;
+    return { day: diff + 1, total: 7 };
+  })();
   const dateString = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const todayStr = getTodayDateString();
@@ -97,68 +112,30 @@ export default function HomeScreen() {
         getWeekCompletions(family.id, weekId),
       ]);
 
-      // Recurrence-aware completion check — no Firestore index required.
-      //
-      // KEY: use filter() not find(). A daily task completed yesterday AND today
-      // will have TWO completions in the week. find() could return yesterday's,
-      // which fails the "was it today?" check and wrongly marks the task incomplete.
-      // filter() lets us check if ANY completion satisfies the recurrence window.
-      function dateStr(ts: any): string | null {
-        const d = ts?.toDate?.();
-        if (!d) return null;
-        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      }
-      function monthStr(ts: any): string | null {
-        const d = ts?.toDate?.();
-        if (!d) return null;
-        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      }
-
-      function isCompleted(taskId: string, recurrence: string) {
-        // All completions for this task + this member this week.
-        // Phase 4.3: a REJECTED completion doesn't count as done — the task
-        // returns to incomplete so it can be redone.
-        const all = completions.filter(
-          (c) => c.taskId === taskId && c.memberId === effectiveMember!.id && c.status !== 'rejected',
-        );
-        if (all.length === 0) return null;
-
-        if (recurrence === 'daily') {
-          // Was there ANY completion today?
-          return all.find((c) =>
-            c.completedDate ? c.completedDate === todayStr : dateStr(c.completedAt) === todayStr,
-          ) ?? null;
-        }
-
-        if (recurrence === 'weekly') {
-          return all.find((c) => c.weekId === weekId) ?? null;
-        }
-
-        if (recurrence === 'monthly') {
-          return all.find((c) =>
-            c.monthId ? c.monthId === monthId : monthStr(c.completedAt) === monthId,
-          ) ?? null;
-        }
-
-        // 'once' or custom — any completion at all = done
-        return all[0];
-      }
+      // Recurrence-aware completion check (shared with Kid Mode — see
+      // lib/completionMatch). No Firestore index required.
+      const isCompleted = (taskId: string, recurrence: string) =>
+        findCompletionForPeriod(completions, taskId, effectiveMember!.id, recurrence, { todayStr, weekId, monthId });
 
       // Join completions onto tasks — scoped to the active profile
       // When viewing another member's profile: show tasks assigned to them
       // When viewing own profile: show own tasks + unassigned (family/general) tasks
       const isViewingOther = effectiveMember.id !== member?.id;
+      const now = new Date();
+      const wsd = family?.weekStartDay ?? 1;
       const myTasks: TaskWithCompletion[] = tasks
+        // Phase 5: hide tasks not due today (scheduledDays), and resolve the
+        // rotation's current owner so a rotating chore shows for whoever's turn
+        // it is right now (effectiveAssignee also handles fixed/array assignees).
+        .filter((t) => isDueToday((t as any).scheduledDays, now))
         .filter((t) => {
-          if (!t.assignedTo) {
-            return !isViewingOther;
-          }
-          if (Array.isArray(t.assignedTo)) return (t.assignedTo as string[]).includes(effectiveMember.id);
-          return t.assignedTo === effectiveMember.id;
+          const owner = effectiveAssignee(t as any, now, wsd);
+          if (owner == null) return !isViewingOther; // whole-family task
+          return owner === effectiveMember.id;
         })
         .map((task) => {
           const c = isCompleted(task.id, task.recurrence);
-          return { ...task, completion: c ? { id: c.id, wasAutoFailed: c.wasAutoFailed, pointsAwarded: c.pointsAwarded, completedDate: c.completedDate ?? dateStr(c.completedAt), completedAt: c.completedAt, status: c.status } : null };
+          return { ...task, completion: c ? { id: c.id, wasAutoFailed: c.wasAutoFailed, pointsAwarded: c.pointsAwarded, completedDate: c.completedDate ?? dayKey(c.completedAt), completedAt: c.completedAt, status: c.status } : null };
         });
 
       setTodaysTasks(myTasks as any);
@@ -170,18 +147,11 @@ export default function HomeScreen() {
         setPendingApprovals(completions.filter((c) => c.status === 'pending').length);
       }
 
-      // Weekly points for the active profile.
-      // Use getCurrentWeekRange with family's chosen weekStartDay (not hardcoded Monday).
-      // Use firestore.Timestamp.fromDate() — not { toDate: () => weekStart } which breaks.
-      const { start: weekStart } = getCurrentWeekRange(family?.weekStartDay ?? 1);
-      const txSnap = await Col.transactions(family.id)
-        .where('memberId', '==', effectiveMember.id)
-        .where('createdAt', '>=', firestore.Timestamp.fromDate(weekStart))
-        .get();
-      const wpts = txSnap.docs
-        .filter((d) => d.data().source !== 'redemption')  // exclude reward spends from earned total
-        .reduce((sum, d) => sum + (d.data().delta as number), 0);
-      setWeeklyPoints(wpts);
+      // NOTE: weeklyPoints is intentionally NOT computed here. A dedicated
+      // transactions onSnapshot listener (below) owns it and keeps it live with
+      // the identical redemption-excluded sum. Re-querying it inside loadTasks
+      // ran a full transactions read on every mount, snapshot tick, refresh and
+      // undo for a value the listener already has — pure duplicate reads.
     } catch (error) {
       if (__DEV__) console.error('Failed to load tasks:', error);
     } finally {
@@ -220,31 +190,54 @@ export default function HomeScreen() {
     AsyncStorage.setItem('lootboard_welcome_tour_v1', '1').catch(() => {});
   }, []);
 
-  // Streak + lifetime level — fetched on profile/week change only (NOT on every
-  // snapshot tick), so the live listeners stay cheap and flicker-free. Streak
-  // reads a 35-day completion window; level reads the member's lifetime points.
+  // Streak — reads a BOUNDED 35-day completion window and recomputes when the
+  // week's points move (a completion today can extend the streak). The window is
+  // small and capped, so this stays cheap even long-term.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!family?.id || !effectiveMember?.id) return;
       try {
-        const [recent, txSnap] = await Promise.all([
-          getRecentCompletions(family.id, effectiveMember.id, 35),
-          Col.transactions(family.id).where('memberId', '==', effectiveMember.id).get(),
-        ]);
+        const recent = await getRecentCompletions(family.id, effectiveMember.id, 35);
         if (cancelled) return;
         const dates = recent
           .filter((c) => !c.wasAutoFailed && c.completedAt)
           .map((c) => c.completedAt!.toDate());
         setStreak(dailyStreak(dates));
-        const lifetime = txSnap.docs.reduce((sum, d) => sum + ((d.data().delta as number) || 0), 0);
-        setLifetimePoints(lifetime);
       } catch (e) {
-        if (__DEV__) console.error('streak/level load failed:', e);
+        if (__DEV__) console.error('streak load failed:', e);
       }
     })();
     return () => { cancelled = true; };
   }, [family?.id, effectiveMember?.id, weekId, weeklyPoints]);
+
+  // ── Points, single source of truth ──────────────────────────────────────
+  // ONE live listener over this member's transactions drives BOTH the spendable
+  // bank (all-time earned − spent → the "Points to spend" hero, identical to the
+  // Rewards vault) and earned-this-week (reward spends excluded → matches the
+  // leaderboard). Computed via summarizeMemberPoints so every screen agrees.
+  //
+  // Deliberately a SINGLE-field query (memberId only): the previous weekly
+  // listener filtered on memberId AND createdAt, which needs a composite index —
+  // when that index is missing the listener silently dies (CLAUDE.md gotcha #2)
+  // and the number survives only on optimistic local math, drifting high. A
+  // single-field filter never needs an index, so this can't silently break.
+  useEffect(() => {
+    if (!family?.id || !effectiveMember?.id) return;
+    const { start } = getCurrentWeekRange(family?.weekStartDay ?? 1);
+    const unsub = Col.transactions(family.id)
+      .where('memberId', '==', effectiveMember.id)
+      .onSnapshot((snap) => {
+        const txns = snap.docs.map((d) => {
+          const data = d.data();
+          return { delta: (data.delta as number) || 0, source: data.source as string, date: data.createdAt?.toDate?.() ?? null };
+        });
+        const { spendable, earnedThisWeek } = summarizeMemberPoints(txns, start);
+        setLifetimePoints(spendable);
+        setWeeklyPoints(earnedThisWeek);
+      }, (err) => { if (__DEV__) console.error('points listener failed:', err); });
+    return unsub;
+  }, [family?.id, effectiveMember?.id, family?.weekStartDay, weekId]);
 
   // Missed-task penalty (optional): on profile/feature change, find daily tasks
   // missed within the grace window, lazily apply the half-point penalty for any
@@ -256,6 +249,11 @@ export default function HomeScreen() {
       setCatchUpItems([]);
       return;
     }
+    // Vacation/sick hold: while paused, apply no penalties and show no catch-up.
+    if (penaltyPauseActive(family, effectiveMember)) {
+      setCatchUpItems([]);
+      return;
+    }
     try {
       // Applies any pending miss penalties and returns what's still catch-up-able.
       const items = await syncMissedPenalties({ familyId: family.id, memberId: effectiveMember.id, mode: penaltyMode });
@@ -263,7 +261,7 @@ export default function HomeScreen() {
     } catch (e) {
       if (__DEV__) console.error('catch-up sync failed:', e);
     }
-  }, [family?.id, penaltyMode, effectiveMember?.id]);
+  }, [family?.id, penaltyMode, effectiveMember?.id, family?.penaltyPausedUntil, effectiveMember?.penaltyPausedUntil]);
 
   useEffect(() => { syncCatchUp(); }, [syncCatchUp, weekId]);
 
@@ -284,31 +282,8 @@ export default function HomeScreen() {
     return () => { unsubTasks(); unsubCompletions(); };
   }, [family?.id, weekId, loadTasks]);
 
-  // Live weekly total for the active profile. The onCompletionCreated/Updated
-  // Cloud Functions settle points ASYNCHRONOUSLY (e.g. after a parent approves),
-  // and that transaction write doesn't trip the tasks/completions listeners — so
-  // without this the hero "N pts this week" stays stale until the next reload.
-  useEffect(() => {
-    if (!family?.id || !effectiveMember?.id) return;
-    const { start } = getCurrentWeekRange(family?.weekStartDay ?? 1);
-    const unsub = Col.transactions(family.id)
-      .where('memberId', '==', effectiveMember.id)
-      .where('createdAt', '>=', firestore.Timestamp.fromDate(start))
-      .onSnapshot((snap) => {
-        const wpts = snap.docs
-          .filter((d) => d.data().source !== 'redemption')
-          .reduce((sum, d) => sum + ((d.data().delta as number) || 0), 0);
-        setWeeklyPoints(wpts);
-      }, (err) => { if (__DEV__) console.error(err); });
-    return unsub;
-  }, [family?.id, effectiveMember?.id, family?.weekStartDay]);
-
-  // Always reload members when home screen is focused — ensures profile tabs appear immediately
-  useFocusEffect(useCallback(() => {
-    if (family?.id) {
-      getFamilyMembers(family.id).then((list) => setMembers(list as any)).catch(() => {});
-    }
-  }, [family?.id]));
+  // Members come from the shared family-wide listener in tabs/_layout.tsx
+  // (Phase 4 read-min) — no per-focus getFamilyMembers refetch here.
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -326,7 +301,34 @@ export default function HomeScreen() {
     await doCompleteTask(task);
   }
 
+  // Phase 5 photo-proof: ask whether to snap or pick a photo, return its URI
+  // (or null if cancelled). Android Alert caps at 3 buttons — exactly our count.
+  function captureProofPhoto(): Promise<string | null> {
+    return new Promise((resolve) => {
+      Alert.alert('Add proof photo', 'Show it\'s done!', [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(null) },
+        { text: '📷 Take photo', onPress: async () => resolve(await pickPhotoUri('camera')) },
+        { text: '🖼 Choose photo', onPress: async () => resolve(await pickPhotoUri('library')) },
+      ], { cancelable: true, onDismiss: () => resolve(null) });
+    });
+  }
+
   async function doCompleteTask(task: TaskWithCompletion) {
+    // Photo-proof tasks capture + upload a photo BEFORE the completion is written.
+    // Cancelling the picker aborts the whole completion (no half state).
+    let proofPhotoURL: string | undefined;
+    if ((task as any).requiresPhoto) {
+      const uri = await captureProofPhoto();
+      if (!uri) return;
+      setCompletingTaskId(task.id);
+      try {
+        proofPhotoURL = await uploadCompletionProof(uri, family!.id, effectiveMember!.id);
+      } catch {
+        setCompletingTaskId(null);
+        Alert.alert('Photo not uploaded', 'Could not upload the photo. Please try again.');
+        return;
+      }
+    }
     try {
       setCompletingTaskId(task.id);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -340,6 +342,7 @@ export default function HomeScreen() {
         pointValue: task.pointValue,
         taskTitle: task.title,
         requiresApproval: task.requiresApproval,
+        proofPhotoURL,
       });
 
       // Phase 4.3: an approval-required task is submitted, not awarded. No points
@@ -355,7 +358,11 @@ export default function HomeScreen() {
       addTransaction(tx as any);
 
       setLastCompletedPoints(task.pointValue);
+      // Optimistic bumps for instant feel. Safe from drift: the points listener
+      // recomputes BOTH values absolutely from the full transaction snapshot on
+      // the next tick, so it overwrites (never accumulates) these.
       setWeeklyPoints((p) => p + task.pointValue);
+      setLifetimePoints((s) => s + task.pointValue);
       setPointBurstKey((k) => k + 1);
       setPointBurstVisible(true);
       setTimeout(() => setPointBurstVisible(false), 1200);
@@ -378,6 +385,37 @@ export default function HomeScreen() {
     } catch (error) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', 'Could not complete task. Please try again.');
+    } finally {
+      setCompletingTaskId(null);
+    }
+  }
+
+  // Recover a task that was marked missed/auto-failed for today: reverses the
+  // penalty and awards the points (via recoverFailedTask → CF). Lets a member
+  // still earn a task they were penalized for, same day. The live transactions
+  // listener updates the weekly total once the CF settles.
+  async function handleRecoverTask(task: TaskWithCompletion) {
+    if (!task.completion?.wasAutoFailed || !effectiveMember || !family || isReadOnly) return;
+    try {
+      setCompletingTaskId(task.id);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Sounds.taskComplete();
+      await recoverFailedTask({
+        familyId: family.id,
+        taskId: task.id,
+        memberId: effectiveMember.id,
+        weekId,
+        pointValue: task.pointValue,
+        failedCompletionId: task.completion.id,
+      });
+      setLastCompletedPoints(task.pointValue);
+      setPointBurstKey((k) => k + 1);
+      setPointBurstVisible(true);
+      setTimeout(() => setPointBurstVisible(false), 1200);
+      await loadTasks();
+    } catch {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Error', 'Could not update this task. Please try again.');
     } finally {
       setCompletingTaskId(null);
     }
@@ -409,6 +447,7 @@ export default function HomeScreen() {
       // phantom-negative points when there was nothing live to undo.
       if (res.undone) {
         setWeeklyPoints((w) => w - res.pointsReversed);
+        setLifetimePoints((s) => s - res.pointsReversed);
         updateMemberPoints(effectiveMember.id, -res.pointsReversed);
       }
       await loadTasks();
@@ -422,6 +461,25 @@ export default function HomeScreen() {
   }
 
   // Undo a completion from the task card itself (same-day only, by whoever completed it)
+  function handleDeleteTask(task: TaskWithCompletion) {
+    if (!family?.id) return;
+    Alert.alert('Delete task?', `"${task.title}" will be removed from the list. Past history stays.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteTask(family.id, task.id);
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            loadTasks();
+          } catch {
+            Alert.alert('Error', 'Could not delete the task. Pull to refresh and try again.');
+          }
+        },
+      },
+    ]);
+  }
+
   async function handleUndoTask(task: TaskWithCompletion) {
     if (!task.completion || isReadOnly || !family || !effectiveMember) return;
     if (task.completion.wasAutoFailed) return;
@@ -537,8 +595,8 @@ export default function HomeScreen() {
             <View style={styles.headerLeft}>
               <Text numberOfLines={1} style={[styles.greeting, { color: colors.text, fontSize: fontSize(FontSize.xxl) }]}>
                 {actingAsMember
-                  ? `${effectiveMember?.avatarEmoji} ${effectiveMember?.displayName}'s tasks${isReadOnly ? ' 👁' : ''}`
-                  : `Hey, ${member?.displayName?.split(' ')[0]} ${member?.avatarEmoji}`}
+                  ? `${effectiveMember?.displayName}'s tasks${isReadOnly ? ' 👁' : ''}`
+                  : `Hey, ${member?.displayName?.split(' ')[0]}`}
               </Text>
               <Text style={[styles.date, { color: colors.textSecondary }]}>
                 {allDone ? "All done — you're crushing it! 🎉" : totalCount > 0 ? `${completedCount} of ${totalCount} done today` : "Let's make today count 💪"}
@@ -583,6 +641,7 @@ export default function HomeScreen() {
         <SlideIn delay={130}>
           <StatsHero
             level={level}
+            spendable={lifetimePoints}
             weeklyPoints={weeklyPoints}
             completedCount={completedCount}
             totalCount={totalCount}
@@ -590,6 +649,51 @@ export default function HomeScreen() {
             allDone={allDone}
           />
         </SlideIn>
+
+        {/* Bet 3 — the family co-op goal (parents see a "set one" prompt). */}
+        {!actingAsMember && (
+          <View style={styles.section}>
+            <SlideIn delay={105}>
+              <FamilyGoalCard compact />
+            </SlideIn>
+          </View>
+        )}
+
+        {/* Kid Mode entry (Bet 1): the kids claim their own tasks; you approve
+            in one swipe later. Only when there are kids to hand the phone to. */}
+        {isParent && kidProfiles.length > 0 && (
+          <View style={styles.section}>
+            <SlideIn delay={110}>
+              <TouchableOpacity
+                style={[styles.kidModeCard, { backgroundColor: colors.success + '14', borderColor: colors.success + '55' }]}
+                onPress={() => {
+                  const start = actingAsMember && kidProfiles.some((k) => k.id === actingAsMember.id) ? actingAsMember.id : kidProfiles[0].id;
+                  useKidMode.getState().enter(start);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                  router.push('/app/kid-mode' as any);
+                }}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Open Kid Mode"
+              >
+                <View style={styles.kidModeAvatars}>
+                  {kidProfiles.slice(0, 3).map((k, i) => (
+                    <View key={k.id} style={{ marginLeft: i === 0 ? 0 : -12 }}>
+                      <Avatar emoji={k.avatarEmoji} photoURL={k.photoURL} size={34} />
+                    </View>
+                  ))}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.catchUpTitle, { color: colors.text }]}>Hand the phone to a kid</Text>
+                  <Text style={[styles.catchUpSub, { color: colors.textSecondary }]}>
+                    Kid Mode: they tap “I did it!”, you approve later in one go.
+                  </Text>
+                </View>
+                <Icon name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </SlideIn>
+          </View>
+        )}
 
         {isParent && pendingApprovals > 0 && (
           <View style={styles.section}>
@@ -604,10 +708,35 @@ export default function HomeScreen() {
                 <Icon name="checkmark-done-circle-outline" size={22} color={colors.primary} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.catchUpTitle, { color: colors.text }]}>
-                    {pendingApprovals} {pendingApprovals === 1 ? 'task' : 'tasks'} awaiting your approval
+                    {pendingApprovals} {pendingApprovals === 1 ? 'claim' : 'claims'} waiting for your OK
                   </Text>
                   <Text style={[styles.catchUpSub, { color: colors.textSecondary }]}>
-                    Review and approve to award the points.
+                    The kids are waiting on their points — approve them all in one tap.
+                  </Text>
+                </View>
+                <Icon name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </SlideIn>
+          </View>
+        )}
+
+        {/* Reminders are always on — if the OS blocked notifications, say so
+            here instead of failing silently (feedback: "I never get the reminder"). */}
+        {reminderPermission === 'denied' && !actingAsMember && (
+          <View style={styles.section}>
+            <SlideIn delay={140}>
+              <TouchableOpacity
+                style={[styles.catchUpCard, { backgroundColor: colors.danger + '12', borderColor: colors.danger + '4D' }]}
+                onPress={() => router.push('/app/settings/notifications' as any)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Turn on reminders"
+              >
+                <Icon name="notifications-off-outline" size={22} color={colors.danger} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.catchUpTitle, { color: colors.text }]}>Reminders can't reach you</Text>
+                  <Text style={[styles.catchUpSub, { color: colors.textSecondary }]}>
+                    Notifications are off for Lootboard. Tap to turn them on.
                   </Text>
                 </View>
                 <Icon name="chevron-forward" size={20} color={colors.textMuted} />
@@ -657,7 +786,7 @@ export default function HomeScreen() {
           {isLoadingTasks ? <LoadingSkeletons /> :
             todaysTasks.length === 0 ? (
               <SlideIn delay={250}>
-                <EmptyState emoji="🌟" title="No tasks today!" subtitle="Kick-start the week with a ready-made starter pack, or add your own." action={{ label: '📦 Browse starter packs', onPress: () => router.push('/app/task/packs' as any) }} />
+                <EmptyState brandIcon="chest" title="No tasks today!" subtitle="Kick-start the week with a ready-made starter pack, or add your own." action={{ label: '📦 Browse starter packs', onPress: () => router.push('/app/task/packs' as any) }} />
                 {isParent && (
                   <TouchableOpacity style={styles.emptyAltBtn} onPress={() => router.push('/app/task/create')} activeOpacity={0.7}>
                     <Text style={[styles.emptyAltBtnText, { color: colors.primary }]}>＋ Or create a single task</Text>
@@ -669,17 +798,22 @@ export default function HomeScreen() {
                 <ChildTaskCard key={task.id} task={task as any} onComplete={(t) => { handleCompleteTask(t as any); }} onUndo={(t: any) => handleUndoTask(t)} isCompleting={completingTaskId === task.id} index={i} />
               ))
             ) : (
-              (todaysTasks as any[]).map((task, i) => (
-                // Include the approval status in the key so a card cleanly
-                // REMOUNTS when a completion transitions pending→approved/rejected
-                // (returning from the Approvals screen) — otherwise the in-place
-                // reanimated update can leave the card content unpainted. Normal
-                // tasks (no status) keep a stable key, so complete/undo still
-                // animate in place with no flicker.
-                <SlideIn key={task.id + (task.completion?.status ? ':' + task.completion.status : '')} delay={250 + i * 60}>
-                  <AdultTaskCard task={task} onComplete={handleCompleteTask} onUndo={handleUndoTask} isCompleting={completingTaskId === task.id} colors={colors} fontSize={fontSize} isReadOnly={isReadOnly} isParent={isParent} />
-                </SlideIn>
-              ))
+              (todaysTasks as any[]).map((task, i) => {
+                // The card must REMOUNT (not update in place) whenever it enters
+                // or leaves a state the reanimated in-place update paints wrong —
+                // approval status changes AND the failed↔done flip (feedback #9:
+                // recovering a red-✗ task, or undoing that, left the row blank
+                // until a tab switch). Normal todo↔done keeps a stable key, so
+                // ordinary complete/undo still animate in place with no flicker.
+                const cardKey = task.id
+                  + (task.completion?.wasAutoFailed ? ':failed' : '')
+                  + (task.completion?.status ? ':' + task.completion.status : '');
+                return (
+                  <SlideIn key={cardKey} delay={250 + i * 60}>
+                    <AdultTaskCard task={task} onComplete={handleCompleteTask} onUndo={handleUndoTask} onRecover={handleRecoverTask} onDelete={handleDeleteTask} isCompleting={completingTaskId === task.id} colors={colors} fontSize={fontSize} isReadOnly={isReadOnly} isParent={isParent} weekProgress={weekProgress} />
+                  </SlideIn>
+                );
+              })
             )}
         </View>
       </ScrollView>
@@ -696,8 +830,9 @@ function AnimatedProgressBar({ progress, color }: { progress: number; color: str
 
 // ── Hero card — one cohesive gradient panel fusing points, level, and today's ──
 // progress. Replaces the two flat stacked cards for a designed, branded anchor.
-function StatsHero({ level, weeklyPoints, completedCount, totalCount, progressPct, allDone }: {
+function StatsHero({ level, spendable, weeklyPoints, completedCount, totalCount, progressPct, allDone }: {
   level: { level: number; title: string; emoji: string; progress: number; next: number | null };
+  spendable: number;
   weeklyPoints: number;
   completedCount: number;
   totalCount: number;
@@ -722,10 +857,11 @@ function StatsHero({ level, weeklyPoints, completedCount, totalCount, progressPc
       <View style={styles.heroTopRow}>
         <View style={styles.heroPointsBlock}>
           <View style={styles.heroPointsRow}>
-            <Text style={styles.heroPointsNum}>{weeklyPoints}</Text>
+            <Text style={styles.heroPointsNum}>{spendable}</Text>
             <Text style={styles.heroPointsUnit}>pts</Text>
           </View>
-          <Text style={styles.heroPointsLabel}>this week</Text>
+          <Text style={styles.heroPointsLabel}>to spend</Text>
+          <Text style={styles.heroPointsSub}>{weeklyPoints >= 0 ? '+' : ''}{weeklyPoints} earned this week</Text>
         </View>
         <View style={styles.heroTodayChip}>
           <Text style={styles.heroTodayNum}>{allDone ? '✓' : `${completedCount}/${totalCount}`}</Text>
@@ -733,15 +869,8 @@ function StatsHero({ level, weeklyPoints, completedCount, totalCount, progressPc
         </View>
       </View>
 
-      {/* Today's task progress bar */}
-      <View style={styles.heroBarRow}>
-        <View style={styles.heroBarTrack}>
-          <Animated.View style={[styles.heroBarFill, { backgroundColor: '#FFFFFF' }, taskBarStyle]} />
-        </View>
-        <Text style={styles.heroBarPct}>{Math.round(progressPct * 100)}%</Text>
-      </View>
-
-      {/* Divider */}
+      {/* Divider (the today chip above already conveys task progress, so the
+          standalone progress bar was dropped to keep the hero compact). */}
       <View style={styles.heroDivider} />
 
       {/* Level row — emoji + title + XP bar to next level */}
@@ -761,17 +890,51 @@ function StatsHero({ level, weeklyPoints, completedCount, totalCount, progressPc
   );
 }
 
-function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSize, isReadOnly, isParent }: any) {
+function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isCompleting, colors, fontSize, isReadOnly, isParent, streak, weekProgress }: any) {
   // Phase 4.3: a completion awaiting parent approval — done-but-not-awarded.
   const isPending = task.completion?.status === 'pending';
   const isDone = !!task.completion && !task.completion.wasAutoFailed && !isPending;
   const isFailed = task.completion?.wasAutoFailed;
   const scale = useSharedValue(1);
   const cardAnim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const [menuOpen, setMenuOpen] = useState(false);
   const canTapToUndo = isDone && !isReadOnly && !isCompleting;
-  const isDisabled = (isDone && !canTapToUndo) || isFailed || isPending || isCompleting || isReadOnly;
+  // A missed/auto-failed task can still be earned on the same day — tapping it
+  // reverses the penalty and awards the points. (Feedback #1: the card used to
+  // lock, leaving no way to mark it done.)
+  const canRecover = isFailed && !isReadOnly && !isCompleting;
+  const isDisabled = (isDone && !canTapToUndo) || (isFailed && !canRecover) || isPending || isCompleting || isReadOnly;
   const catColor = CATEGORY_COLORS[task.category] ?? colors.primary;
   const diffColor = task.difficulty === 'easy' ? colors.success : task.difficulty === 'medium' ? colors.warning : colors.danger;
+
+  function openEdit() {
+    setMenuOpen(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push({
+      pathname: '/app/task/create' as any,
+      params: {
+        taskId: task.id,
+        taskData: JSON.stringify({
+          title: task.title, description: task.description, category: task.category,
+          difficulty: task.difficulty, recurrence: task.recurrence, assignedTo: task.assignedTo,
+          rotation: task.rotation ?? null, scheduledDays: task.scheduledDays ?? null,
+          pointValue: task.pointValue, autoFailHour: task.autoFailHour, taskEmoji: task.taskEmoji,
+          requiresApproval: task.requiresApproval, requiresPhoto: task.requiresPhoto,
+        }),
+      },
+    });
+  }
+
+  // Gamified recurrence pill — a live stat, not a grey label.
+  const rec = task.recurrence;
+  const recPill = rec === 'daily'
+    ? { icon: '🔥', label: streak > 0 ? `${streak}` : 'Daily', color: colors.warning }
+    : rec === 'weekly'
+    ? { icon: '📅', label: 'Weekly', color: colors.primary }
+    : rec === 'monthly'
+    ? { icon: '🗓️', label: 'Monthly', color: catColor }
+    : { icon: '⚡', label: 'One-time', color: colors.info ?? catColor };
+
   return (
     <Animated.View style={cardAnim}>
       <Pressable
@@ -788,49 +951,21 @@ function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSiz
         onPress={() => {
           if (isDisabled) return;
           if (isDone && canTapToUndo) onUndo?.(task);
+          else if (canRecover) onRecover?.(task);
           else onComplete(task);
         }}
         onPressIn={() => { if (!isDisabled) scale.value = withSpring(0.97, { damping: 15 }); }}
         onPressOut={() => { scale.value = withSpring(1, { damping: 12 }); }}
-        onLongPress={() => {
-          if (!isParent) return;
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          router.push({
-            pathname: '/app/task/create' as any,
-            params: {
-              taskId: task.id,
-              taskData: JSON.stringify({
-                title: task.title,
-                description: task.description,
-                category: task.category,
-                difficulty: task.difficulty,
-                recurrence: task.recurrence,
-                assignedTo: task.assignedTo,
-                pointValue: task.pointValue,
-                autoFailHour: task.autoFailHour,
-                taskEmoji: task.taskEmoji,
-                requiresApproval: task.requiresApproval,
-              }),
-            },
-          });
-        }}
-        accessibilityLabel={`${task.title}, ${task.difficulty}, ${task.pointValue} points, ${isDone ? (canTapToUndo ? 'completed, tap to undo' : 'completed') : isFailed ? 'auto-failed' : 'tap to complete'}`}
+        // Long-press opens the parent action sheet (Edit / Delete) — keeps the
+        // card face a clean tap-to-complete bar, no pencil or "tap to undo" text.
+        onLongPress={() => { if (isParent && !isReadOnly) { Haptics.selectionAsync(); setMenuOpen(true); } }}
+        accessibilityLabel={`${task.title}, ${task.difficulty}, ${task.pointValue} points, ${isDone ? (canTapToUndo ? 'completed, double tap to undo' : 'completed') : isFailed ? 'auto-failed, tap to complete' : 'tap to complete'}`}
         accessibilityRole="button"
         accessibilityState={{ disabled: isDisabled, checked: isDone }}
       >
-        {isParent && !isDone && !isFailed && !isPending && (
-          <View style={[styles.editHint, { backgroundColor: colors.background + 'DD' }]} pointerEvents="none">
-            <Text style={[styles.editHintText, { color: colors.textMuted }]}>✎ hold to edit</Text>
-          </View>
-        )}
-        {canTapToUndo && (
-          <View style={[styles.editHint, { backgroundColor: colors.background + 'DD' }]} pointerEvents="none">
-            <Text style={[styles.editHintText, { color: colors.textMuted }]}>↩ tap to undo</Text>
-          </View>
-        )}
         <View style={styles.taskContent}>
           <View style={[styles.taskEmojiBubble, { backgroundColor: catColor + '22' }]}>
-            <Text style={styles.taskEmoji}>{detectTaskEmoji(task.title, task.category)}</Text>
+            <EmojiIcon emoji={resolveTaskEmoji(task)} size={30} />
           </View>
           <View style={styles.taskInfo}>
             <Text numberOfLines={1} style={[styles.taskTitle, { color: colors.text, fontSize: fontSize(FontSize.md) }, (isDone || isFailed) && { opacity: 0.55, textDecorationLine: 'line-through' }]}>{task.title}</Text>
@@ -839,11 +974,16 @@ function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSiz
                 <View style={[styles.diffDot, { backgroundColor: diffColor }]} />
                 <Text style={[styles.diffPillText, { color: diffColor }]}>{task.difficulty}</Text>
               </View>
-              <View style={[styles.recPill, { backgroundColor: colors.background }]}>
-                <Text style={[styles.recPillText, { color: colors.textMuted }]}>
-                  {task.recurrence === 'daily' ? '🔄 daily' : task.recurrence === 'weekly' ? '📅 weekly' : task.recurrence === 'monthly' ? '🗓️ monthly' : '1️⃣ once'}
-                </Text>
+              <View style={[styles.recPill, { backgroundColor: recPill.color + '1F' }]}>
+                <Text style={styles.recPillIcon}>{recPill.icon}</Text>
+                <Text style={[styles.recPillText, { color: recPill.color }]}>{recPill.label}</Text>
               </View>
+              {task.rotation?.memberIds?.length ? (
+                <View style={[styles.recPill, { backgroundColor: colors.accent + '1F' }]}>
+                  <Text style={styles.recPillIcon}>🔄</Text>
+                  <Text style={[styles.recPillText, { color: colors.accent }]}>Your turn</Text>
+                </View>
+              ) : null}
             </View>
           </View>
           <View style={styles.taskRight}>
@@ -860,9 +1000,44 @@ function AdultTaskCard({ task, onComplete, onUndo, isCompleting, colors, fontSiz
           </View>
         </View>
       </Pressable>
+
+      {/* Task actions sheet (Edit / Delete) — opened by the ✏️ button */}
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={taskMenuStyles.overlay} onPress={() => setMenuOpen(false)}>
+          <View style={[taskMenuStyles.sheet, { backgroundColor: colors.surface }]}>
+            <View style={taskMenuStyles.handle} />
+            <Text style={[taskMenuStyles.title, { color: colors.text }]} numberOfLines={1}>{task.title}</Text>
+            <TouchableOpacity style={taskMenuStyles.row} onPress={openEdit}>
+              <Text style={taskMenuStyles.rowIcon}>✏️</Text>
+              <Text style={[taskMenuStyles.rowText, { color: colors.text }]}>Edit task</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={taskMenuStyles.row}
+              onPress={() => { setMenuOpen(false); onDelete?.(task); }}
+            >
+              <Text style={taskMenuStyles.rowIcon}>🗑️</Text>
+              <Text style={[taskMenuStyles.rowText, { color: colors.danger }]}>Delete task</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[taskMenuStyles.row, taskMenuStyles.cancelRow, { borderTopColor: colors.border }]} onPress={() => setMenuOpen(false)}>
+              <Text style={[taskMenuStyles.rowText, { color: colors.textSecondary, textAlign: 'center', width: '100%' }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </Animated.View>
   );
 }
+
+const taskMenuStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.md, paddingBottom: 36 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#00000022', alignSelf: 'center', marginBottom: Spacing.sm },
+  title: { fontSize: FontSize.md, fontFamily: FontFamily.extraBold, textAlign: 'center', marginBottom: Spacing.sm },
+  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: 15, paddingHorizontal: Spacing.md },
+  rowIcon: { fontSize: 20 },
+  rowText: { fontSize: FontSize.md, fontFamily: FontFamily.bold },
+  cancelRow: { borderTopWidth: 1, marginTop: 6, justifyContent: 'center' },
+});
 
 // ── Profile tab bar — shown for any parent when there are other members ──────
 function ProfileTabBar({ members, self, activeId, onSelect, colors }: {
@@ -947,13 +1122,14 @@ const styles = StyleSheet.create({
   penaltyButtonText: { fontSize: 20, lineHeight: 24 },
   mascotSection: { alignItems: 'center', paddingVertical: Spacing.md },
   // Hero card — unified gradient stats panel
-  hero: { marginHorizontal: Spacing.lg, marginTop: Spacing.sm, marginBottom: Spacing.sm, borderRadius: BorderRadius.xl ?? BorderRadius.lg, padding: Spacing.lg },
+  hero: { marginHorizontal: Spacing.lg, marginTop: Spacing.sm, marginBottom: Spacing.sm, borderRadius: BorderRadius.xl ?? BorderRadius.lg, padding: Spacing.md },
   heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   heroPointsBlock: { flex: 1 },
   heroPointsRow: { flexDirection: 'row', alignItems: 'baseline' },
-  heroPointsNum: { fontFamily: FontFamily.black ?? FontFamily.extraBold, fontSize: 40, color: '#FFFFFF', lineHeight: 44 },
+  heroPointsNum: { fontFamily: FontFamily.black ?? FontFamily.extraBold, fontSize: 34, color: '#FFFFFF', lineHeight: 38 },
   heroPointsUnit: { fontFamily: FontFamily.extraBold, fontSize: FontSize.lg, color: 'rgba(255,255,255,0.85)', marginLeft: 6 },
   heroPointsLabel: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: 'rgba(255,255,255,0.85)', marginTop: -2 },
+  heroPointsSub: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: 'rgba(255,255,255,0.75)', marginTop: 3 },
   heroTodayChip: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, minWidth: 66 },
   heroTodayNum: { fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, color: '#FFFFFF' },
   heroTodayLabel: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
@@ -961,7 +1137,7 @@ const styles = StyleSheet.create({
   heroBarTrack: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.25)' },
   heroBarFill: { height: '100%', borderRadius: 4 },
   heroBarPct: { fontFamily: FontFamily.extraBold, fontSize: FontSize.xs, color: '#FFFFFF', minWidth: 34, textAlign: 'right' },
-  heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginVertical: Spacing.md },
+  heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginVertical: Spacing.sm },
   heroLevelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   heroLevelEmoji: { fontSize: 26 },
   heroLevelInfo: { flex: 1 },
@@ -985,8 +1161,9 @@ const styles = StyleSheet.create({
   diffPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.full },
   diffDot: { width: 6, height: 6, borderRadius: 3 },
   diffPillText: { fontSize: FontSize.xs, fontFamily: FontFamily.extraBold, textTransform: 'capitalize' },
-  recPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.full },
-  recPillText: { fontSize: 10, fontFamily: FontFamily.bold, textTransform: 'capitalize' },
+  recPill: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 9, paddingVertical: 3, borderRadius: BorderRadius.full },
+  recPillIcon: { fontSize: 11 },
+  recPillText: { fontSize: 11, fontFamily: FontFamily.extraBold },
   taskRight: { marginLeft: Spacing.sm, alignItems: 'center', minWidth: 56 },
   rewardChip: { borderRadius: BorderRadius.full, paddingHorizontal: 14, paddingVertical: 7, alignItems: 'center', minWidth: 52 },
   rewardChipText: { fontFamily: FontFamily.black, fontSize: FontSize.md, color: '#FFFFFF', lineHeight: 20 },
@@ -1002,6 +1179,8 @@ const styles = StyleSheet.create({
   undoBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: '#FFF' },
   // Missed-task catch-up card
   catchUpCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: BorderRadius.lg, borderWidth: 1.5, padding: Spacing.md },
+  kidModeCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: BorderRadius.lg, borderWidth: 1.5, padding: Spacing.md },
+  kidModeAvatars: { flexDirection: 'row', alignItems: 'center' },
   catchUpTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md },
   catchUpSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, marginTop: 2 },
   // Today's Tasks section header
@@ -1009,8 +1188,13 @@ const styles = StyleSheet.create({
   tasksHeaderTitle: { fontFamily: FontFamily.black, fontSize: FontSize.xl },
   tasksCountChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: BorderRadius.full },
   tasksCountText: { fontFamily: FontFamily.extraBold, fontSize: FontSize.xs },
-  // Edit hint (long press)
-  editHint: { position: 'absolute', top: 4, right: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  editHintText: { fontSize: 8, fontFamily: FontFamily.regular },
+  // Action hint — anchored BOTTOM-RIGHT: the emptiest corner of the card. Clear
+  // of the right-side +pts chip / ✓ / ✗ (which are vertically centred) AND clear
+  // of the title + difficulty/recurrence pills on the left (feedback #5 — the
+  // hint used to sit behind the chip; top-left then clipped the title's 1st char).
+  editHint: { position: 'absolute', bottom: 3, right: 8, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5, zIndex: 5 },
+  editHintText: { fontSize: 9.5, fontFamily: FontFamily.semiBold },
+  editBtn: { position: 'absolute', top: 6, right: 6, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', zIndex: 6 },
+  editBtnText: { fontSize: 14 },
 });
 

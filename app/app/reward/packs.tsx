@@ -14,6 +14,7 @@ import { REWARD_PACKS } from '@/constants/rewardPacks';
 import type { PackReward } from '@/constants/rewardPacks';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 
 const key = (packId: string, i: number) => `${packId}:${i}`;
 
@@ -65,13 +66,7 @@ export default function RewardPacksScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={[styles.back, { color: colors.primary }]}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Reward Packs</Text>
-        <View style={{ width: 56 }} />
-      </View>
+      <ScreenHeader variant="modal" title="Reward Packs" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Text style={[styles.intro, { color: colors.textSecondary }]}>

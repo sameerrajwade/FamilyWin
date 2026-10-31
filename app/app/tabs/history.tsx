@@ -11,6 +11,8 @@ import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/c
 import { Avatar } from '@/components/ui';
 import { BrandBar } from '@/components/ui/Brand';
 import { useTheme } from '@/lib/theme';
+import { router } from 'expo-router';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import type { TransactionDoc } from '@/lib/firebase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -37,7 +39,11 @@ export default function HistoryScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('mine');
   const [totalPoints, setTotalPoints] = useState(0);
   const [thisWeekPoints, setThisWeekPoints] = useState(0);
+  const [tasksThisWeek, setTasksThisWeek] = useState(0);
   const [insights, setInsights] = useState<InsightCard[]>([]);
+  // Recent Activity is capped to a short list by default so it doesn't scroll
+  // forever; "See all" expands it to the full loaded window.
+  const [showAllActivity, setShowAllActivity] = useState(false);
 
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
   const { colors } = useTheme();
@@ -46,10 +52,13 @@ export default function HistoryScreen() {
     if (!member?.id || !family?.id) return;
     try {
       // Note: Avoid orderBy+where composite queries (require Firestore index).
-      // Fetch without orderBy and sort client-side instead.
+      // Fetch without orderBy and sort client-side instead. Limit is generous
+      // (500) so the This-Week and 6-week SUMS below are computed from the full
+      // window, not a truncated slice — the old limit(100)→slice(50) quietly
+      // made those totals wrong for an active family.
       const baseQuery = viewMode === 'mine'
-        ? Col.transactions(family.id).where('memberId', '==', member.id).limit(100)
-        : Col.transactions(family.id).limit(100);
+        ? Col.transactions(family.id).where('memberId', '==', member.id).limit(500)
+        : Col.transactions(family.id).limit(500);
 
       const snap = await baseQuery.get();
       const txList = snap.docs
@@ -58,18 +67,24 @@ export default function HistoryScreen() {
           const aT = (a.createdAt as any)?.toDate?.()?.getTime?.() ?? 0;
           const bT = (b.createdAt as any)?.toDate?.()?.getTime?.() ?? 0;
           return bT - aT;
-        })
-        .slice(0, 50);
+        });
       setTransactions(txList);
 
       const total = txList.reduce((sum: number, tx: TransactionDoc) => sum + tx.delta, 0);
       setTotalPoints(total);
 
-      const { start: weekStart } = getCurrentWeekRange();
+      const { start: weekStart } = getCurrentWeekRange(family.weekStartDay ?? 1);
       const thisWeek = txList
         .filter((tx: TransactionDoc) => tx.createdAt?.toDate() >= weekStart)
         .reduce((sum: number, tx: TransactionDoc) => sum + tx.delta, 0);
       setThisWeekPoints(thisWeek);
+
+      // Tasks actually completed this week — a real momentum number, unlike the
+      // old "Events" tile (which just counted rows in a capped list).
+      const doneThisWeek = txList.filter(
+        (tx: TransactionDoc) => tx.source === 'task' && tx.delta > 0 && (tx.createdAt?.toDate() ?? new Date(0)) >= weekStart,
+      ).length;
+      setTasksThisWeek(doneThisWeek);
 
       // Build 6-week chart
       const weeks: { week: string; points: number }[] = [];
@@ -170,7 +185,8 @@ export default function HistoryScreen() {
       <BrandBar />
       <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}>
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Insights</Text>
+          {/* Tab name intentionally omitted — bottom "Insights" tab identifies it. */}
+          <View style={{ flex: 1 }} />
           {isParent && (
             <View style={[styles.toggleRow, { backgroundColor: colors.border }]}>
               <TouchableOpacity style={[styles.toggleBtn, viewMode === 'mine' && { backgroundColor: colors.primary }]} onPress={() => setViewMode('mine')}>
@@ -182,6 +198,24 @@ export default function HistoryScreen() {
             </View>
           )}
         </View>
+
+        {/* Bet 2 — the parent's weekly payoff, one tap from Insights. */}
+        {isParent && (
+          <TouchableOpacity
+            style={[styles.reportCard, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '44' }]}
+            onPress={() => router.push('/app/report' as any)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Open your family's weekly report"
+          >
+            <EmojiIcon emoji="🏆" size={34} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.reportTitle, { color: colors.text }]}>Your family’s week</Text>
+              <Text style={[styles.reportSub, { color: colors.textSecondary }]}>Chores handled, time saved, and who to cheer on.</Text>
+            </View>
+            <Text style={[styles.reportChevron, { color: colors.textMuted }]}>›</Text>
+          </TouchableOpacity>
+        )}
 
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: Spacing.xxl }} />
@@ -195,18 +229,23 @@ export default function HistoryScreen() {
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>All Time</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={styles.statEmoji}>📅</Text>
+                <Text style={styles.statEmoji}>📊</Text>
                 <Text style={[styles.statValue, { color: thisWeekPoints >= 0 ? colors.success : colors.danger }]}>
                   {thisWeekPoints >= 0 ? '+' : ''}{formatPoints(thisWeekPoints)}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>This Week</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Net This Week</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={styles.statEmoji}>📝</Text>
-                <Text style={[styles.statValue, { color: colors.text }]}>{transactions.length}</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Events</Text>
+                <Text style={styles.statEmoji}>✅</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{tasksThisWeek}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Tasks Done</Text>
               </View>
             </View>
+            {/* One-line explainer — the #1 source of "why is this number different
+                from Home?" confusion. Net = earned − penalties − reward spending. */}
+            <Text style={[styles.kpiCaption, { color: colors.textMuted }]}>
+              Net This Week = points earned minus penalties and reward spending — not the same as the “earned this week” on Home.
+            </Text>
 
             {/* ONE lead highlight instead of a 3-card strip — the single most
                 relevant plain-language insight, full-width so the screen reads
@@ -288,7 +327,22 @@ export default function HistoryScreen() {
                   <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Complete tasks to start earning points!</Text>
                 </View>
               ) : (
-                transactions.map((tx) => <TransactionRow key={tx.id} tx={tx} showMember={viewMode === 'family'} colors={colors} members={members} />)
+                <>
+                  {(showAllActivity ? transactions : transactions.slice(0, 5)).map((tx) => (
+                    <TransactionRow key={tx.id} tx={tx} showMember={viewMode === 'family'} colors={colors} members={members} />
+                  ))}
+                  {transactions.length > 5 && (
+                    <TouchableOpacity
+                      style={[styles.seeAllBtn, { borderColor: colors.border }]}
+                      onPress={() => setShowAllActivity((v) => !v)}
+                      accessibilityRole="button"
+                    >
+                      <Text style={[styles.seeAllText, { color: colors.primary }]}>
+                        {showAllActivity ? 'Show less' : `See all ${transactions.length} activities`}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
             </View>
           </>
@@ -348,7 +402,14 @@ const styles = StyleSheet.create({
   toggleRow: { flexDirection: 'row', borderRadius: 20, padding: 2 },
   toggleBtn: { paddingHorizontal: Spacing.md, paddingVertical: 6, borderRadius: 20 },
   toggleText: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold },
-  statsRow: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md },
+  statsRow: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.sm },
+  reportCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginHorizontal: Spacing.lg, marginBottom: Spacing.md, borderRadius: BorderRadius.lg, borderWidth: 1.5, padding: Spacing.md },
+  reportTitle: { fontSize: FontSize.md, fontFamily: FontFamily.extraBold },
+  reportSub: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, marginTop: 2 },
+  reportChevron: { fontSize: 28, fontFamily: FontFamily.bold },
+  kpiCaption: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md, lineHeight: 15 },
+  seeAllBtn: { borderWidth: 1.5, borderRadius: BorderRadius.md, paddingVertical: 11, alignItems: 'center', marginTop: 2 },
+  seeAllText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
   statCard: { flex: 1, borderRadius: BorderRadius.lg, padding: Spacing.md, alignItems: 'center', borderWidth: 1, ...Shadow.sm },
   statEmoji: { fontSize: 24, marginBottom: 4 },
   statValue: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold },

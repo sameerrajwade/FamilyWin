@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Legacy (pre-Android-12) splash: purple brand background with the centered
+     Lootboard chest. Android 12+ uses values-v31/styles.xml instead. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/iconBackground"/>
+    <item android:drawable="@drawable/splashscreen_logo" android:gravity="center"/>
+</layer-list>

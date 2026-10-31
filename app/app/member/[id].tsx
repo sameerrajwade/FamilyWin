@@ -7,11 +7,14 @@ import { firestore } from '@/lib/fb';
 import * as ImagePicker from 'expo-image-picker';
 import { pickPhotoUri } from '@/lib/photoPicker';
 import * as Haptics from 'expo-haptics';
-import { Col, getCurrentWeekId, getWeekStart, uploadMemberPhoto, removeMemberPhoto, setMemberWeeklyGoal } from '@/lib/firebase';
+import { Col, getCurrentWeekId, getWeekStart, uploadMemberPhoto, removeMemberPhoto, setMemberWeeklyGoal, setMemberPenaltyPause, resetMemberPoints, PAUSE_INDEFINITE } from '@/lib/firebase';
 import { useAuthStore } from '@/store';
 import { getCompletionRate, getRankEmoji, calculateStreak, getCurrentWeekRange, getLevel } from '@/lib/pointsEngine';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Avatar } from '@/components/ui';
+import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
 import type { MemberDoc, TransactionDoc, CompletionDoc } from '@/lib/firebase';
 
 export default function MemberProfileScreen() {
@@ -28,8 +31,11 @@ export default function MemberProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [shareData, setShareData] = useState<ShareCardData | null>(null);
   const [goalInput, setGoalInput] = useState('');
   const [savingGoal, setSavingGoal] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [showAllActivity, setShowAllActivity] = useState(false);
   // Guards against the picker being launched multiple times concurrently —
   // tapping repeatedly while the (slow-to-appear) picker is opening used to
   // queue up several launches that all surfaced later, stacked on top of
@@ -186,11 +192,98 @@ export default function MemberProfileScreen() {
     }
   }
 
+  async function handleSetMemberPause(until: Date | null) {
+    if (!family?.id || !id) return;
+    await Haptics.selectionAsync().catch(() => {});
+    setMember((prev) => (prev ? ({ ...prev, penaltyPausedUntil: until ? firestore.Timestamp.fromDate(until) : null } as any) : prev));
+    try {
+      await setMemberPenaltyPause(family.id, id, until);
+    } catch {
+      Alert.alert('Error', 'Could not update the pause. Please try again.');
+    }
+  }
+
+  function handleResetPoints() {
+    if (!family?.id || !id) return;
+    const first = member?.displayName?.split(' ')[0] ?? 'this member';
+    Alert.alert(
+      'Reset points?',
+      `This sets ${first}'s all-time points to zero. It can't be undone. Their score for the current week isn't affected.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset to 0', style: 'destructive',
+          onPress: async () => {
+            try {
+              setBusy(true);
+              // Stamp the balancing tx just before this week starts → zeroes the
+              // all-time bank without touching the current week's competition.
+              const { start } = getCurrentWeekRange(family?.weekStartDay ?? 1);
+              await resetMemberPoints(family.id, id, new Date(start.getTime() - 1000));
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+              setAllTimePoints(0);
+              Alert.alert('Done', `${first}'s points were reset to zero.`);
+            } catch {
+              Alert.alert('Error', 'Could not reset points. Please try again.');
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  const memberPausedUntil = (member as any)?.penaltyPausedUntil?.toDate?.() ?? null;
+  const isMemberPaused = !!memberPausedUntil && memberPausedUntil.getTime() > Date.now();
+  const memberPauseIndef = !!memberPausedUntil && memberPausedUntil.getFullYear() >= 2900;
+  const memberPauseLabel = memberPauseIndef
+    ? 'until you resume'
+    : memberPausedUntil ? `until ${memberPausedUntil.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : '';
+
   const weekId = getCurrentWeekId();
   const thisWeekCompletions = completions.filter((c) => c.weekId === weekId);
   const completed = thisWeekCompletions.filter((c) => !c.wasAutoFailed).length;
   const failed = thisWeekCompletions.filter((c) => c.wasAutoFailed).length;
   const completionRate = getCompletionRate(completed, thisWeekCompletions.length);
+
+  // ── Share cards (Phase 2): recap / streak / level, built from this profile ──
+  const firstName = (member?.displayName ?? 'They').split(' ')[0];
+  function shareRecap() {
+    setShareData({
+      icon: 'coin',
+      eyebrow: 'MY WEEK ON LOOTBOARD',
+      title: `${firstName}'s week`,
+      subtitle: 'Chores done, points earned.',
+      stats: [
+        { value: `${weeklyPoints >= 0 ? '+' : ''}${weeklyPoints}`, label: 'this week' },
+        { value: `${completionRate}%`, label: 'done' },
+        ...(streak > 0 ? [{ value: `${streak}`, label: 'day streak' }] : []),
+      ],
+      shareMessage: `${firstName} earned ${weeklyPoints} points this week on Lootboard! 🏆`,
+    });
+  }
+  function shareStreak() {
+    setShareData({
+      icon: 'medal',
+      eyebrow: 'ON A ROLL',
+      title: `${firstName} is on a ${streak}-day streak!`,
+      subtitle: 'One task at a time.',
+      stats: [{ value: `${streak}`, label: 'days in a row' }],
+      shareMessage: `${firstName} is on a ${streak}-day streak on Lootboard! 🔥`,
+    });
+  }
+  function shareLevel() {
+    const lv = getLevel(allTimePoints);
+    setShareData({
+      icon: 'shield',
+      eyebrow: 'LEVEL UP',
+      title: `${firstName} reached Level ${lv.level}!`,
+      subtitle: lv.title,
+      stats: [{ value: `${allTimePoints}`, label: 'all-time pts' }],
+      shareMessage: `${firstName} just hit Level ${lv.level} (${lv.title}) on Lootboard! ⭐`,
+    });
+  }
 
   // Nested so these presentational helpers capture the themed `styles`.
   function StatBox({ label, value, color, emoji }: { label: string; value: string; color: string; emoji: string }) {
@@ -215,11 +308,13 @@ export default function MemberProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader
+          right={!isLoading ? (
+            <TouchableOpacity onPress={shareRecap} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel="Share this week">
+              <Text style={[styles.backText, { color: colors.primary }]}>Share ↗</Text>
+            </TouchableOpacity>
+          ) : undefined}
+        />
 
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: Spacing.xxl }} />
@@ -231,13 +326,7 @@ export default function MemberProfileScreen() {
                 onPress={canEditPhoto ? handleChangePhoto : undefined}
                 style={styles.avatarWrap}
               >
-                {member?.photoURL ? (
-                  <Image source={{ uri: member.photoURL }} style={styles.avatarImage} />
-                ) : (
-                  <View style={styles.avatarEmojiWrap}>
-                    <Text style={styles.heroEmoji}>{member?.avatarEmoji}</Text>
-                  </View>
-                )}
+                <Avatar emoji={member?.avatarEmoji} photoURL={member?.photoURL} size={96} showRing ringColor={colors.primary} />
                 {canEditPhoto && (
                   <View style={styles.editBadge}>
                     {isUploadingPhoto ? (
@@ -257,7 +346,7 @@ export default function MemberProfileScreen() {
               {(() => {
                 const lv = getLevel(allTimePoints);
                 return (
-                  <View style={styles.levelCard}>
+                  <TouchableOpacity style={styles.levelCard} activeOpacity={0.85} onPress={shareLevel} accessibilityRole="button" accessibilityLabel={`Share level ${lv.level}`}>
                     <View style={styles.levelTop}>
                       <Text style={styles.levelTitle}>{lv.emoji} Lv {lv.level} · {lv.title}</Text>
                       <Text style={styles.levelPts}>
@@ -267,14 +356,14 @@ export default function MemberProfileScreen() {
                     <View style={styles.levelTrack}>
                       <View style={[styles.levelFill, { width: `${Math.round(lv.progress * 100)}%` }]} />
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })()}
 
               {streak > 0 && (
-                <View style={styles.streakBadge}>
+                <TouchableOpacity style={styles.streakBadge} activeOpacity={0.85} onPress={shareStreak} accessibilityRole="button" accessibilityLabel={`Share ${streak} day streak`}>
                   <Text style={styles.streakText}>🔥 {streak} day streak</Text>
-                </View>
+                </TouchableOpacity>
               )}
             </View>
 
@@ -333,6 +422,56 @@ export default function MemberProfileScreen() {
               </View>
             )}
 
+            {/* Per-member vacation/sick pause — parents only, any member */}
+            {canEditPhoto && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Pause penalties</Text>
+                <Text style={styles.adjustHint}>
+                  Hold missed-task penalties for {member?.displayName?.split(' ')[0] ?? 'this member'} during a vacation or sick day. They can still earn as normal.
+                </Text>
+                {isMemberPaused ? (
+                  <View style={styles.pauseRow}>
+                    <View style={styles.pausedBadge}>
+                      <Text style={styles.pausedBadgeText}>⏸ Paused {memberPauseLabel}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.resumeBtn} onPress={() => handleSetMemberPause(null)} accessibilityRole="button" accessibilityLabel="Resume penalties now">
+                      <Text style={styles.resumeBtnText}>Resume</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.pauseRow}>
+                    {[{ label: '3 days', days: 3 }, { label: '1 week', days: 7 }].map((o) => (
+                      <TouchableOpacity key={o.label} style={styles.pauseChip} onPress={() => handleSetMemberPause(new Date(Date.now() + o.days * 86400000))} accessibilityRole="button" accessibilityLabel={`Pause for ${o.label}`}>
+                        <Text style={styles.pauseChipText}>{o.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity style={styles.pauseChip} onPress={() => handleSetMemberPause(PAUSE_INDEFINITE)} accessibilityRole="button" accessibilityLabel="Pause until I resume">
+                      <Text style={styles.pauseChipText}>Until I resume</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Reset points — any parent, on any profile INCLUDING their own
+                (destructive). Gated on canEditPhoto (parent) rather than
+                canAdjustPoints so a parent can reset their OWN messed-up bank. */}
+            {canEditPhoto && (
+              <View style={styles.section}>
+                <TouchableOpacity
+                  style={styles.resetBtn}
+                  onPress={handleResetPoints}
+                  disabled={busy}
+                  accessibilityLabel={`Reset ${member?.displayName}'s points to zero`}
+                  accessibilityRole="button"
+                  activeOpacity={0.85}
+                >
+                  {busy ? <ActivityIndicator color={colors.danger} /> : <Text style={styles.resetBtnText}>↺  Reset points to zero</Text>}
+                </TouchableOpacity>
+                <Text style={styles.adjustHint}>Start fresh — clears the all-time bank. Can't be undone.</Text>
+              </View>
+            )}
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>This Week</Text>
               <View style={styles.weekCard}>
@@ -346,7 +485,7 @@ export default function MemberProfileScreen() {
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recent Activity</Text>
-              {transactions.slice(0, 10).map((tx) => (
+              {(showAllActivity ? transactions : transactions.slice(0, 5)).map((tx) => (
                 <View key={tx.id} style={styles.txRow}>
                   <View style={[styles.txDot, { backgroundColor: tx.delta >= 0 ? colors.success : colors.danger }]} />
                   <View style={styles.txInfo}>
@@ -358,6 +497,11 @@ export default function MemberProfileScreen() {
                   </Text>
                 </View>
               ))}
+              {transactions.length > 5 && (
+                <TouchableOpacity style={styles.seeAllBtn} onPress={() => setShowAllActivity((v) => !v)} accessibilityRole="button">
+                  <Text style={styles.seeAllText}>{showAllActivity ? 'Show less' : `See all ${transactions.length} activities`}</Text>
+                </TouchableOpacity>
+              )}
               {transactions.length === 0 && (
                 <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: Spacing.lg }}>No activity yet</Text>
               )}
@@ -365,6 +509,9 @@ export default function MemberProfileScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Branded share cards (recap / streak / level) */}
+      <ShareCardModal visible={!!shareData} data={shareData} onClose={() => setShareData(null)} />
 
       {/* Weekly goal setter */}
       {showGoalModal && (
@@ -466,6 +613,15 @@ function createStyles(colors: ThemeColors) {
   adjustBtn: { backgroundColor: colors.surface, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: colors.primary + '55', ...Shadow.sm },
   adjustBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.primary },
   adjustHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textMuted, textAlign: 'center', marginTop: 6 },
+  pauseRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: Spacing.sm, alignItems: 'center' },
+  pauseChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: BorderRadius.md, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center' },
+  pauseChipText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.text },
+  pausedBadge: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: BorderRadius.md, borderWidth: 1.5, borderColor: colors.warning + '66', backgroundColor: colors.warning + '1E' },
+  pausedBadgeText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.warning },
+  resumeBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: BorderRadius.md, backgroundColor: colors.primary },
+  resumeBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFF' },
+  resetBtn: { backgroundColor: colors.surface, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: colors.danger + '55', ...Shadow.sm },
+  resetBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.danger },
   // Weekly goal
   goalCard: { backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, borderWidth: 1.5, borderColor: colors.primary + '33', ...Shadow.sm },
   goalCardMet: { borderColor: colors.gold + '88', backgroundColor: colors.gold + '12' },
@@ -503,5 +659,7 @@ function createStyles(colors: ThemeColors) {
   txReason: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.text },
   txDate: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 },
   txDelta: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold, minWidth: 44, textAlign: 'right' },
+  seeAllBtn: { borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md, paddingVertical: 11, alignItems: 'center', marginTop: 2 },
+  seeAllText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary },
   });
 }

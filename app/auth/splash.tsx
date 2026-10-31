@@ -13,11 +13,14 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { ChestMark } from '@/components/ui/BrandIcons';
 
 const { width: W } = Dimensions.get('window');
 
 interface Slide {
   emoji: string;
+  /** First slide: render the Lootboard chest mark instead of an emoji. */
+  brand?: boolean;
   title: string;
   subtitle: string;
   bg: string;
@@ -28,6 +31,7 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     emoji: '🏆',
+    brand: true,
     title: 'Welcome to\nLootboard!',
     subtitle: 'Turn everyday tasks into an epic weekly showdown',
     bg: '#6C63FF',
@@ -163,7 +167,13 @@ function SlideView({ slide, isActive }: { slide: Slide; isActive: boolean }) {
 
   return (
     <View style={styles.slide}>
-      <Animated.Text style={[styles.slideEmoji, emojiStyle]}>{slide.emoji}</Animated.Text>
+      {slide.brand ? (
+        <Animated.View style={[styles.slideBrand, emojiStyle]}>
+          <ChestMark size={132} />
+        </Animated.View>
+      ) : (
+        <Animated.Text style={[styles.slideEmoji, emojiStyle]}>{slide.emoji}</Animated.Text>
+      )}
       <Text style={styles.slideTitle}>{slide.title}</Text>
       <Text style={styles.slideSubtitle}>{slide.subtitle}</Text>
 
@@ -198,6 +208,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   slideEmoji: { fontSize: 100, marginBottom: Spacing.xl },
+  slideBrand: { marginBottom: Spacing.xl },
   slideTitle: {
     fontSize: 36,
     fontFamily: FontFamily.black,

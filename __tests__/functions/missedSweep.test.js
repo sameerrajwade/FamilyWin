@@ -54,6 +54,23 @@ describe('sweep helpers — timezone correctness', () => {
     expect(sweep.weekIdForKey('2026-08-15')).toMatch(/^2026-W\d{2}$/);
   });
 
+  it('localParts returns the local calendar day AND hour per timezone', () => {
+    // NOW = 03:00 UTC
+    expect(sweep.localParts(NOW, 'UTC')).toEqual({ dateKey: '2026-08-16', hour: 3 });
+    // UTC-7 (PDT) → previous day, 20:00
+    expect(sweep.localParts(NOW, 'America/Los_Angeles')).toEqual({ dateKey: '2026-08-15', hour: 20 });
+    // UTC+5:30 → same day, 08:00
+    expect(sweep.localParts(NOW, 'Asia/Kolkata')).toEqual({ dateKey: '2026-08-16', hour: 8 });
+  });
+
+  it('resolveDeadlineHour clamps + defaults to 9 PM', () => {
+    expect(sweep.resolveDeadlineHour({ missedTaskDeadlineHour: 20 })).toBe(20);
+    expect(sweep.resolveDeadlineHour({ missedTaskDeadlineHour: 0 })).toBe(0);
+    expect(sweep.resolveDeadlineHour({})).toBe(21);          // default
+    expect(sweep.resolveDeadlineHour({ missedTaskDeadlineHour: 99 })).toBe(21); // out of range → default
+    expect(sweep.resolveDeadlineHour(null)).toBe(21);
+  });
+
   it('isDailyAssignedTo only matches active daily tasks assigned to the member', () => {
     expect(sweep.isDailyAssignedTo({ recurrence: 'daily', assignedTo: 'm1' }, 'm1')).toBe(true);
     expect(sweep.isDailyAssignedTo({ recurrence: 'daily', assignedTo: ['m1', 'm2'] }, 'm2')).toBe(true);
@@ -140,6 +157,46 @@ describe('runMissedTaskSweep — against the emulator', () => {
     expect(res.penaltiesWritten).toBe(0);
     const after = (await compCol().get()).size;
     expect(after).toBe(before);
+  });
+});
+
+describe('runMissedTaskSweep — deadline + timezone fallback', () => {
+  const FAM = 'sweepDeadline';
+  const famRef = db.collection('families').doc(FAM);
+  const compCol = () => famRef.collection('completions');
+  const CREATED = Timestamp.fromDate(new Date('2026-08-01T00:00:00Z'));
+
+  beforeAll(async () => {
+    // Deadline 9 PM (default). m1 has a UTC config; m3 has NO config → must fall
+    // back to the family's known timezone (UTC), not skip and not crash.
+    await famRef.set({ name: 'Deadline Family', missedTaskPenalty: 'full' });
+    await famRef.collection('members').doc('m1').set({ displayName: 'Alex' });
+    await famRef.collection('members').doc('m3').set({ displayName: 'Robin' });
+    await famRef.collection('notificationConfigs').doc('m1').set({ timezone: 'UTC' });
+    // NOTE: no notificationConfigs doc for m3 (mirrors a managed child with none).
+    await famRef.collection('tasks').doc('d1').set({
+      title: 'Read', pointValue: 10, recurrence: 'daily', isActive: true, assignedTo: 'm1', createdAt: CREATED,
+    });
+    await famRef.collection('tasks').doc('d3').set({
+      title: 'Tidy', pointValue: 10, recurrence: 'daily', isActive: true, assignedTo: 'm3', createdAt: CREATED,
+    });
+  });
+
+  it('does NOT penalize today before the deadline hour, but DOES after it', async () => {
+    // 10 AM UTC — before the 9 PM deadline → today (08-20) must be untouched.
+    await sweep.runMissedTaskSweep(db, new Date('2026-08-20T10:00:00Z'));
+    expect((await compCol().doc('miss__d1__m1__2026-08-20').get()).exists).toBe(false);
+
+    // 10 PM UTC — deadline passed → today (08-20) now penalized.
+    await sweep.runMissedTaskSweep(db, new Date('2026-08-20T22:00:00Z'));
+    expect((await compCol().doc('miss__d1__m1__2026-08-20').get()).exists).toBe(true);
+  });
+
+  it('penalizes a member with no timezone config via the family fallback', async () => {
+    // m3 has no config; the family has m1@UTC → fallback UTC. At 10 PM UTC the
+    // 08-20 deadline has passed, so m3 is penalized too (proves no skip/crash).
+    await sweep.runMissedTaskSweep(db, new Date('2026-08-20T22:00:00Z'));
+    expect((await compCol().doc('miss__d3__m3__2026-08-20').get()).exists).toBe(true);
   });
 });
 

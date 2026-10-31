@@ -10,10 +10,13 @@ import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients 
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { BrandBar } from '@/components/ui/Brand';
+import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/lib/theme';
-import { SlideIn, CountUp, ScalePress, RankChangeBadge } from '@/components/ui/Animations';
+import { SlideIn, CountUp, RankChangeBadge } from '@/components/ui/Animations';
 import type { LeaderboardEntry, CrownSlot } from '@/lib/pointsEngine';
+import { competitors, coaches } from '@/lib/familyGame';
+import { FamilyGoalCard } from '@/components/ui/FamilyGoal';
 
 export default function LeaderboardScreen() {
   const { member: currentMember, family } = useAuthStore();
@@ -25,7 +28,10 @@ export default function LeaderboardScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [personalBest, setPersonalBest] = useState<number>(0);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [coachRows, setCoachRows] = useState<{ id: string; name: string; avatarEmoji?: string; photoURL?: string; points: number }[]>([]);
   const { colors, isDark } = useTheme();
+  const iAmPlayer = competitors(members as any[]).some((m: any) => m.id === currentMember?.id);
 
   const weekId = getCurrentWeekId();
   const { start } = getCurrentWeekRange(family?.weekStartDay ?? 1);
@@ -34,8 +40,9 @@ export default function LeaderboardScreen() {
   const loadLeaderboard = useCallback(async () => {
     if (!family?.id || !currentMember?.id) return;
     try {
-      const membersList = await getFamilyMembers(family.id);
-      setMembers(membersList as any);
+      // Prefer the shared members cache (Phase 4 read-min); only fetch if the
+      // store is still cold (first paint before the listener populated it).
+      const membersList = members.length > 0 ? members : await getFamilyMembers(family.id);
 
       const weekStart = new Date(start);
       const txSnap = await Col.transactions(family.id)
@@ -60,8 +67,15 @@ export default function LeaderboardScreen() {
         if (!c.wasAutoFailed) taskStats[c.memberId].completed++;
       }
 
-      const board = buildLeaderboard(totals, membersList as any, currentMember.id, taskStats, {});
+      // Bet 3: kids are the players — parents coach (their points still count
+      // toward the family co-op goal, shown in the Coaches strip below).
+      const players = competitors(membersList as any[]);
+      const board = buildLeaderboard(totals, players as any, currentMember.id, taskStats, {});
       setLeaderboard(board);
+      setCoachRows(coaches(membersList as any[]).map((m: any) => ({
+        id: m.id, name: (m.displayName ?? '').split(' ')[0], avatarEmoji: m.avatarEmoji, photoURL: m.photoURL,
+        points: totals[m.id] ?? 0,
+      })));
 
       // Three-crowns row: needs LAST week's earned totals (for "most improved")
       // and any per-member weekly goals (for "goal crusher"). Both degrade
@@ -85,8 +99,10 @@ export default function LeaderboardScreen() {
       }
       setCrowns(computeCrowns(board, lastWeekTotals, goals));
 
-      // Last week's champion (for the Winner Board entry banner). Highest positive total.
-      const lwTop = Object.entries(lastWeekTotals).sort((a, b) => b[1] - a[1])[0];
+      // Last week's champion (for the Winner Board entry banner). Highest
+      // positive total among the PLAYERS (a coach never "wins the week").
+      const playerIds = new Set(players.map((p: any) => p.id));
+      const lwTop = Object.entries(lastWeekTotals).filter(([id]) => playerIds.has(id)).sort((a, b) => b[1] - a[1])[0];
       if (lwTop && lwTop[1] > 0) {
         const champ = (membersList as any[]).find((m) => m.id === lwTop[0]);
         setLastWeekChampion(champ ? champ.displayName.split(' ')[0] : null);
@@ -104,7 +120,9 @@ export default function LeaderboardScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [family?.id, currentMember?.id, weekId]);
+    // `members` is in deps so a rebuild uses the shared cache once it populates
+    // (onSnapshot only changes its identity when members actually change).
+  }, [family?.id, currentMember?.id, weekId, members]);
 
   useEffect(() => {
     loadLeaderboard();
@@ -129,6 +147,22 @@ export default function LeaderboardScreen() {
 
   const topThree = leaderboard.slice(0, 3);
 
+  // Share the CURRENT week's standings (available any time, not just at week-end).
+  const leader = leaderboard[0];
+  const canShareStandings = leaderboard.length >= 2 && (leader?.points ?? 0) > 0;
+  const leaderIsMe = leader?.memberId === currentMember?.id;
+  const standingsCard: ShareCardData | null = canShareStandings ? {
+    icon: 'podium',
+    eyebrow: 'THIS WEEK',
+    title: leaderIsMe ? `I'm leading the week!` : `${leader.displayName.split(' ')[0]} leads the week!`,
+    subtitle: weekLabel,
+    stats: [
+      { value: `${leader.points}`, label: 'points' },
+      ...(leaderboard[1] ? [{ value: `+${leader.points - leaderboard[1].points}`, label: 'ahead' }] : []),
+    ],
+    shareMessage: `${leaderIsMe ? 'I am' : leader.displayName.split(' ')[0] + ' is'} leading our family week on Lootboard with ${leader.points} points! 🏆`,
+  } : null;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <BrandBar />
@@ -136,19 +170,34 @@ export default function LeaderboardScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
           <View>
-            <Text style={[styles.title, { color: colors.text }]}>Leaderboard</Text>
+            <Text style={[styles.title, { color: colors.text }]}>This week</Text>
             <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>{weekLabel}</Text>
           </View>
+          {canShareStandings && (
+            <TouchableOpacity
+              style={[styles.shareStandingsBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '40' }]}
+              onPress={() => setShareOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Share this week's standings"
+            >
+              <Text style={[styles.shareStandingsText, { color: colors.primary }]}>Share ↗</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: Spacing.xxl }} />
         ) : (
           <>
-            {/* Personal Best card — shown only to current user */}
-            {personalBest > 0 && (
+            {/* Bet 3 — the co-op goal everyone earns toward together. */}
+            <View style={styles.goalWrap}>
+              <FamilyGoalCard />
+            </View>
+
+            {/* Personal Best card — players only (coaches don't compete) */}
+            {iAmPlayer && personalBest > 0 && (
               <View style={[styles.personalBestCard, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '33' }]}>
                 <Text style={styles.personalBestEmoji}>🏅</Text>
                 <View style={{ flex: 1 }}>
@@ -158,8 +207,8 @@ export default function LeaderboardScreen() {
               </View>
             )}
 
-            {/* 1-member empty state */}
-            {leaderboard.length <= 1 && (
+            {/* Nobody to play with yet (a lone account) */}
+            {members.length <= 1 && (
               <View style={styles.emptyPodium}>
                 <Text style={styles.emptyPodiumEmoji}>👨‍👩‍👧‍👦</Text>
                 <Text style={[styles.emptyPodiumTitle, { color: colors.text }]}>Invite your family!</Text>
@@ -197,7 +246,15 @@ export default function LeaderboardScreen() {
             )}
 
             {/* Podium — premium gradient pedestals, tallest in the middle */}
-            {topThree.length >= 2 && (
+            {/* No podium until someone has actually scored — a crown at 0–0
+                tells one kid they're "winning" for nothing. */}
+            {topThree.length >= 2 && topThree[0].points <= 0 && (
+              <View style={[styles.openWeek, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.openWeekTitle, { color: colors.text }]}>The week is wide open</Text>
+                <Text style={[styles.openWeekSub, { color: colors.textSecondary }]}>First task done takes the lead.</Text>
+              </View>
+            )}
+            {topThree.length >= 2 && topThree[0].points > 0 && (
               <SlideIn delay={100} from="bottom"><View style={styles.podiumContainer}>
                 {topThree[1] && <PodiumColumn entry={topThree[1]} rank={2} colors={colors} />}
                 {topThree[0] && <PodiumColumn entry={topThree[0]} rank={1} colors={colors} />}
@@ -209,7 +266,6 @@ export default function LeaderboardScreen() {
             <View style={styles.list}>
               {leaderboard.map((entry, index) => (
                 <SlideIn key={entry.memberId} delay={200 + index * 100} from="bottom">
-                  <ScalePress onPress={() => router.push(`/app/member/${entry.memberId}`)} style={undefined}>
                     <View
                       style={[styles.row, { backgroundColor: colors.surface }, entry.isCurrentUser && { borderWidth: 2, borderColor: colors.primary }]}
                       accessibilityLabel={`${entry.displayName}, rank ${entry.rank}, ${entry.points} points`}
@@ -239,13 +295,29 @@ export default function LeaderboardScreen() {
                         <Text style={[styles.rowPointsLabel, { color: colors.textSecondary }]}>pts</Text>
                       </View>
                     </View>
-                  </ScalePress>
                 </SlideIn>
               ))}
             </View>
+
+            {/* Coaches — parents don't rank, but their points help the family goal */}
+            {coachRows.length > 0 && (
+              <View style={[styles.coachCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.coachTitle, { color: colors.textSecondary }]}>COACHES · count toward the family goal</Text>
+                <View style={styles.coachRow}>
+                  {coachRows.map((c) => (
+                    <View key={c.id} style={styles.coachItem}>
+                      <Avatar emoji={c.avatarEmoji} photoURL={c.photoURL} size={32} />
+                      <Text style={[styles.coachName, { color: colors.text }]}>{c.name}</Text>
+                      <Text style={[styles.coachPts, { color: colors.primary }]}>{c.points} pts</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
+      <ShareCardModal visible={shareOpen} data={standingsCard} onClose={() => setShareOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -363,6 +435,18 @@ const styles = StyleSheet.create({
   historyBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold },
   title: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold },
   weekLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, marginTop: 4 },
+  shareStandingsBtn: { borderWidth: 1.5, borderRadius: BorderRadius.full, paddingHorizontal: 14, paddingVertical: 7 },
+  shareStandingsText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
+  goalWrap: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
+  openWeek: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md, borderRadius: BorderRadius.lg, borderWidth: 1, borderStyle: 'dashed', padding: Spacing.lg, alignItems: 'center' },
+  openWeekTitle: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold },
+  openWeekSub: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, marginTop: 2 },
+  coachCard: { marginHorizontal: Spacing.lg, marginTop: Spacing.sm, marginBottom: Spacing.xl, borderRadius: BorderRadius.lg, borderWidth: 1, padding: Spacing.md },
+  coachTitle: { fontSize: 10, fontFamily: FontFamily.extraBold, letterSpacing: 0.8, marginBottom: Spacing.sm },
+  coachRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.lg },
+  coachItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  coachName: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
+  coachPts: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold },
   podiumContainer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, justifyContent: 'center', gap: 10 },
   podiumItem: { flex: 1, alignItems: 'center' },
   podiumItemFirst: { zIndex: 2 },

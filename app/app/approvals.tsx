@@ -12,17 +12,18 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image, Modal, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/store';
 import {
-  getPendingCompletions, approveCompletion, rejectCompletion,
+  getPendingCompletions, approveCompletion, approveCompletions, rejectCompletion,
   getActiveTasks, getFamilyMembers,
   type CompletionDoc, type TaskDoc, type MemberDoc,
 } from '@/lib/firebase';
 import { useTheme, type ThemeColors } from '@/lib/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { Avatar } from '@/components/ui';
@@ -42,6 +43,7 @@ export default function ApprovalsScreen() {
   const [rows, setRows] = useState<PendingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!family?.id) { setRows([]); setLoading(false); return; }
@@ -88,16 +90,59 @@ export default function ApprovalsScreen() {
     }
   }, [family?.id, member?.id, busyId]);
 
+  // Bet 1: kids claim through the day, a parent clears the queue in one tap.
+  const [approvingAll, setApprovingAll] = useState(false);
+  const approveAll = useCallback(() => {
+    if (!family?.id || !member?.id || rows.length === 0) return;
+    const byKid = new Map<string, number>();
+    for (const r of rows) {
+      const name = (r.member?.displayName ?? 'Someone').split(' ')[0];
+      byKid.set(name, (byKid.get(name) ?? 0) + (r.task?.pointValue ?? r.completion.pointsAwarded ?? 0));
+    }
+    const summary = Array.from(byKid.entries()).map(([n, p]) => `${n} +${p}`).join(' · ');
+    const withPhotos = rows.filter((r) => r.completion.proofPhotoURL).length;
+    Alert.alert(
+      `Approve all ${rows.length}?`,
+      `${summary}${withPhotos ? `\n\nIncludes ${withPhotos} with a proof photo — scroll down first if you want to check them.` : ''}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: '✓ Approve all',
+          onPress: async () => {
+            setApprovingAll(true);
+            try {
+              const { approved, failed } = await approveCompletions({
+                familyId: family.id, completionIds: rows.map((r) => r.completion.id), approvedBy: member.id,
+              });
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+              if (failed > 0) Alert.alert('Some didn’t go through', `${approved} approved, ${failed} failed. Pull down to retry.`);
+              await load();
+            } finally {
+              setApprovingAll(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [family?.id, member?.id, rows, load]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
-          <Icon name="chevron-back" size={22} color={colors.primary} />
-          <Text style={styles.backText}>Back</Text>
+      <ScreenHeader title="Approvals" subtitle={rows.length ? `${rows.length} waiting` : undefined} />
+
+      {isParent && rows.length > 1 && (
+        <TouchableOpacity
+          style={[styles.approveAllBtn, { backgroundColor: colors.success }]}
+          onPress={approveAll}
+          disabled={approvingAll || !!busyId}
+          accessibilityRole="button"
+          accessibilityLabel={`Approve all ${rows.length}`}
+        >
+          {approvingAll
+            ? <ActivityIndicator color="#FFF" />
+            : <Text style={styles.approveAllText}>✓ Approve all {rows.length}</Text>}
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Approvals</Text>
-        <View style={{ width: 60 }} />
-      </View>
+      )}
 
       {!isParent ? (
         <View style={styles.empty}>
@@ -132,6 +177,12 @@ export default function ApprovalsScreen() {
                     </Text>
                   </View>
                 </View>
+                {row.completion.proofPhotoURL ? (
+                  <TouchableOpacity activeOpacity={0.9} onPress={() => setZoomPhoto(row.completion.proofPhotoURL!)}>
+                    <Image source={{ uri: row.completion.proofPhotoURL }} style={styles.proofImg} resizeMode="cover" />
+                    <Text style={[styles.proofHint, { color: colors.textMuted }]}>📸 Tap photo to enlarge</Text>
+                  </TouchableOpacity>
+                ) : null}
                 <View style={styles.actions}>
                   <TouchableOpacity
                     style={[styles.rejectBtn, { borderColor: colors.danger }]}
@@ -163,6 +214,14 @@ export default function ApprovalsScreen() {
           })}
         </ScrollView>
       )}
+
+      {/* Proof photo lightbox */}
+      <Modal visible={!!zoomPhoto} transparent animationType="fade" onRequestClose={() => setZoomPhoto(null)}>
+        <Pressable style={styles.lightbox} onPress={() => setZoomPhoto(null)}>
+          {zoomPhoto && <Image source={{ uri: zoomPhoto }} style={styles.lightboxImg} resizeMode="contain" />}
+          <Text style={styles.lightboxHint}>Tap to close</Text>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -171,6 +230,8 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.lg },
+    approveAllBtn: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md, borderRadius: BorderRadius.lg, paddingVertical: 14, alignItems: 'center', ...Shadow.sm },
+    approveAllText: { color: '#FFFFFF', fontSize: FontSize.md, fontFamily: FontFamily.extraBold },
     backBtn: { flexDirection: 'row', alignItems: 'center', width: 60 },
     backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.primary },
     headerTitle: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold, color: colors.text },
@@ -179,6 +240,11 @@ function createStyles(colors: ThemeColors) {
     cardTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
     taskTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.text },
     taskMeta: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.textMuted, marginTop: 3 },
+    proofImg: { width: '100%', height: 180, borderRadius: BorderRadius.md, marginTop: Spacing.md, backgroundColor: colors.background },
+    proofHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, textAlign: 'center', marginTop: 4 },
+    lightbox: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
+    lightboxImg: { width: '100%', height: '80%' },
+    lightboxHint: { color: 'rgba(255,255,255,0.7)', fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, marginTop: Spacing.md },
     actions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
     rejectBtn: { flex: 1, borderWidth: 1.5, borderRadius: BorderRadius.md, paddingVertical: 11, alignItems: 'center' },
     rejectBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },

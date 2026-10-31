@@ -1,59 +1,78 @@
-/**
- * __tests__/lib/taskEmoji.test.ts
- * detectTaskEmoji — the shared per-task icon resolver used by BOTH the adult and
- * child task cards. Covers the normalization + prefix-matching fixes (the bugs
- * where "Make a Bed" → broom and "Drinking Water" → shower).
- */
-import { detectTaskEmoji } from '@/lib/taskEmoji';
+import { detectTaskEmoji, resolveTaskEmoji, ALL_TASK_EMOJI, CATEGORY_FALLBACK } from '@/lib/taskEmoji';
+import { emojiImage } from '@/lib/emojiAssets';
+import { AVATAR_EMOJIS } from '@/constants/theme';
 
 describe('detectTaskEmoji', () => {
-  it('matches phrases despite filler words ("a", "your", "the")', () => {
-    expect(detectTaskEmoji('Make a Bed', 'chores')).toBe('🛏️');
-    expect(detectTaskEmoji('Make my bed', 'chores')).toBe('🛏️');
-    expect(detectTaskEmoji('Brush your teeth', 'hygiene')).toBe('🦷');
-    expect(detectTaskEmoji('Wash the dishes', 'chores')).toBe('🍽️');
+  it.each([
+    ['Meditation', '🧘'],
+    ['10 min meditation', '🧘'],
+    ['Breathing exercise', '🧘'], // not stolen by "exercise"
+    ['Quiet time', '🧘'],
+    ['Prayer', '🙏'],
+    ['Feed fish', '🐠'],
+    ['Clean shoes', '👟'],
+    ['Wash face', '🧴'],
+    ['Brush your teeth', '🪥'],
+    ['Drink water', '💧'],
+    ['Go to bed', '😴'],
+    ['Make a bed', '🛏️'],
+    ['Walk the dog', '🐕'],
+    ['Practice piano', '🎹'],
+    ['Put away toys', '🧸'],
+    ['Do homework', '📚'],
+    ['Learning - 15 mins', '📚'], // was 🏠 fallback on device
+    ['Piano lesson', '🎹'],       // specific activity beats generic "lesson"
+    ['Swim lesson', '🏊'],
+    ['Karate class', '🥋'],
+    ['Art class', '🎨'],
+  ])('%s → %s', (title, emoji) => {
+    expect(detectTaskEmoji(title, 'chores')).toBe(emoji);
   });
 
-  it('matches single-word keywords by prefix ("drinking" → "drink")', () => {
-    expect(detectTaskEmoji('Drinking Water', 'hygiene')).toBe('💧');
-    expect(detectTaskEmoji('Drink water', 'hygiene')).toBe('💧');
-    expect(detectTaskEmoji('Running', 'extras')).toBe('🏃');
-    expect(detectTaskEmoji('Reading time', 'homework')).toBe('📖');
+  it('tolerates a one-letter typo on longer words', () => {
+    expect(detectTaskEmoji('Meditaion', 'extras')).toBe('🧘');
+    expect(detectTaskEmoji('Homwork', 'extras')).toBe('📚');
   });
 
-  it('uses distinct icons for workout vs run', () => {
-    expect(detectTaskEmoji('Workout', 'extras')).toBe('💪');
-    expect(detectTaskEmoji('Morning run', 'extras')).toBe('🏃');
+  it('does not fuzzy-match short words', () => {
+    // "zing" is one edit from "sing" but too short to trust.
+    expect(detectTaskEmoji('zing', 'extras')).toBe(CATEGORY_FALLBACK.extras);
   });
 
-  it('does not confuse watering plants with drinking water', () => {
-    // watering plants → a plant icon (🌱/🪴), never the drink 💧
-    expect(['🌱', '🪴']).toContain(detectTaskEmoji('Water the plants', 'chores'));
-    expect(detectTaskEmoji('Drink water', 'hygiene')).toBe('💧');
+  it('falls back to a neutral (non-cleaning) category icon', () => {
+    expect(detectTaskEmoji('Zzqx', 'hygiene')).toBe('✨');
+    expect(detectTaskEmoji('Zzqx', 'chores')).toBe('🏠');
+    expect(detectTaskEmoji('Zzqx', 'unknown')).toBe('✅');
+  });
+});
+
+describe('resolveTaskEmoji', () => {
+  it('keeps a deliberately saved emoji', () => {
+    expect(resolveTaskEmoji({ title: 'Meditation', category: 'extras', taskEmoji: '🌈' })).toBe('🌈');
   });
 
-  it('keeps "go to bed" as sleep, not the bed-making chore', () => {
-    expect(detectTaskEmoji('Go to bed', 'hygiene')).toBe('😴');
-    expect(detectTaskEmoji('Bedtime', 'hygiene')).toBe('😴');
+  it('re-detects when the saved emoji is a stale blind fallback', () => {
+    expect(resolveTaskEmoji({ title: 'Meditation', category: 'hygiene', taskEmoji: '🧼' })).toBe('🧘');
+    expect(resolveTaskEmoji({ title: 'Feed fish', category: 'chores', taskEmoji: '🧽' })).toBe('🐠');
   });
 
-  it('does not mid-word false-match (run ≠ brunch, take ≠ takeout theft)', () => {
-    // "brunch" must not hit the run 🏃 icon
-    expect(detectTaskEmoji('Make brunch', 'chores')).not.toBe('🏃');
-    // "take out the trash" still resolves to trash, not something from "take"
-    expect(detectTaskEmoji('Take out the trash', 'chores')).toBe('🗑️');
+  it('detects when nothing is saved', () => {
+    expect(resolveTaskEmoji({ title: 'Walk the dog', category: 'chores' })).toBe('🐕');
+  });
+});
+
+describe('3D emoji coverage', () => {
+  it('ships a 3D image for every task emoji', () => {
+    expect(ALL_TASK_EMOJI.filter((e) => !emojiImage(e))).toEqual([]);
   });
 
-  it('the same title+category is deterministic (adult and child cards agree)', () => {
-    const a = detectTaskEmoji('Make a Bed', 'chores');
-    const b = detectTaskEmoji('Make a Bed', 'chores');
-    expect(a).toBe(b);
+  it('ships a 3D image for every avatar', () => {
+    expect(AVATAR_EMOJIS.filter((e) => !emojiImage(e))).toEqual([]);
   });
 
-  it('falls back to a NEUTRAL category icon when nothing matches (not a shower)', () => {
-    const hygiene = detectTaskEmoji('Zzzxyq', 'hygiene');
-    expect(hygiene).toBe('🧼'); // neutral soap, not 🚿
-    expect(detectTaskEmoji('Zzzxyq', 'chores')).toBe('🧽');
-    expect(detectTaskEmoji('Zzzxyq', 'nonsense')).toBe('📌');
+  it('matches with or without the U+FE0F variation selector', () => {
+    expect(emojiImage('🛏️')).toBeTruthy();
+    expect(emojiImage('🛏')).toBeTruthy();
+    expect(emojiImage('🫠')).toBeNull();
   });
 });

@@ -2,6 +2,17 @@
 // the package is renamed (e.g. com.lootboard.app).
 export const APP_STORE_URL = 'https://play.google.com/store/apps/details?id=com.familywin.app';
 
+// iOS App Store link — TEMPLATED. No Apple listing yet; set this when the app
+// ships on iOS and the share cards will start advertising both stores.
+export const IOS_STORE_URL = '';
+
+// Short human label shown on share-card footers (kept store-neutral until iOS
+// exists). Swap to "Google Play & App Store" once IOS_STORE_URL is set.
+export const STORE_TAGLINE = 'Free on Google Play';
+
+/** The best available store link for text-share fallbacks. */
+export const bestStoreUrl = (): string => APP_STORE_URL || IOS_STORE_URL;
+
 export const Strings = {
   app: {
     name: 'Lootboard',

@@ -10,6 +10,8 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/lib/theme';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
+import { BrandIcon, type BrandIconName } from '@/components/ui/BrandIcons';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
 
 // ─── BUTTON ───────────────────────────────────────────────────────────────────
 
@@ -220,24 +222,30 @@ export function Badge({ label, variant = 'primary', size = 'md', icon }: BadgePr
 // ─── AVATAR ──────────────────────────────────────────────────────────────────
 
 interface AvatarProps {
-  emoji: string;
+  emoji: string | null | undefined;
   size?: number;
   showRing?: boolean;
   ringColor?: string;
   /** Firebase Storage download URL — shows a real photo instead of emoji */
-  photoURL?: string;
+  photoURL?: string | null;
 }
 
+/**
+ * THE member avatar — the one container every screen uses for parents and kids
+ * alike: a photo if they uploaded one, otherwise their 3D avatar on a soft
+ * tinted disc. Never render `member.avatarEmoji` as raw text (CLAUDE.md #10).
+ */
 export function Avatar({ emoji, size = 44, showRing, ringColor, photoURL }: AvatarProps) {
   const { colors } = useTheme();
+  const ring = showRing ? Math.max(2, Math.round(size * 0.055)) : 0;
   return (
     <View style={[
       styles.avatar,
       {
         width: size, height: size, borderRadius: size / 2,
-        borderWidth: showRing ? 2.5 : 0,
-        borderColor: ringColor ?? colors.primary,
-        backgroundColor: colors.background,
+        borderWidth: ring || 1,
+        borderColor: showRing ? (ringColor ?? colors.primary) : colors.primary + '1F',
+        backgroundColor: colors.primary + '12',
         overflow: 'hidden',
       },
     ]}>
@@ -248,7 +256,7 @@ export function Avatar({ emoji, size = 44, showRing, ringColor, photoURL }: Avat
           resizeMode="cover"
         />
       ) : (
-        <Text style={{ fontSize: size * 0.55 }}>{emoji}</Text>
+        <EmojiIcon emoji={emoji || '🙂'} size={Math.round(size * 0.72)} />
       )}
     </View>
   );
@@ -257,17 +265,26 @@ export function Avatar({ emoji, size = 44, showRing, ringColor, photoURL }: Avat
 // ─── EMPTY STATE ──────────────────────────────────────────────────────────────
 
 interface EmptyStateProps {
-  emoji: string;
+  emoji?: string;
+  /** Optional Lootboard brand mark shown in a tinted circle instead of an emoji. */
+  brandIcon?: BrandIconName;
   title: string;
   subtitle?: string;
   action?: { label: string; onPress: () => void };
 }
 
-export function EmptyState({ emoji, title, subtitle, action }: EmptyStateProps) {
+export function EmptyState({ emoji, brandIcon, title, subtitle, action }: EmptyStateProps) {
   const { colors, fontSize, isChildMode } = useTheme();
+  const markSize = isChildMode ? 84 : 64;
   return (
     <View style={styles.emptyState}>
-      <Text style={[styles.emptyEmoji, isChildMode && { fontSize: 72 }]}>{emoji}</Text>
+      {brandIcon ? (
+        <View style={[styles.emptyBrandCircle, { width: markSize * 1.7, height: markSize * 1.7, borderRadius: markSize, backgroundColor: colors.primary + '14' }]}>
+          <BrandIcon name={brandIcon} size={markSize} />
+        </View>
+      ) : (
+        <Text style={[styles.emptyEmoji, isChildMode && { fontSize: 72 }]}>{emoji}</Text>
+      )}
       <Text style={[styles.emptyTitle, { color: colors.text, fontSize: fontSize(FontSize.lg) }]}>
         {title}
       </Text>
@@ -360,6 +377,7 @@ const styles = StyleSheet.create({
   avatar: { alignItems: 'center', justifyContent: 'center' },
   emptyState: { alignItems: 'center', paddingVertical: Spacing.xxl, paddingHorizontal: Spacing.lg },
   emptyEmoji: { fontSize: 56, marginBottom: Spacing.md },
+  emptyBrandCircle: { alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md },
   emptyTitle: { fontFamily: FontFamily.bold, textAlign: 'center' },
   emptySubtitle: { fontFamily: FontFamily.regular, textAlign: 'center', marginTop: 6, lineHeight: 22 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm },

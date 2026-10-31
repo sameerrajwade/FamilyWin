@@ -59,9 +59,11 @@ describe('SettingsScreen — Parent', () => {
   // Help & Legal) + inline Account actions. Invite code / managed children /
   // discipline / notification toggles now live on their own sub-screens.
 
-  it('renders Settings title', async () => {
+  it('renders the Family settings group (header condensed to the brand row)', async () => {
+    // The redundant "Settings" H1 was removed (we're already on the Settings
+    // tab); a compact Lootboard brand row replaces it. Assert a real section.
     const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('Settings')).toBeTruthy();
+    expect(await findByText('Family & Members')).toBeTruthy();
   });
 
   it('shows the profile card (name + family)', async () => {

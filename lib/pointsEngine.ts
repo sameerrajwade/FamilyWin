@@ -78,6 +78,60 @@ export function calculateWeeklyPoints(
   return calculateTotalPoints(filtered);
 }
 
+// ─── MEMBER POINTS SUMMARY (single source of truth) ───────────────────────────
+//
+// Every screen used to answer "how many points?" on its own, with subtly
+// different rules (redemptions in/out, week-start day, row caps). That drift is
+// what made the SAME child read 421 on Home, 154 on Leaderboard and 172 on
+// Rewards. This one pure function is now the ONLY place those rules live:
+//
+//   • spendable      — all-time balance: everything earned MINUS reward spends
+//                      and penalties. This is the real, cashable number. It is
+//                      what "Points to spend" shows on Home + Rewards.
+//   • earnedThisWeek — points won since the week started, EXCLUDING reward
+//                      spends (spending must never drop your weekly rank). This
+//                      is the leaderboard/"Earned this week" number.
+//
+// Callers pass a member's transactions already mapped to {delta, source, date}
+// so the function stays Firestore-agnostic and unit-testable.
+
+export interface PointsTxn { delta: number; source: string; date: Date | null; }
+
+export interface MemberPointsSummary {
+  spendable: number;       // all-time earned − spent (the "bank")
+  earnedThisWeek: number;  // this week, reward spends excluded
+}
+
+export function summarizeMemberPoints(txns: PointsTxn[], weekStart: Date): MemberPointsSummary {
+  let spendable = 0;
+  let earnedThisWeek = 0;
+  for (const t of txns) {
+    const delta = t.delta || 0;
+    spendable += delta;
+    if (t.source !== 'redemption' && t.date && t.date >= weekStart) {
+      earnedThisWeek += delta;
+    }
+  }
+  return { spendable, earnedThisWeek };
+}
+
+// ─── PENALTY PAUSE (vacation / sick hold) ─────────────────────────────────────
+//
+// Families who turn missed-task penalties ON can PAUSE them for a stretch —
+// vacation, illness, a known-busy week — so missed chores don't quietly rack up
+// negative points. A pause can be set on the whole family or a single member;
+// either one being active means that member is paused. Pure + Firestore-agnostic
+// (callers resolve their Timestamps to Dates first) so it's unit-testable.
+
+export function isPenaltyPaused(
+  familyPausedUntil: Date | null | undefined,
+  memberPausedUntil: Date | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  const active = (d: Date | null | undefined) => !!d && d.getTime() > now.getTime();
+  return active(familyPausedUntil) || active(memberPausedUntil);
+}
+
 // ─── LEADERBOARD ─────────────────────────────────────────────────────────────
 
 export interface LeaderboardEntry {
@@ -242,6 +296,24 @@ const LEVEL_TIERS: { floor: number; title: string; emoji: string }[] = [
   { floor: 4800,  title: 'Legend',    emoji: '👑' },
   { floor: 7000,  title: 'Mythic',    emoji: '💎' },
 ];
+
+// ─── Virtual allowance (Phase 5 #3) ────────────────────────────────────────────
+
+/** Cash value of `points` at `pointsPerUnit` points per one currency unit. */
+export function pointsToCash(points: number, pointsPerUnit: number): number {
+  if (!pointsPerUnit || pointsPerUnit <= 0) return 0;
+  return Math.max(0, points) / pointsPerUnit;
+}
+
+/** Format a cash value like "$3.50" (2 decimals, given symbol). */
+export function formatCash(amount: number, currency: string = '$'): string {
+  return `${currency}${(amount || 0).toFixed(2)}`;
+}
+
+/** Whole points needed to be worth at least `pointsPerUnit` (one payable unit). */
+export function pointsForOneUnit(pointsPerUnit: number): number {
+  return Math.max(1, Math.round(pointsPerUnit || 0));
+}
 
 export function getLevel(lifetimePoints: number): LevelInfo {
   const pts = Math.max(0, Math.floor(lifetimePoints || 0));

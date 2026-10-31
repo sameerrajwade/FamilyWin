@@ -10,8 +10,8 @@
 import React, { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { useTheme, type ThemeColors } from '@/lib/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { Icon, IconName } from '@/components/ui/Icon';
 
@@ -21,14 +21,7 @@ export function SettingsScaffold({ title, children }: { title: string; children:
   const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.backBtn}>
-          <Icon name="chevron-back" size={22} color={colors.primary} />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
-        <View style={{ width: 60 }} />
-      </View>
+      <ScreenHeader title={title} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
         {children}
       </ScrollView>

@@ -13,6 +13,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+// Deploy marker: iter-39 tz/deadline sweep + txCreatedAt week-attribution (2026-08-26).
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require('firebase-functions/v2/firestore');
@@ -51,6 +52,25 @@ function missedPenaltyMode(family) {
 
 const txCol = (familyId) =>
   db.collection('families').doc(familyId).collection('transactions');
+
+/**
+ * The timestamp a completion's transaction should carry. Normal (same-day)
+ * completions use now, so they count toward the current week. But a BACK-DATED
+ * completion — a miss/auto-fail penalty or a late catch-up — belongs to the day
+ * it happened on, not today: stamping it "now" would (wrongly) drop last week's
+ * catch-up points/penalties into the CURRENT week's competition. So for those we
+ * stamp noon UTC of the completion's own `completedDate`, landing the tx in that
+ * day's week (it then only affects the all-time/lifetime total). See PROGRESS
+ * iter 39 + the user's feedback #2.
+ */
+function txCreatedAt(c) {
+  const backDated = c && (c.completedLate === true || c.wasAutoFailed === true);
+  if (backDated && typeof c.completedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.completedDate)) {
+    const [y, m, d] = c.completedDate.split('-').map(Number);
+    return Timestamp.fromDate(new Date(Date.UTC(y, m - 1, d, 12, 0, 0)));
+  }
+  return Timestamp.now();
+}
 
 // ─── SHARED SETTLE / REVERSE ──────────────────────────────────────────────────
 // Extracted so create (immediate), update (Phase 4.3 approval pending→approved),
@@ -99,7 +119,7 @@ async function awardForCompletion(familyId, completionId, c) {
     reason,
     source: 'task',
     referenceId: completionId,
-    createdAt: Timestamp.now(),
+    createdAt: txCreatedAt(c),
   });
 }
 
@@ -125,7 +145,10 @@ async function reverseForCompletion(familyId, completionId, c) {
     reason: sum > 0 ? `Undo: ${title}` : `Restored: ${title}`,
     source: 'task',
     referenceId: completionId,
-    createdAt: Timestamp.now(),
+    // Match the day of the tx being reversed so the reversal nets to zero within
+    // the SAME week (a back-dated catch-up/penalty and its undo both land in that
+    // day's week, never split across weeks).
+    createdAt: txCreatedAt(c),
   });
 }
 

@@ -27,8 +27,76 @@ import {
   toDateKey,
   graceWindowDays,
   MISSED_TASK_GRACE_DAYS,
+  summarizeMemberPoints,
+  isPenaltyPaused,
 } from '@/lib/pointsEngine';
 import type { PointTransaction } from '@/types';
+
+// ─── member points summary (single source of truth) ──────────────────────────
+describe('summarizeMemberPoints', () => {
+  const weekStart = new Date('2026-08-24T00:00:00'); // Monday
+  const inWeek = new Date('2026-08-25T09:00:00');
+  const lastWeek = new Date('2026-08-18T09:00:00');
+
+  it('spendable = sum of ALL deltas (earned − penalties − reward spends)', () => {
+    const txns = [
+      { delta: 100, source: 'task', date: lastWeek },
+      { delta: 50, source: 'task', date: inWeek },
+      { delta: -30, source: 'redemption', date: inWeek }, // spent on a reward
+      { delta: -10, source: 'discipline', date: inWeek }, // penalty
+    ];
+    expect(summarizeMemberPoints(txns, weekStart).spendable).toBe(110);
+  });
+
+  it('earnedThisWeek excludes reward spends but includes penalties, this week only', () => {
+    const txns = [
+      { delta: 100, source: 'task', date: lastWeek },       // prior week → excluded
+      { delta: 50, source: 'task', date: inWeek },          // +50
+      { delta: -30, source: 'redemption', date: inWeek },   // spend → excluded
+      { delta: -10, source: 'discipline', date: inWeek },   // −10 penalty counts
+    ];
+    expect(summarizeMemberPoints(txns, weekStart).earnedThisWeek).toBe(40);
+  });
+
+  it('is defensive about null dates and missing deltas', () => {
+    const txns = [
+      { delta: 25, source: 'task', date: null },            // no date → not this week
+      { delta: undefined as any, source: 'task', date: inWeek },
+    ];
+    const r = summarizeMemberPoints(txns, weekStart);
+    expect(r.spendable).toBe(25);
+    expect(r.earnedThisWeek).toBe(0);
+  });
+});
+
+// ─── penalty pause (vacation / sick hold) ─────────────────────────────────────
+describe('isPenaltyPaused', () => {
+  const now = new Date('2026-08-27T12:00:00');
+  const future = new Date('2026-08-30T12:00:00');
+  const past = new Date('2026-08-25T12:00:00');
+
+  it('is false when neither family nor member is paused', () => {
+    expect(isPenaltyPaused(null, null, now)).toBe(false);
+    expect(isPenaltyPaused(undefined, undefined, now)).toBe(false);
+  });
+
+  it('is true when the family pause is in the future', () => {
+    expect(isPenaltyPaused(future, null, now)).toBe(true);
+  });
+
+  it('is true when the member pause is in the future (family not paused)', () => {
+    expect(isPenaltyPaused(null, future, now)).toBe(true);
+  });
+
+  it('is false when a pause has already elapsed', () => {
+    expect(isPenaltyPaused(past, past, now)).toBe(false);
+  });
+
+  it('either one being active pauses the member', () => {
+    expect(isPenaltyPaused(past, future, now)).toBe(true);
+    expect(isPenaltyPaused(future, past, now)).toBe(true);
+  });
+});
 
 // ─── missed-task penalty helpers ──────────────────────────────────────────────
 describe('missedTaskPenaltyAmount', () => {
@@ -317,7 +385,11 @@ describe('getCurrentWeekRange', () => {
   it('returns start on Monday and end 6 days later', () => {
     const { start, end } = getCurrentWeekRange();
     expect(start.getDay()).toBe(1); // Monday
-    expect(end.getDate() - start.getDate()).toBe(6);
+    // Calendar-day span. Neither getDate() subtraction (breaks across month
+    // ends) nor raw ms ÷ 24h (a DST week is ±1h long) is safe, so compare the
+    // local Y/M/D of each end as UTC dates.
+    const dayIndex = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000;
+    expect(dayIndex(end) - dayIndex(start)).toBe(6);
   });
 
   it('start is at midnight', () => {

@@ -27,6 +27,8 @@ import { pickPhotoUri } from '@/lib/photoPicker';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { BrandLogo } from '@/components/ui/BrandIcons';
+import { AvatarPicker } from '@/components/ui/AvatarPicker';
 import { SettingsGroup, NavRow } from '@/components/ui/SettingsUI';
 import { FreeForAllBanner } from '@/components/ui/Plus';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
@@ -175,8 +177,11 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
+        {/* Compact brand row — keeps the Lootboard logo but reclaims the top
+            space (no big stacked tile/tagline, and no redundant "Settings"
+            title since we're already on the Settings tab). */}
+        <View style={styles.brandHeader}>
+          <BrandLogo size={19} tagline={false} />
         </View>
 
         {/* ── Profile card ── */}
@@ -189,11 +194,7 @@ export default function SettingsScreen() {
                 accessibilityLabel={profilePhotoURL ? 'Change profile photo' : 'Change avatar emoji'}
                 accessibilityRole="button"
               >
-                {profilePhotoURL ? (
-                  <Image source={{ uri: profilePhotoURL }} style={styles.avatarPhoto} />
-                ) : (
-                  <Text style={styles.avatarEmoji}>{selectedEmoji}</Text>
-                )}
+                <Avatar emoji={selectedEmoji} photoURL={profilePhotoURL} size={72} />
                 <View style={[styles.editBadge, { backgroundColor: colors.primary }]}>
                   {isUploadingPhoto
                     ? <ActivityIndicator color="#FFF" size="small" style={{ transform: [{ scale: 0.6 }] }} />
@@ -225,11 +226,21 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.profileInfo}>
+            <TouchableOpacity
+              style={styles.profileInfo}
+              onPress={() => member?.id && router.push(`/app/member/${member.id}` as any)}
+              activeOpacity={0.6}
+              accessibilityRole="button"
+              accessibilityLabel="View my profile"
+            >
               <Text style={[styles.profileName, { color: colors.text }]}>{member?.displayName}</Text>
               <Text style={[styles.profileRole, { color: colors.textSecondary }]}>{member?.role?.replace('_', ' ')}</Text>
               <Text style={[styles.profileFamily, { color: colors.primary }]}>{family?.name}</Text>
-            </View>
+              <View style={styles.viewProfileRow}>
+                <Text style={[styles.viewProfileText, { color: colors.primary }]}>View my profile</Text>
+                <Icon name="chevron-forward" size={14} color={colors.primary} />
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -332,18 +343,10 @@ export default function SettingsScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
             <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
             <Text style={[styles.modalTitle, { color: colors.text }]}>Change Avatar</Text>
-            <Text style={styles.selectedEmojiPreview}>{selectedEmoji}</Text>
-            <View style={styles.emojiGrid}>
-              {AVATAR_EMOJIS.map((emoji) => (
-                <TouchableOpacity
-                  key={emoji}
-                  style={[styles.emojiOption, { borderColor: colors.border }, selectedEmoji === emoji && { borderColor: colors.primary, backgroundColor: colors.primary + '20' }]}
-                  onPress={() => { setSelectedEmoji(emoji); Haptics.selectionAsync(); }}
-                >
-                  <Text style={styles.emojiText}>{emoji}</Text>
-                </TouchableOpacity>
-              ))}
+            <View style={{ alignItems: 'center', marginBottom: Spacing.sm }}>
+              <Avatar emoji={selectedEmoji} size={84} showRing ringColor={colors.primary} />
             </View>
+            <AvatarPicker value={selectedEmoji} onChange={setSelectedEmoji} layout="grid" size={48} />
             <View style={styles.modalBtns}>
               <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setShowEmojiModal(false)}>
                 <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>Cancel</Text>
@@ -363,6 +366,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { padding: Spacing.lg },
   headerTitle: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold },
+  brandHeader: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
   // Profile
   profileWrap: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },
   profileCard: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, gap: Spacing.md, borderRadius: BorderRadius.lg, ...Shadow.sm },
@@ -379,6 +383,8 @@ const styles = StyleSheet.create({
   profileName: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold },
   profileRole: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, textTransform: 'capitalize', marginTop: 2 },
   profileFamily: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, marginTop: 2 },
+  viewProfileRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 6 },
+  viewProfileText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold },
   version: { textAlign: 'center', fontSize: FontSize.xs, fontFamily: FontFamily.regular, paddingVertical: Spacing.xl },
   // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },

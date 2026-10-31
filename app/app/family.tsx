@@ -10,7 +10,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  RefreshControl, Alert, Modal, TextInput, Share, ActivityIndicator, Image, Linking,
+  RefreshControl, Alert, Modal, TextInput, ActivityIndicator, Image, Linking,
   InteractionManager, Platform,
 } from 'react-native';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -21,19 +21,23 @@ import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import {
   getFamilyMembers, createManagedMember, updateMemberProfile, uploadMemberPhoto, removeMemberPhoto,
+  switchFamilyByCode,
 } from '@/lib/firebase';
 import { firestore } from '@/lib/fb';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { useTheme, type ThemeColors } from '@/lib/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { APP_STORE_URL } from '@/constants/strings';
 import { pickPhotoUri as pickPhotoViaRNIP } from '@/lib/photoPicker';
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
+import { AvatarPicker } from '@/components/ui/AvatarPicker';
 import type { MemberDoc } from '@/lib/firebase';
 
 export default function FamilyScreen() {
-  const { member, family } = useAuthStore();
+  const { member, family, user, setMember, setFamily, setActingAsMember } = useAuthStore();
   const { members, setMembers, updateMember } = useFamilyStore();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -41,9 +45,15 @@ export default function FamilyScreen() {
   const [showAddChild, setShowAddChild] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState<MemberDoc | null>(null);
   const [showEditMember, setShowEditMember] = useState<MemberDoc | null>(null);
+  const [showSwitchFamily, setShowSwitchFamily] = useState(false);
+  const [showInviteCard, setShowInviteCard] = useState(false);
 
-  const isAdmin = member?.role === 'admin_parent';
+  // Every parent has FULL family-admin access (add/promote/demote/edit members,
+  // weekly reset, etc.) — not just the family creator (admin_parent). A parent
+  // who joins later is a co-admin, matching the Firestore rules which already
+  // grant every parent capability to both 'parent' and 'admin_parent'.
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
+  const isAdmin = isParent;
 
   const loadMembers = useCallback(async () => {
     if (!family?.id) return;
@@ -59,13 +69,19 @@ export default function FamilyScreen() {
     setRefreshing(false);
   }, [loadMembers]);
 
+  const inviteCard: ShareCardData | null = family?.inviteCode ? {
+    icon: 'chest',
+    eyebrow: 'JOIN OUR FAMILY',
+    title: `Join ${family.name} on Lootboard`,
+    subtitle: 'Download the app and enter this code',
+    stats: [{ value: family.inviteCode, label: 'invite code' }],
+    shareMessage: `Join our family on Lootboard! 🏆\n\nInvite code: ${family.inviteCode}\n\nGet the app: ${APP_STORE_URL}\n\nComplete tasks, earn points, and win the week!`,
+  } : null;
+
   async function handleShareInvite() {
     if (!family?.inviteCode) return;
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Share.share({
-      message: `Join our family on Lootboard! 🏆\n\nInvite code: ${family.inviteCode}\n\nGet the app: ${APP_STORE_URL}\n\nComplete tasks, earn points, and win the week!`,
-      title: 'Join us on Lootboard',
-    });
+    setShowInviteCard(true);
   }
 
   async function handleCopyCode() {
@@ -117,6 +133,23 @@ export default function FamilyScreen() {
     );
   }
 
+  async function handleSwitchFamily(code: string) {
+    if (!user?.id || !member) throw new Error('Not signed in.');
+    const { family: newFamily, member: newMember } = await switchFamilyByCode(user.id, {
+      inviteCode: code.trim().toUpperCase(),
+      displayName: member.displayName,
+      avatarEmoji: member.avatarEmoji,
+      ...(member.age != null ? { age: member.age } : {}),
+    });
+    setActingAsMember(null);
+    setFamily(newFamily);
+    setMember(newMember);
+    try { setMembers((await getFamilyMembers(newFamily.id)) as any); } catch { /* home reloads */ }
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowSwitchFamily(false);
+    router.replace('/app/tabs');
+  }
+
   const parents = members.filter((m) => !m.isManaged && (m.role === 'parent' || m.role === 'admin_parent'));
   const children = members.filter((m) => m.isManaged || m.role === 'child');
 
@@ -126,13 +159,7 @@ export default function FamilyScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
-        {/* Back bar — this is a pushed screen (from Settings), not a tab */}
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.backBtn}>
-            <Icon name="chevron-back" size={22} color={colors.primary} />
-            <Text style={[styles.backText, { color: colors.primary }]}>Settings</Text>
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader />
 
         {/* Header */}
         <View style={styles.header}>
@@ -230,6 +257,31 @@ export default function FamilyScreen() {
             </View>
           )}
         </View>
+
+        {/* Switch family — for the "two parents made two households" case.
+            Only account-holders (not managed children) reach this screen. */}
+        {!member?.isManaged && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>WRONG HOUSEHOLD?</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <TouchableOpacity
+                style={styles.switchRow}
+                onPress={() => setShowSwitchFamily(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Switch to another family"
+              >
+                <Icon name="swap-horizontal" size={22} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.switchTitle, { color: colors.text }]}>Switch to another family</Text>
+                  <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
+                    Joined the wrong household, or made a duplicate? Move to a family with their invite code.
+                  </Text>
+                </View>
+                <Icon name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       {/* Add Child Modal */}
@@ -250,6 +302,19 @@ export default function FamilyScreen() {
           target={showRoleModal}
           onClose={() => setShowRoleModal(null)}
           onSelect={(role) => handleChangeRole(showRoleModal, role)}
+          colors={colors}
+        />
+      )}
+
+      {/* Branded invite share card */}
+      <ShareCardModal visible={showInviteCard} data={inviteCard} onClose={() => setShowInviteCard(false)} />
+
+      {/* Switch Family Modal */}
+      {showSwitchFamily && (
+        <SwitchFamilyModal
+          currentFamilyName={family?.name ?? 'your current family'}
+          onClose={() => setShowSwitchFamily(false)}
+          onSubmit={handleSwitchFamily}
           colors={colors}
         />
       )}
@@ -279,12 +344,13 @@ function MemberRow({ member, isSelf, isAdmin, isLast, onRolePress, onRemove, onE
   const roleLabel = member.isManaged ? '👶 Managed child' : member.role.replace('_', ' ');
   const roleColor = member.role === 'admin_parent' ? colors.primary : member.role === 'parent' ? colors.success : colors.textMuted;
 
-  const Wrapper: any = onEdit ? TouchableOpacity : View;
-
   return (
-    <Wrapper
+    <TouchableOpacity
       style={[styles.memberRow, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-      {...(onEdit ? { onPress: onEdit, activeOpacity: 0.6 } : {})}
+      onPress={() => router.push(`/app/member/${member.id}` as any)}
+      activeOpacity={0.6}
+      accessibilityRole="button"
+      accessibilityLabel={`View ${member.displayName}'s profile`}
     >
       <Avatar emoji={member.avatarEmoji} photoURL={member.photoURL} size={44} />
       <View style={{ flex: 1 }}>
@@ -309,8 +375,9 @@ function MemberRow({ member, isSelf, isAdmin, isLast, onRolePress, onRemove, onE
             <Text style={[styles.actionChipText, { color: colors.danger }]}>Remove</Text>
           </TouchableOpacity>
         )}
+        <Icon name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
-    </Wrapper>
+    </TouchableOpacity>
   );
 }
 
@@ -471,19 +538,7 @@ function AddChildModal({ familyId, onClose, onAdded }: {
           </View>
 
           <Text style={styles.fieldLabel}>Or Pick a Backup Avatar</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
-            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-              {['🐼', '🦊', '🐸', '🦁', '🐯', '🐨', '🐻', '🐮', '🐷', '🐙', '🦋', '🐬', '🦄', '🐧', '🦅'].map((em) => (
-                <TouchableOpacity
-                  key={em}
-                  style={[styles.emojiOpt, emoji === em && styles.emojiOptSelected]}
-                  onPress={() => { setEmoji(em); Haptics.selectionAsync(); }}
-                >
-                  <Text style={{ fontSize: 26 }}>{em}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+          <AvatarPicker value={emoji} onChange={setEmoji} />
 
           <Text style={styles.fieldLabel}>Child's Name *</Text>
           <TextInput
@@ -626,19 +681,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
           </View>
 
           <Text style={styles.fieldLabel}>Pick Avatar</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
-            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-              {['🐼', '🦊', '🐸', '🦁', '🐯', '🐨', '🐻', '🐮', '🐷', '🐙', '🦋', '🐬', '🦄', '🐧', '🦅'].map((em) => (
-                <TouchableOpacity
-                  key={em}
-                  style={[styles.emojiOpt, emoji === em && styles.emojiOptSelected]}
-                  onPress={() => { setEmoji(em); Haptics.selectionAsync(); }}
-                >
-                  <Text style={{ fontSize: 26 }}>{em}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+          <AvatarPicker value={emoji} onChange={setEmoji} />
 
           <Text style={styles.fieldLabel}>Name *</Text>
           <TextInput
@@ -709,6 +752,75 @@ function RoleModal({ target, onClose, onSelect, colors }: {
   );
 }
 
+// ─── Switch family modal ──────────────────────────────────────────────────────
+function SwitchFamilyModal({ currentFamilyName, onClose, onSubmit, colors }: {
+  currentFamilyName: string;
+  onClose: () => void;
+  onSubmit: (code: string) => Promise<void>;
+  colors: any;
+}) {
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    if (code.trim().length < 6) { setError('Enter the full 6-character invite code.'); return; }
+    try {
+      setBusy(true);
+      setError(null);
+      await onSubmit(code);
+      // On success the parent navigates away; nothing more to do here.
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not switch family. Check the code and try again.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
+          <View style={styles.modalHandle} />
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Switch to another family</Text>
+          <Text style={[styles.modalSub, { color: colors.textSecondary }]}>
+            Enter the invite code of the family you want to move to.
+          </Text>
+
+          <View style={[styles.switchWarn, { backgroundColor: colors.warning + '18', borderColor: colors.warning + '55' }]}>
+            <Text style={[styles.switchWarnText, { color: colors.text }]}>
+              You'll leave <Text style={{ fontFamily: FontFamily.bold }}>{currentFamilyName}</Text> and join the new
+              family as a member — a parent there can give you parent access. Your points and history stay with your
+              old family.
+            </Text>
+          </View>
+
+          <TextInput
+            style={[styles.modalInput, styles.codeInput]}
+            value={code}
+            onChangeText={(t) => setCode(t.toUpperCase())}
+            placeholder="ABC123"
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="characters"
+            maxLength={6}
+            editable={!busy}
+          />
+          {error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
+
+          <View style={styles.modalBtns}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={busy}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.saveBtn, busy && { opacity: 0.6 }]} onPress={handleConfirm} disabled={busy}>
+              {busy ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Switch family</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 function createStyles(colors: ThemeColors) {
@@ -772,5 +884,13 @@ function createStyles(colors: ThemeColors) {
   roleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1.5, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.sm },
   roleLabel: { fontSize: FontSize.md, fontFamily: FontFamily.bold },
   roleDesc: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2 },
+  // Switch family
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md },
+  switchTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold },
+  switchSub: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2, lineHeight: 17 },
+  switchWarn: { borderWidth: 1, borderRadius: BorderRadius.md, padding: Spacing.md, marginBottom: Spacing.md },
+  switchWarnText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, lineHeight: 19 },
+  codeInput: { fontSize: 26, fontFamily: FontFamily.extraBold, textAlign: 'center', letterSpacing: 6 },
+  errorText: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, marginTop: Spacing.sm },
   });
 }

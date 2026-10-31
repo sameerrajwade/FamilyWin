@@ -20,6 +20,9 @@ import { createManagedMember } from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
+import { AvatarPicker } from '@/components/ui/AvatarPicker';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
 
 export default function AddChildScreen() {
   const { colors } = useTheme();
@@ -69,14 +72,12 @@ export default function AddChildScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScreenHeader variant="modal" />
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-
-          {/* Handle bar (modal presentation) */}
-          <View style={styles.handle} />
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.emoji}>👶</Text>
+            <EmojiIcon emoji="👶" size={64} style={{ marginBottom: Spacing.sm }} />
             <Text style={styles.title}>Add a Child Profile</Text>
             <Text style={styles.subtitle}>
               No phone needed — you can complete tasks on their behalf from your Home screen.
@@ -85,19 +86,7 @@ export default function AddChildScreen() {
 
           {/* Avatar picker */}
           <Text style={styles.label}>Pick an Avatar</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiScroll}>
-            <View style={styles.emojiRow}>
-              {AVATAR_EMOJIS.map((emoji) => (
-                <TouchableOpacity
-                  key={emoji}
-                  style={[styles.emojiOption, selectedEmoji === emoji && styles.emojiSelected]}
-                  onPress={() => { setSelectedEmoji(emoji); Haptics.selectionAsync(); }}
-                >
-                  <Text style={styles.emojiText}>{emoji}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+          <AvatarPicker value={selectedEmoji} onChange={setSelectedEmoji} />
 
           {/* Name */}
           <Text style={styles.label}>{"Child's Name"}</Text>

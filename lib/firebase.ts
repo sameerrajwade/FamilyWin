@@ -9,7 +9,7 @@
 
 import { Timestamp } from '@react-native-firebase/firestore';
 import { firestore, auth, storage, functions } from '@/lib/fb';
-import { missedTaskPenaltyAmount, graceWindowDays, type MissedPenaltyMode } from '@/lib/pointsEngine';
+import { missedTaskPenaltyAmount, graceWindowDays, isPenaltyPaused, type MissedPenaltyMode } from '@/lib/pointsEngine';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -139,12 +139,32 @@ export interface FamilyDoc {
   // within a 2-day grace window). Absent = 'off'. (Legacy boolean true is read
   // as 'half' by the client for backward-compat.)
   missedTaskPenalty?: 'off' | 'half' | 'full' | boolean;
+  // Hour (0–23, member LOCAL time) after which an incomplete daily task counts as
+  // "missed" for the penalty above. Absent = 21 (9 PM). A daily task is freely
+  // completable until this hour each day; only after it passes (in the member's
+  // own timezone) is the miss penalty applied. See missedDeadlineHour().
+  missedTaskDeadlineHour?: number;
+  // Vacation/sick "hold": while this is a future time, missed-task penalties are
+  // paused for the WHOLE family (and daily reminders are muted). Absent/past =
+  // not paused. A member can also be paused individually (MemberDoc below).
+  penaltyPausedUntil?: Timestamp | null;
   // Monetization (Lootboard Plus). Absent = free tier. Server-validated later
   // (RevenueCat webhook → Cloud Function); the client never trusts a
   // client-written plan. While constants/plans.ts MONETIZATION_ENABLED is false,
   // entitlement checks treat everyone as Plus (free-for-all) regardless of this.
   plan?: 'free' | 'plus';
   planExpiresAt?: Timestamp | null;
+  // Phase 5 #3 — virtual allowance. When enabled, a member's spendable points
+  // show a cash value and they can request a "cash out" (payout) that a parent
+  // approves. `allowancePointsPerUnit` = points equal to one currency unit
+  // (e.g. 100 → 100 pts = $1). Purely virtual tracking — no real money moves.
+  allowanceEnabled?: boolean;
+  allowancePointsPerUnit?: number;
+  allowanceCurrency?: string; // symbol, default '$'
+  // Phase B, Bet 3 — family co-op goal: one weekly points target everyone
+  // (kids AND parents) earns toward together, with a shared reward. Absent =
+  // no goal set. Progress is computed client-side (lib/familyGame).
+  familyGoal?: { target: number; reward: string } | null;
   createdAt: Timestamp;
 }
 
@@ -159,6 +179,10 @@ export interface MemberDoc {
   age?: number;
   isManaged?: boolean;      // true = parent-created profile, no Firebase Auth account
   weeklyGoal?: number | null; // personal weekly points target (🎯 Goal Crusher crown); null/absent = none
+  // Per-member vacation/sick "hold": while a future time, missed-task penalties
+  // are paused for THIS member only. Absent/past = not paused. See FamilyDoc for
+  // a whole-family pause. Either being active pauses the member.
+  penaltyPausedUntil?: Timestamp | null;
   createdAt: Timestamp;
 }
 
@@ -199,6 +223,54 @@ export async function joinFamily(
   const result = await getUserFamilyAndMember(uid);
   if (!result) throw new Error('Joined but could not load family.');
   return result;
+}
+
+/**
+ * Clear the /users/{uid} → family link so this account can join a DIFFERENT
+ * family. Used by the "Switch family" flow (e.g. two parents each created a
+ * duplicate household and one wants to move onto the other's). The old member
+ * doc is intentionally left in place — Firestore rules forbid member deletes —
+ * so it becomes an orphan in the old family (harmless; abandoned households get
+ * cleaned up on weekly reset / account deletion). Returns the prior link so the
+ * caller can roll back if the subsequent join fails.
+ */
+export async function leaveFamilyLink(
+  uid: string,
+): Promise<{ familyId: string; memberId: string } | null> {
+  const ref = Col.users().doc(uid);
+  const snap = await ref.get();
+  const prior = snap.exists()
+    ? (snap.data() as { familyId: string; memberId: string })
+    : null;
+  // Null out the link (rather than delete the doc) so nothing that reads the
+  // users doc sees it vanish — the join below immediately re-links it.
+  await ref.set({ familyId: null, memberId: null }, { merge: true });
+  return prior;
+}
+
+/**
+ * Switch this account from its current family to another, by invite code.
+ * Leaves the current family (clears the /users link) then joins the new one via
+ * the server-authoritative joinFamily Cloud Function. If the join fails (bad
+ * code, family full, network) the previous link is restored so the account is
+ * never left stranded with no family. Like a fresh join, the account enters the
+ * new family as a plain member — a parent there can grant parent access.
+ */
+export async function switchFamilyByCode(
+  uid: string,
+  params: { inviteCode: string; displayName: string; avatarEmoji: string; age?: number },
+): Promise<{ family: FamilyDoc; member: MemberDoc }> {
+  const prior = await leaveFamilyLink(uid);
+  try {
+    return await joinFamily(uid, params);
+  } catch (e) {
+    if (prior?.familyId && prior?.memberId) {
+      try {
+        await Col.users().doc(uid).set(prior, { merge: true });
+      } catch { /* best-effort rollback */ }
+    }
+    throw e;
+  }
 }
 
 export async function getFamilyByInviteCode(code: string): Promise<FamilyDoc> {
@@ -263,6 +335,17 @@ export async function createManagedMember(params: {
     createdAt: firestore.Timestamp.now(),
   } as Omit<MemberDoc, 'id'>;
   await ref.set(data);
+  // Managed kids have no phone/onboarding, so they'd otherwise have no stored
+  // timezone — which makes the server missed-task sweep fall back to UTC and
+  // penalize their tasks on the wrong (UTC) day boundary. Stamp the CREATING
+  // parent's device timezone (== the family's timezone) so day-rollover and the
+  // missed-task deadline are evaluated in the right zone. enabled:false — no push
+  // to a profile with no device.
+  try {
+    let timezone = 'UTC';
+    try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { /* keep UTC */ }
+    await Col.notifConfigs(params.familyId).doc(ref.id).set({ enabled: false, timezone }, { merge: true });
+  } catch { /* non-fatal — sweep also falls back to the family timezone */ }
   return { id: ref.id, ...data };
 }
 
@@ -398,6 +481,59 @@ export async function uploadMemberPhoto(
 }
 
 /**
+ * Phase 5 photo-proof: upload a completion's proof image and return its URL.
+ * Stored under `member-photos/{familyId}/…` (the only path Storage rules allow
+ * without a rules deploy — see firebase/storage.rules) with a `proof_` prefix.
+ * Mirrors uploadMemberPhoto's local-file resolution (file:// direct, content://
+ * via fetch→base64) + 512px compression, but does NOT touch any Firestore doc —
+ * the caller passes the returned URL into completeTask so it lands on the
+ * completion at create time (which the rules allow).
+ */
+export async function uploadCompletionProof(
+  localUri: string,
+  familyId: string,
+  memberId: string,
+): Promise<string> {
+  const ref = storage().ref(`member-photos/${familyId}/proof_${memberId}_${Date.now()}.jpg`);
+
+  // Resolve to an owned file:// we can compress + putFile.
+  let localFile: string | null = localUri.startsWith('file://') ? localUri : null;
+  if (!localFile) {
+    try {
+      const res = await fetch(localUri);
+      const blob = await res.blob();
+      if (!blob || (blob as any).size === 0) throw new Error('empty blob');
+      const base64: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('reader failed'));
+        reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+        reader.readAsDataURL(blob);
+      });
+      const dest = `${FileSystem.cacheDirectory}proof_${memberId}_${Date.now()}.jpg`;
+      await FileSystem.writeAsStringAsync(dest, base64, { encoding: FileSystem.EncodingType.Base64 });
+      localFile = dest;
+    } catch {
+      // Last resort: hand the raw content:// straight to putFile (SAF grant).
+      await ref.putFile(localUri, { contentType: 'image/jpeg' });
+      return ref.getDownloadURL();
+    }
+  }
+
+  let uploadUri = localFile;
+  try {
+    const m = await ImageManipulator.manipulateAsync(
+      localFile,
+      [{ resize: { width: 1024 } }],
+      { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG },
+    );
+    uploadUri = m.uri;
+  } catch { /* upload full-size rather than fail */ }
+
+  await ref.putFile(uploadUri, { contentType: 'image/jpeg' });
+  return ref.getDownloadURL();
+}
+
+/**
  * Bulk-create rewards from a starter pack in one batched write. Mirrors
  * createTasksFromPack — stocks an empty rewards store in a single tap.
  */
@@ -520,6 +656,12 @@ export interface TaskDoc {
   difficulty: 'easy' | 'medium' | 'hard';
   recurrence: 'daily' | 'weekly' | 'monthly' | 'once' | 'custom';
   assignedTo?: string | null;
+  /** Phase 5 rotation: when set, the assignee cycles through `memberIds` on the
+   *  given cadence and `assignedTo` is derived (see lib/rotation.ts). */
+  rotation?: { memberIds: string[]; cadence: 'daily' | 'weekly' } | null;
+  /** Phase 5 scheduling: weekdays (0=Sun..6=Sat) the task is due; empty/absent
+   *  = due every day. */
+  scheduledDays?: number[] | null;
   pointValue: number;
   autoFailHour?: number;
   taskEmoji?: string;
@@ -527,6 +669,9 @@ export interface TaskDoc {
   /** Phase 4.3: when true, a child's completion is held for parent approval
    *  before points are awarded. Absent/false = points settle immediately. */
   requiresApproval?: boolean;
+  /** Phase 5 photo-proof: when true, completing requires attaching a photo, and
+   *  the completion is held for parent approval (implies requiresApproval). */
+  requiresPhoto?: boolean;
   createdBy: string;
   createdAt: Timestamp;
 }
@@ -555,6 +700,8 @@ export interface CompletionDoc {
   status?: 'pending' | 'approved' | 'rejected';
   approvedBy?: string;
   approvedAt?: Timestamp | null;
+  /** Phase 5 photo-proof: URL of the photo the member attached as proof. */
+  proofPhotoURL?: string;
 }
 
 export interface TransactionDoc {
@@ -607,6 +754,9 @@ export async function completeTask(params: {
   /** Phase 4.3: when true, the completion lands as 'pending' and points are
    *  awarded only after a parent approves it. */
   requiresApproval?: boolean;
+  /** Phase 5 photo-proof: the uploaded proof image URL, stored on the completion
+   *  so the approving parent can see it. Set only for photo-proof tasks. */
+  proofPhotoURL?: string;
 }): Promise<TransactionDoc & { completionId: string }> {
   // Phase 1.8: the client writes ONLY the completion (stamped serverAward:true).
   // The onCompletionCreated Cloud Function settles the points transaction from
@@ -626,6 +776,7 @@ export async function completeTask(params: {
     pointsAwarded: params.pointValue, // display hint; server recomputes the tx
     serverAward: true,
     ...(params.requiresApproval ? { status: 'pending' as const } : {}),
+    ...(params.proofPhotoURL ? { proofPhotoURL: params.proofPhotoURL } : {}),
   });
 
   // Return shape preserved for callers (toast + undo). No client tx id exists now
@@ -640,6 +791,61 @@ export async function completeTask(params: {
     createdAt: firestore.Timestamp.now(),
   };
   return { id: completionRef.id, completionId: completionRef.id, ...txData };
+}
+
+/**
+ * Recover a daily task that was marked missed/auto-failed for TODAY: delete the
+ * penalty completion (onCompletionDeleted adds the deducted points back) and
+ * write a normal positive completion (onCompletionCreated awards the full value)
+ * — atomically, so the task flips from red-X to done and nets +pointValue. Lets a
+ * member still earn a task they got penalized for, on the same day. Idempotent:
+ * if the task is already positively completed today, it's a no-op.
+ */
+export async function recoverFailedTask(params: {
+  familyId: string;
+  taskId: string;
+  memberId: string;
+  weekId: string;
+  pointValue: number;
+  /** The known failed completion id from the card — deleted even if it carries
+   *  no completedDate (e.g. a legacy device auto-fail). */
+  failedCompletionId?: string;
+}): Promise<{ completionId: string }> {
+  const { familyId, taskId, memberId, weekId, failedCompletionId } = params;
+  const todayKey = getTodayDateString();
+  const snap = await Col.completions(familyId)
+    .where('taskId', '==', taskId)
+    .where('memberId', '==', memberId)
+    .where('completedDate', '==', todayKey)
+    .get();
+  const docs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CompletionDoc, 'id'>) }));
+
+  const already = docs.find((c) => !c.wasAutoFailed && (c.pointsAwarded ?? 0) > 0);
+  if (already) return { completionId: already.id };
+
+  const batch = firestore().batch();
+  // Remove every penalty completion for today (miss and/or autofail) so the CF
+  // reverses each one back to zero before we award the real completion.
+  const toDelete = new Set(
+    docs.filter((c) => c.wasAutoFailed || (c.pointsAwarded ?? 0) < 0).map((c) => c.id),
+  );
+  if (failedCompletionId) toDelete.add(failedCompletionId);
+  toDelete.forEach((id) => batch.delete(Col.completions(familyId).doc(id)));
+
+  const ref = Col.completions(familyId).doc();
+  batch.set(ref, {
+    taskId,
+    memberId,
+    weekId,
+    completedDate: todayKey,
+    monthId: getCurrentMonthId(),
+    completedAt: firestore.Timestamp.now(),
+    wasAutoFailed: false,
+    pointsAwarded: params.pointValue, // display hint; server recomputes the tx
+    serverAward: true,
+  });
+  await batch.commit();
+  return { completionId: ref.id };
 }
 
 /**
@@ -720,6 +926,42 @@ export async function approveCompletion(params: {
   });
 }
 
+/** Set (or clear with null) the family co-op goal. Parents only, via rules. */
+export async function setFamilyGoal(familyId: string, goal: { target: number; reward: string } | null): Promise<void> {
+  await firestore().collection('families').doc(familyId).update({ familyGoal: goal });
+}
+
+/**
+ * Approve many pending completions at once (Kid Mode "Approve all"). Each is
+ * the same status-only update the rules allow; points still settle server-side
+ * per completion. Returns how many succeeded so the UI can report partial
+ * failures instead of pretending everything went through.
+ */
+export async function approveCompletions(params: {
+  familyId: string;
+  completionIds: string[];
+  approvedBy: string;
+}): Promise<{ approved: number; failed: number }> {
+  const results = await Promise.allSettled(
+    params.completionIds.map((completionId) =>
+      approveCompletion({ familyId: params.familyId, completionId, approvedBy: params.approvedBy })),
+  );
+  const approved = results.filter((r) => r.status === 'fulfilled').length;
+  return { approved, failed: results.length - approved };
+}
+
+/**
+ * A kid takes back a claim that's still waiting for approval ("oops, not done
+ * yet"). Safe: a pending completion never settled any points, so the server's
+ * onCompletionDeleted finds no transactions to reverse.
+ */
+export async function withdrawPendingClaim(familyId: string, completionId: string): Promise<void> {
+  const ref = Col.completions(familyId).doc(completionId);
+  const snap = await ref.get();
+  if (!snap.exists() || snap.data()?.status !== 'pending') return;
+  await ref.delete();
+}
+
 /**
  * Reject a pending completion (task not actually done to standard). No points
  * are awarded; if the completion had somehow been approved first, the CF
@@ -750,6 +992,90 @@ export function missedPenaltyMode(family: { missedTaskPenalty?: 'off' | 'half' |
   if (v === true) return 'half';        // legacy boolean
   if (v === 'half' || v === 'full') return v;
   return 'off';
+}
+
+/** Default hour (local) after which an incomplete daily task counts as missed. */
+export const DEFAULT_MISSED_DEADLINE_HOUR = 21; // 9 PM
+
+/** The family's missed-task deadline hour (0–23, member local time). Default 9 PM. */
+export function missedDeadlineHour(
+  family: { missedTaskDeadlineHour?: number } | null | undefined,
+): number {
+  const h = family?.missedTaskDeadlineHour;
+  return typeof h === 'number' && h >= 0 && h <= 23 ? h : DEFAULT_MISSED_DEADLINE_HOUR;
+}
+
+/** Set the hour (0–23, local) after which a missed daily task is penalized. */
+export async function setMissedTaskDeadline(familyId: string, hour: number): Promise<void> {
+  const h = Math.max(0, Math.min(23, Math.round(hour)));
+  await Col.families().doc(familyId).update({ missedTaskDeadlineHour: h });
+}
+
+// ─── PENALTY PAUSE (vacation / sick hold) ────────────────────────────────────
+// A parent can pause missed-task penalties for the whole family or one member —
+// no penalties are applied (client + server sweeps skip) and daily reminders are
+// muted while paused. "Indefinite" = a far-future sentinel; resume = clear it.
+
+/** Sentinel meaning "paused until a parent resumes" (no automatic end date). */
+export const PAUSE_INDEFINITE = new Date('2999-01-01T00:00:00Z');
+
+/** Pause (until `until`) or resume (null) missed-task penalties for the WHOLE family. */
+export async function setFamilyPenaltyPause(familyId: string, until: Date | null): Promise<void> {
+  await Col.families().doc(familyId).update({
+    penaltyPausedUntil: until ? firestore.Timestamp.fromDate(until) : firestore.FieldValue.delete(),
+  });
+}
+
+/** Pause (until `until`) or resume (null) missed-task penalties for ONE member. */
+export async function setMemberPenaltyPause(familyId: string, memberId: string, until: Date | null): Promise<void> {
+  await Col.members(familyId).doc(memberId).update({
+    penaltyPausedUntil: until ? firestore.Timestamp.fromDate(until) : firestore.FieldValue.delete(),
+  });
+}
+
+/**
+ * Is the missed-task penalty paused RIGHT NOW for this member — via a family-wide
+ * pause or their own? Convenience wrapper that resolves the stored Timestamps and
+ * defers to the pure `isPenaltyPaused`.
+ */
+export function penaltyPauseActive(
+  family: { penaltyPausedUntil?: Timestamp | null } | null | undefined,
+  member: { penaltyPausedUntil?: Timestamp | null } | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  return isPenaltyPaused(
+    family?.penaltyPausedUntil?.toDate?.() ?? null,
+    member?.penaltyPausedUntil?.toDate?.() ?? null,
+    now,
+  );
+}
+
+/**
+ * Reset a member's ALL-TIME points bank to zero — a parent "start fresh" action.
+ * Sums every transaction and writes ONE balancing manual transaction (the audited
+ * source:'manual' path) of the negation, so the bank lands exactly on 0. No-op if
+ * already zero. The weekly competition already resets each week; this is only for
+ * the all-time spendable bank. Returns the delta written (0 if nothing to do).
+ */
+export async function resetMemberPoints(
+  familyId: string,
+  memberId: string,
+  /** Timestamp for the balancing tx. Pass a time just BEFORE the current week
+   *  start to zero the all-time bank WITHOUT disturbing this week's competition
+   *  (earned-this-week excludes anything before weekStart). Defaults to now. */
+  stampAt?: Date,
+): Promise<{ delta: number }> {
+  const snap = await Col.transactions(familyId).where('memberId', '==', memberId).get();
+  const balance = snap.docs.reduce((s, d) => s + ((d.data().delta as number) || 0), 0);
+  if (balance === 0) return { delta: 0 };
+  await Col.transactions(familyId).add({
+    familyId, memberId,
+    delta: -balance,
+    reason: 'Points reset to zero',
+    source: 'manual',
+    createdAt: stampAt ? firestore.Timestamp.fromDate(stampAt) : firestore.Timestamp.now(),
+  });
+  return { delta: -balance };
 }
 
 export interface CatchUpItem {
@@ -878,7 +1204,7 @@ export async function completeTaskForDate(params: {
   pointValue: number;
   taskTitle: string;
   dateKey: string; // YYYY-MM-DD
-}): Promise<void> {
+}): Promise<{ completionId: string }> {
   const { familyId, taskId, memberId, pointValue, dateKey } = params;
   const [y, m, d] = dateKey.split('-').map(Number);
   const dateObj = new Date(y, m - 1, d, 12, 0, 0);
@@ -892,8 +1218,10 @@ export async function completeTaskForDate(params: {
     .get();
   const docs = snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<CompletionDoc, 'id'>) }));
 
-  // Idempotent: already positively completed for that day.
-  if (docs.some((c) => !c.wasAutoFailed && (c.pointsAwarded ?? 0) > 0)) return;
+  // Idempotent: already positively completed for that day — return its id so the
+  // caller can still offer an Undo.
+  const already = docs.find((c) => !c.wasAutoFailed && (c.pointsAwarded ?? 0) > 0);
+  if (already) return { completionId: already.id };
 
   const batch = firestore().batch();
 
@@ -919,6 +1247,7 @@ export async function completeTaskForDate(params: {
   });
 
   await batch.commit();
+  return { completionId: completionRef.id };
 }
 
 /**
@@ -1000,6 +1329,13 @@ export interface RedemptionDoc {
   status: 'pending' | 'approved' | 'rejected';
   redeemedAt: Timestamp;
   approvedBy?: string;
+  // Phase 5 #3 — a "payout" (cash-out) is a redemption variant: it reuses the
+  // redemptions collection + rules (no deploy) but has no reward. `points` is
+  // deducted on approval and `cashAmount` is the recorded virtual payout.
+  kind?: 'reward' | 'payout';
+  points?: number;
+  cashAmount?: number;
+  currency?: string;
 }
 
 export async function getActiveRewards(familyId: string): Promise<RewardDoc[]> {
@@ -1012,23 +1348,54 @@ export async function getActiveRewards(familyId: string): Promise<RewardDoc[]> {
     .sort((a, b) => a.pointCost - b.pointCost);
 }
 
+/**
+ * Create a reward — OR update the existing one if an active reward with the same
+ * title already exists (case-insensitive, trimmed). This is the dedupe the user
+ * asked for: re-adding "Ice Cream Trip" updates its cost/description in place
+ * instead of stacking a third identical card. Returns whether it deduped.
+ */
 export async function createReward(params: {
   familyId: string;
   title: string;
   description?: string;
   pointCost: number;
   createdBy: string;
-}): Promise<void> {
+}): Promise<{ deduped: boolean }> {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const existing = await getActiveRewards(params.familyId);
+  const match = existing.find((r) => norm(r.title) === norm(params.title));
+
+  if (match) {
+    // Update in place. Clearing the description is a real edit, so we always set
+    // it (to the new value, or remove it when the new one is blank).
+    await Col.rewards(params.familyId).doc(match.id).update({
+      title: params.title.trim(),
+      pointCost: params.pointCost,
+      description: params.description ? params.description : firestore.FieldValue.delete(),
+    });
+    return { deduped: true };
+  }
+
   // Spread undefined optional fields crash Firestore — build explicitly
   await Col.rewards(params.familyId).add({
     familyId: params.familyId,
-    title: params.title,
+    title: params.title.trim(),
     ...(params.description ? { description: params.description } : {}),
     pointCost: params.pointCost,
     createdBy: params.createdBy,
     isActive: true,
     createdAt: firestore.Timestamp.now(),
   });
+  return { deduped: false };
+}
+
+/**
+ * Remove a reward from the store. Soft-delete (isActive:false) so any existing
+ * redemption history that references it stays intact; getActiveRewards already
+ * filters to isActive==true, so it disappears from the list immediately.
+ */
+export async function deactivateReward(familyId: string, rewardId: string): Promise<void> {
+  await Col.rewards(familyId).doc(rewardId).update({ isActive: false });
 }
 
 // ─── PENALTY HELPERS ─────────────────────────────────────────────────────────
@@ -1100,6 +1467,8 @@ export async function approveRedemption(params: {
   memberId: string;
   pointCost: number;
   approvedBy: string;
+  /** Transaction reason (defaults to "Reward redeemed"; payouts pass "Cashed out …"). */
+  reason?: string;
 }): Promise<void> {
   const batch = firestore().batch();
 
@@ -1115,13 +1484,48 @@ export async function approveRedemption(params: {
     familyId: params.familyId,
     memberId: params.memberId,
     delta: -params.pointCost,
-    reason: 'Reward redeemed',
+    reason: params.reason ?? 'Reward redeemed',
     source: 'redemption',
     referenceId: params.redemptionId,
     createdAt: firestore.Timestamp.now(),
   });
 
   await batch.commit();
+}
+
+/**
+ * Phase 5 #3 — a child requests to cash out `points` for `cashAmount` (virtual).
+ * Written as a pending redemption of kind 'payout' (no reward). Points are only
+ * deducted when a parent approves it via approveRedemption (source 'redemption',
+ * so it never touches the weekly leaderboard). Reuses redemption rules → no
+ * security-rules deploy.
+ */
+export async function requestPayout(params: {
+  familyId: string;
+  memberId: string;
+  points: number;
+  cashAmount: number;
+  currency: string;
+}): Promise<void> {
+  await Col.redemptions(params.familyId).add({
+    rewardId: '',
+    familyId: params.familyId,
+    memberId: params.memberId,
+    status: 'pending',
+    redeemedAt: firestore.Timestamp.now(),
+    kind: 'payout',
+    points: params.points,
+    cashAmount: params.cashAmount,
+    currency: params.currency,
+  });
+}
+
+/** Parent updates the family's virtual-allowance settings. */
+export async function setAllowanceSettings(
+  familyId: string,
+  settings: { allowanceEnabled?: boolean; allowancePointsPerUnit?: number; allowanceCurrency?: string },
+): Promise<void> {
+  await Col.families().doc(familyId).update(settings);
 }
 
 /** Update the family's weekly reset day (0=Sunday … 6=Saturday) */
@@ -1156,7 +1560,14 @@ export async function getRecentCompletions(
 export async function upsertNotifConfig(
   familyId: string,
   memberId: string,
-  data: { enabled?: boolean; dailyReminderTime?: string; pushToken?: string; timezone?: string },
+  data: {
+    enabled?: boolean; pushToken?: string; timezone?: string;
+    // Always-on reminders: evening check-in (everyone) + morning plan (parents).
+    dailyReminderTime?: string; morningReminderTime?: string;
+    // Phase 5 #5 — quiet hours: a nightly window (member-local, "HH:MM") during
+    // which local reminders are suppressed. Both absent = no quiet hours.
+    quietStart?: string | null; quietEnd?: string | null;
+  },
 ) {
   await Col.notifConfigs(familyId).doc(memberId).set(data, { merge: true });
 }
@@ -1178,7 +1589,7 @@ export async function sendPasswordReset(email: string): Promise<void> {
 export async function updateTask(
   familyId: string,
   taskId: string,
-  updates: Partial<Pick<TaskDoc, 'title' | 'description' | 'category' | 'difficulty' | 'recurrence' | 'assignedTo' | 'pointValue' | 'autoFailHour' | 'taskEmoji' | 'requiresApproval'>>,
+  updates: Partial<Pick<TaskDoc, 'title' | 'description' | 'category' | 'difficulty' | 'recurrence' | 'assignedTo' | 'rotation' | 'scheduledDays' | 'pointValue' | 'autoFailHour' | 'taskEmoji' | 'requiresApproval' | 'requiresPhoto'>>,
 ): Promise<void> {
   await Col.tasks(familyId).doc(taskId).update(updates);
 }

@@ -143,8 +143,15 @@ export const DIFFICULTY_POINTS: Record<string, number> = {
   hard: 50,
 };
 
+/**
+ * The ONE avatar set for every member — parents and kids pick from the same
+ * list, in the same picker (components/ui/AvatarPicker), rendered in the same
+ * container (<Avatar>). Each has a bundled Fluent 3D image (lib/emojiAssets).
+ */
 export const AVATAR_EMOJIS = [
-  '🦁', '🐯', '🐻', '🦊', '🐺', '🦝',
-  '🐸', '🐧', '🦋', '🐬', '🦄', '🐲',
-  '🦸', '🧙', '👑', '🌟', '🚀', '⚡',
+  '🦁', '🐯', '🐻', '🐼', '🐨', '🦊',
+  '🐺', '🐶', '🐱', '🐰', '🐵', '🐸',
+  '🐧', '🦉', '🦅', '🐢', '🐙', '🐬',
+  '🦋', '🦄', '🐲', '🦖', '🤖', '👽',
+  '🦸', '🧙', '🥷', '👑', '🚀', '⚡',
 ];

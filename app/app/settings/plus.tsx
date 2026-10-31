@@ -11,7 +11,7 @@ import { SettingsScaffold } from '@/components/ui/SettingsUI';
 import { useTheme, type ThemeColors } from '@/lib/theme';
 import { Icon, IconName } from '@/components/ui/Icon';
 import { FontFamily, FontSize, Spacing, BorderRadius, Colors, Shadow } from '@/constants/theme';
-import { MONETIZATION_ENABLED, PLUS_FEATURES, PLUS_PRICING, FREE_LIMITS } from '@/constants/plans';
+import { MONETIZATION_ENABLED, PLUS_FEATURES, FREE_LIMITS } from '@/constants/plans';
 
 export default function PlusScreen() {
   const { colors } = useTheme();
@@ -28,7 +28,7 @@ export default function PlusScreen() {
         <Text style={styles.heroSub}>
           {MONETIZATION_ENABLED
             ? 'Get the whole family competing with every premium feature.'
-            : 'Every premium feature below is unlocked for your family right now — no charge. We’ll give you plenty of notice before Plus ever becomes paid.'}
+            : 'Every premium feature below is unlocked for your family — completely free.'}
         </Text>
         {!MONETIZATION_ENABLED && (
           <View style={styles.freePill}>
@@ -66,7 +66,7 @@ export default function PlusScreen() {
           [`${FREE_LIMITS.maxMembers} members`, 'Unlimited members'],
           [`${FREE_LIMITS.maxActiveRewards} rewards`, 'Unlimited rewards'],
           [`${FREE_LIMITS.historyWeeks} weeks history`, 'Full history & trends'],
-          ['Core game & leaderboard', 'Everything + themes, photo proof, insurance'],
+          ['Core game & leaderboard', 'Everything + co-admin & custom points'],
         ].map((row, i, arr) => (
           <View key={i} style={[styles.cmpRow, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
             <Text style={[styles.cmpCell, { color: colors.textSecondary }]}>{row[0]}</Text>
@@ -75,18 +75,13 @@ export default function PlusScreen() {
         ))}
       </View>
 
-      {/* Pricing framing */}
-      <View style={styles.pricingBox}>
-        <Text style={styles.pricingTitle}>
-          {MONETIZATION_ENABLED ? 'Pricing' : 'When Plus launches'}
-        </Text>
-        <Text style={styles.pricingText}>
-          {PLUS_PRICING.monthly} · {PLUS_PRICING.yearly} · {PLUS_PRICING.trialDays}-day free trial · one subscription covers the whole family.
-        </Text>
-        {!MONETIZATION_ENABLED && (
-          <Text style={styles.pricingNote}>Right now it’s all free — nothing to pay, nothing to sign up for.</Text>
-        )}
-      </View>
+      {/* Free callout (replaces pricing while monetization is off) */}
+      {!MONETIZATION_ENABLED && (
+        <View style={styles.pricingBox}>
+          <Text style={styles.pricingTitle}>Free for your whole family</Text>
+          <Text style={styles.pricingNote}>Nothing to pay, nothing to sign up for — every feature above is yours.</Text>
+        </View>
+      )}
     </SettingsScaffold>
   );
 }
@@ -111,7 +106,6 @@ function createStyles(colors: ThemeColors) {
     cmpHeadRight: { fontFamily: FontFamily.extraBold, color: Colors.gold === '#FFD700' ? colors.text : colors.text },
     pricingBox: { marginHorizontal: Spacing.lg, marginBottom: Spacing.xl, padding: Spacing.md, borderRadius: BorderRadius.lg, backgroundColor: colors.primary + '10', borderWidth: 1, borderColor: colors.primary + '2E' },
     pricingTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.text, marginBottom: 4 },
-    pricingText: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, lineHeight: 18 },
-    pricingNote: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.success, marginTop: 6 },
+    pricingNote: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.success, marginTop: 2 },
   });
 }

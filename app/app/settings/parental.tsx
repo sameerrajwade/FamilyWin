@@ -5,14 +5,18 @@
  * Settings > Parental Controls / Weekly Reset sections.
  */
 import { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, StyleSheet, Switch } from 'react-native';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { SettingsScaffold, SettingsGroup, NavRow, SettingsBlock } from '@/components/ui/SettingsUI';
+import { firestore } from '@/lib/fb';
 import { useAuthStore } from '@/store';
 import { useTheme, type ThemeColors } from '@/lib/theme';
-import { setMissedTaskPenalty, missedPenaltyMode, updateFamilyWeekStartDay } from '@/lib/firebase';
+import { setMissedTaskPenalty, missedPenaltyMode, missedDeadlineHour, setMissedTaskDeadline, updateFamilyWeekStartDay, setFamilyPenaltyPause, PAUSE_INDEFINITE, setAllowanceSettings } from '@/lib/firebase';
 import { FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
+
+const DAY_MS = 86_400_000;
+function addDays(n: number): Date { return new Date(Date.now() + n * DAY_MS); }
 
 const WEEK_DAYS = [
   { label: 'Sun', value: 0 }, { label: 'Mon', value: 1 }, { label: 'Tue', value: 2 },
@@ -25,8 +29,24 @@ export default function ParentalControlsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [weekStartDay, setWeekStartDay] = useState(family?.weekStartDay ?? 1);
+  // Virtual allowance (Phase 5 #3)
+  const [allowanceOn, setAllowanceOn] = useState(!!family?.allowanceEnabled);
+  const [rate, setRate] = useState(family?.allowancePointsPerUnit ?? 100);
+  const [currency, setCurrency] = useState(family?.allowanceCurrency ?? '$');
 
-  const isAdmin = member?.role === 'admin_parent';
+  async function saveAllowance(next: { allowanceEnabled?: boolean; allowancePointsPerUnit?: number; allowanceCurrency?: string }) {
+    if (!family?.id) return;
+    try {
+      await setAllowanceSettings(family.id, next);
+      setFamily({ ...family, ...next } as any);
+      Haptics.selectionAsync();
+    } catch { Alert.alert('Error', 'Could not update allowance settings.'); }
+  }
+
+  // Every parent is a co-admin (not just the family creator) — the weekly-reset
+  // day is a family-wide setting any parent can change, matching the Firestore
+  // rules that allow any parent to update the family doc.
+  const isAdmin = member?.role === 'admin_parent' || member?.role === 'parent';
 
   async function handleSetMissedPenalty(mode: 'off' | 'half' | 'full') {
     if (!family?.id) return;
@@ -42,6 +62,33 @@ export default function ParentalControlsScreen() {
     }
   }
 
+  async function handleSetDeadline(hour: number) {
+    if (!family?.id) return;
+    const prev = missedDeadlineHour(family);
+    if (hour === prev) return;
+    await Haptics.selectionAsync();
+    setFamily({ ...family, missedTaskDeadlineHour: hour });
+    try {
+      await setMissedTaskDeadline(family.id, hour);
+    } catch {
+      setFamily({ ...family, missedTaskDeadlineHour: prev });
+      Alert.alert('Error', 'Could not update the deadline time.');
+    }
+  }
+
+  async function handleSetFamilyPause(until: Date | null) {
+    if (!family?.id) return;
+    await Haptics.selectionAsync();
+    const prev = family.penaltyPausedUntil ?? null;
+    setFamily({ ...family, penaltyPausedUntil: until ? firestore.Timestamp.fromDate(until) : null });
+    try {
+      await setFamilyPenaltyPause(family.id, until);
+    } catch {
+      setFamily({ ...family, penaltyPausedUntil: prev });
+      Alert.alert('Error', 'Could not update the pause.');
+    }
+  }
+
   async function handleWeekStartDayChange(day: number) {
     if (!family?.id) return;
     setWeekStartDay(day);
@@ -54,6 +101,13 @@ export default function ParentalControlsScreen() {
       setWeekStartDay(family.weekStartDay ?? 1);
     }
   }
+
+  const familyPausedUntil = family?.penaltyPausedUntil?.toDate?.() ?? null;
+  const isFamilyPaused = !!familyPausedUntil && familyPausedUntil.getTime() > Date.now();
+  const pauseIndefinite = !!familyPausedUntil && familyPausedUntil.getFullYear() >= 2900;
+  const pauseEndLabel = pauseIndefinite
+    ? 'until you resume'
+    : familyPausedUntil ? `until ${familyPausedUntil.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : '';
 
   return (
     <SettingsScaffold title="Parental Controls">
@@ -94,7 +148,130 @@ export default function ParentalControlsScreen() {
               );
             })}
           </View>
+
+          {missedPenaltyMode(family) !== 'off' && (
+            <View style={styles.deadlineWrap}>
+              <Text style={[styles.blockLabel, { color: colors.text }]}>Deadline each day</Text>
+              <Text style={[styles.blockHint, { color: colors.textSecondary }]}>
+                A daily task can be completed until this time. Only after it passes (in each member's local time) does it count as missed.
+              </Text>
+              <View style={styles.hourRow}>
+                {[17, 18, 19, 20, 21, 22, 23].map((h) => {
+                  const active = missedDeadlineHour(family) === h;
+                  const label = h === 12 ? '12PM' : h > 12 ? `${h - 12}PM` : `${h}AM`;
+                  return (
+                    <TouchableOpacity
+                      key={h}
+                      style={[styles.hourChip, { borderColor: colors.border },
+                        active && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                      onPress={() => handleSetDeadline(h)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={`Set daily deadline to ${label}`}
+                    >
+                      <Text style={[styles.hourChipText, { color: active ? '#FFF' : colors.text }]}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </SettingsBlock>
+      </SettingsGroup>
+
+      <SettingsGroup title="Vacation / hold">
+        <SettingsBlock isLast>
+          <Text style={[styles.blockLabel, { color: colors.text }]}>Pause penalties & reminders</Text>
+          <Text style={[styles.blockHint, { color: colors.textSecondary }]}>
+            Going away, or someone's unwell? Pause for the whole family so missed tasks don't lose points and the daily reminder stops. You can still complete tasks and earn as normal.
+          </Text>
+          {isFamilyPaused ? (
+            <View style={styles.pausedWrap}>
+              <View style={[styles.pausedBadge, { backgroundColor: colors.warning + '1E', borderColor: colors.warning + '66' }]}>
+                <Text style={[styles.pausedBadgeText, { color: colors.warning }]}>⏸ Paused {pauseEndLabel}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.resumeBtn, { backgroundColor: colors.primary }]}
+                onPress={() => handleSetFamilyPause(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Resume penalties and reminders now"
+              >
+                <Text style={styles.resumeBtnText}>Resume now</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.pauseOptRow}>
+              {[{ label: '3 days', days: 3 }, { label: '1 week', days: 7 }, { label: '2 weeks', days: 14 }].map((o) => (
+                <TouchableOpacity
+                  key={o.label}
+                  style={[styles.pauseChip, { borderColor: colors.border }]}
+                  onPress={() => handleSetFamilyPause(addDays(o.days))}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Pause for ${o.label}`}
+                >
+                  <Text style={[styles.pauseChipText, { color: colors.text }]}>{o.label}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[styles.pauseChip, { borderColor: colors.border }]}
+                onPress={() => handleSetFamilyPause(PAUSE_INDEFINITE)}
+                accessibilityRole="button"
+                accessibilityLabel="Pause until I resume"
+              >
+                <Text style={[styles.pauseChipText, { color: colors.text }]}>Until I resume</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </SettingsBlock>
+      </SettingsGroup>
+
+      {/* Virtual allowance (Phase 5 #3) */}
+      <SettingsGroup title="Allowance">
+        <SettingsBlock>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, paddingRight: Spacing.md }}>
+              <Text style={[styles.blockLabel, { color: colors.text }]}>💰 Turn points into pocket money</Text>
+              <Text style={[styles.blockHint, { color: colors.textSecondary }]}>
+                Kids see a cash value and can request a payout you approve. Purely virtual — no real money moves.
+              </Text>
+            </View>
+            <Switch
+              value={allowanceOn}
+              onValueChange={(v) => { setAllowanceOn(v); saveAllowance({ allowanceEnabled: v }); }}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+        </SettingsBlock>
+        {allowanceOn && (
+          <SettingsBlock isLast>
+            <Text style={[styles.blockLabel, { color: colors.text }]}>Conversion rate</Text>
+            <Text style={[styles.blockHint, { color: colors.textSecondary }]}>How many points equal one {currency}1.</Text>
+            <View style={styles.dayGrid}>
+              {[50, 100, 200, 500].map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  style={[styles.dayChip, { backgroundColor: colors.background, borderColor: colors.border }, rate === r && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                  onPress={() => { setRate(r); saveAllowance({ allowancePointsPerUnit: r }); }}
+                >
+                  <Text style={[styles.dayChipText, { color: rate === r ? '#FFF' : colors.text }]}>{r} = {currency}1</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={[styles.blockLabel, { color: colors.text, marginTop: Spacing.md }]}>Currency</Text>
+            <View style={styles.dayGrid}>
+              {['$', '£', '€', '₹'].map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  style={[styles.dayChip, { backgroundColor: colors.background, borderColor: colors.border }, currency === c && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                  onPress={() => { setCurrency(c); saveAllowance({ allowanceCurrency: c }); }}
+                >
+                  <Text style={[styles.dayChipText, { color: currency === c ? '#FFF' : colors.text }]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </SettingsBlock>
+        )}
       </SettingsGroup>
 
       {isAdmin && (
@@ -134,8 +311,20 @@ function createStyles(_colors: ThemeColors) {
     penaltyModeRow: { flexDirection: 'row', gap: Spacing.sm },
     penaltyModeChip: { flex: 1, paddingVertical: 10, borderRadius: BorderRadius.md, borderWidth: 1.5, alignItems: 'center' },
     penaltyModeText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
+    deadlineWrap: { marginTop: Spacing.lg },
+    hourRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+    hourChip: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: BorderRadius.md, borderWidth: 1.5, alignItems: 'center' },
+    hourChipText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
     dayGrid: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     dayChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: BorderRadius.md, borderWidth: 1.5, alignItems: 'center' },
     dayChipText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
+    pauseOptRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+    pauseChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: BorderRadius.md, borderWidth: 1.5, alignItems: 'center' },
+    pauseChipText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
+    pausedWrap: { gap: Spacing.sm },
+    pausedBadge: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, borderRadius: BorderRadius.md, borderWidth: 1.5 },
+    pausedBadgeText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
+    resumeBtn: { alignSelf: 'flex-start', paddingHorizontal: 18, paddingVertical: 10, borderRadius: BorderRadius.md },
+    resumeBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFF' },
   });
 }

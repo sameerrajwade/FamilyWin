@@ -14,6 +14,8 @@ import {
 import { useAuthStore, useFamilyStore } from '@/store';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import type { MemberDoc, PenaltyDoc } from '@/lib/firebase';
 
@@ -177,13 +179,7 @@ export default function DisciplineLogScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={[styles.backText, { color: colors.primary }]}>← Back</Text>
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Log Discipline Event</Text>
-            <View style={{ width: 60 }} />
-          </View>
+          <ScreenHeader variant="modal" title="Log Discipline Event" />
 
           <View style={styles.content}>
             {/* Select Member */}
@@ -198,7 +194,7 @@ export default function DisciplineLogScreen() {
                         selectedMember?.id === m.id && { borderColor: colors.primary, backgroundColor: colors.primary + '18' }]}
                       onPress={() => { setSelectedMember(m); Haptics.selectionAsync(); }}
                     >
-                      <Text style={styles.memberEmoji}>{m.avatarEmoji}</Text>
+                      <Avatar emoji={m.avatarEmoji} photoURL={m.photoURL} size={36} />
                       <Text style={[styles.memberName, { color: selectedMember?.id === m.id ? colors.primary : colors.text }]}>
                         {m.displayName.split(' ')[0]}
                       </Text>

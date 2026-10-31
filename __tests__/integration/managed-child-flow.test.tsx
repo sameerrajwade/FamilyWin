@@ -65,12 +65,19 @@ jest.spyOn(Alert, 'alert');
 
 // ─── SCENARIO 1: Parent adds managed child ────────────────────────────────────
 describe('Integration: Add managed child profile', () => {
+  // Load (transform) the screen's module tree once, outside any single test's
+  // budget — on a cold cache with parallel workers that alone can exceed the
+  // 20s per-test timeout, which made the first test flaky rather than wrong.
+  let AddChildScreen: React.ComponentType;
+  beforeAll(() => {
+    AddChildScreen = require('@/app/app/member/add-child').default;
+  }, 120_000);
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('shows the Add Child screen correctly', async () => {
-    const AddChildScreen = require('@/app/app/member/add-child').default;
     const { findByText } = render(<AddChildScreen />);
     expect(await findByText('Add a Child Profile')).toBeTruthy();
     expect(await findByText(/No phone needed/)).toBeTruthy();

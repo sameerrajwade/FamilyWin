@@ -89,6 +89,50 @@ describe('onCompletionCreated — awards', () => {
   });
 });
 
+describe('onCompletionCreated — transaction date attribution (feedback #2)', () => {
+  it('stamps a NORMAL same-day completion tx at ~now', async () => {
+    const t0 = Date.now();
+    await compCol().doc('c_today').set({
+      taskId: 't1', memberId: 'mDate', wasAutoFailed: false, serverAward: true,
+      completedDate: '2026-08-25', // present, but NOT completedLate → uses now
+    });
+    const txs = await eventually(async () => {
+      const t = await txForCompletion('c_today');
+      return t.length ? t : null;
+    });
+    const created = txs[0].createdAt.toDate().getTime();
+    // within a generous window of test start (definitely "now", not back in Aug)
+    expect(Math.abs(created - t0)).toBeLessThan(120000);
+  });
+
+  it('back-dates a LATE catch-up completion tx to its own day (not this week)', async () => {
+    await compCol().doc('c_late').set({
+      taskId: 't1', memberId: 'mDate', wasAutoFailed: false, serverAward: true,
+      completedLate: true, completedDate: '2026-08-10',
+    });
+    const txs = await eventually(async () => {
+      const t = await txForCompletion('c_late');
+      return t.length ? t : null;
+    });
+    expect(txs[0].delta).toBe(10);
+    // createdAt must fall on 2026-08-10 (noon UTC), NOT the day the test runs.
+    expect(txs[0].createdAt.toDate().toISOString().slice(0, 10)).toBe('2026-08-10');
+  });
+
+  it('back-dates a MISS penalty tx to the missed day', async () => {
+    await compCol().doc('c_missdate').set({
+      taskId: 't1', memberId: 'mDate', wasAutoFailed: true, serverAward: true,
+      penaltyKind: 'miss', completedDate: '2026-08-11',
+    });
+    const txs = await eventually(async () => {
+      const t = await txForCompletion('c_missdate');
+      return t.length ? t : null;
+    });
+    expect(txs[0].delta).toBe(-5);
+    expect(txs[0].createdAt.toDate().toISOString().slice(0, 10)).toBe('2026-08-11');
+  });
+});
+
 describe('onCompletionDeleted — reversal', () => {
   it('reverses the award to net zero when the completion is deleted (undo)', async () => {
     await compCol().doc('c_undo').set({ taskId: 't1', memberId: 'm2', wasAutoFailed: false, serverAward: true });

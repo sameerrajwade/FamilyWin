@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store';
 import { setupNotificationListeners } from '@/lib/notifications';
 import { registerBackgroundTasks } from '@/lib/backgroundTasks';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ChestMark } from '@/components/ui/BrandIcons';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 import { identifyUser } from '@/lib/analytics';
 import { crashlytics } from '@/lib/fb';
@@ -150,7 +151,7 @@ const SPARKLES = [
   { emoji: '✨', angle: (7 * Math.PI) / 6 },
 ];
 
-const BOTTOM_STARS = ['🏅','⭐','🏆','⭐','🏅'];
+const BOTTOM_STARS = ['🏅','⭐','💰','⭐','🏅'];
 
 function AnimatedSplash({ isExiting }: { isExiting: boolean }) {
   // ── Container exit: zoom-fade out ─────────────────────────────────────────
@@ -274,7 +275,7 @@ function AnimatedSplash({ isExiting }: { isExiting: boolean }) {
             delay={420 + i * 30}
           />
         ))}
-        <Animated.Text style={[splashStyles.trophy, trophyStyle]}>🏆</Animated.Text>
+        <Animated.View style={trophyStyle}><ChestMark size={104} /></Animated.View>
       </View>
 
       {/* Lootboard title */}
@@ -406,6 +407,7 @@ function InnerLayout() {
         const data = response.notification.request.content.data as Record<string, string>;
         if (data?.screen === 'leaderboard') router.push('/app/tabs/leaderboard');
         if (data?.screen === 'tasks') router.push('/app/tabs');
+        if (data?.screen === 'report') router.push('/app/report' as any);
       },
     );
     return cleanup;

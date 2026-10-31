@@ -17,9 +17,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Col, getActiveTasks, updateTask, deleteTask } from '@/lib/firebase';
 import { detectTaskEmoji } from '@/lib/taskEmoji';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, CATEGORY_ICONS, DIFFICULTY_POINTS } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import type { TaskCategory, TaskDifficulty, TaskRecurrence } from '@/types';
 
@@ -53,14 +56,25 @@ export default function CreateTaskScreen() {
   const [difficulty, setDifficulty] = useState<TaskDifficulty>(editData?.difficulty ?? 'easy');
   const [recurrence, setRecurrence] = useState<TaskRecurrence>(editData?.recurrence ?? 'daily');
   const [assignedTo, setAssignedTo] = useState<string[]>(
-    editData?.assignedTo
+    // A rotating task stores its members in `rotation.memberIds` (assignedTo is
+    // derived/null), so seed the picker from there when editing one.
+    editData?.rotation?.memberIds?.length
+      ? editData.rotation.memberIds
+      : editData?.assignedTo
       ? (Array.isArray(editData.assignedTo) ? editData.assignedTo : [editData.assignedTo])
       : defaultAssignee ? [defaultAssignee] : [],
   );
+  // Phase 5: rotation (cycle the assignee through the selected members) + a
+  // per-weekday schedule. Rotation reuses the `assignedTo` multi-select as its
+  // ordered member list; scheduledDays limits which weekdays the task is due.
+  const [rotate, setRotate] = useState<boolean>(!!editData?.rotation?.memberIds?.length);
+  const [rotationCadence, setRotationCadence] = useState<'weekly' | 'daily'>(editData?.rotation?.cadence ?? 'weekly');
+  const [scheduledDays, setScheduledDays] = useState<number[]>(editData?.scheduledDays ?? []);
   const [pointValue, setPointValue] = useState(editData?.pointValue ?? DIFFICULTY_POINTS.easy);
   const [customPoints, setCustomPoints] = useState(!!editData?.pointValue && editData.pointValue !== DIFFICULTY_POINTS[editData.difficulty ?? 'easy']);
   const [autoFailHour, setAutoFailHour] = useState(editData?.autoFailHour ?? 20);
   const [requiresApproval, setRequiresApproval] = useState<boolean>(editData?.requiresApproval ?? false);
+  const [requiresPhoto, setRequiresPhoto] = useState<boolean>(editData?.requiresPhoto ?? false);
   const [taskEmoji, setTaskEmoji] = useState<string>(
     editData?.taskEmoji ?? detectTaskEmoji(editData?.title ?? '', editData?.category ?? 'chores'),
   );
@@ -117,12 +131,32 @@ export default function CreateTaskScreen() {
     );
   }
 
+  function toggleDay(day: number) {
+    setScheduledDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
+    );
+  }
+
+  // First names in rotation order — for the "Alex → Sam → Kai" preview.
+  const rotationNames = assignedTo
+    .map((id) => members.find((m) => m.id === id)?.displayName.split(' ')[0])
+    .filter(Boolean)
+    .join(' → ');
+
   async function handleSave() {
     if (!title.trim()) {
       Alert.alert('Missing Title', 'Please enter a task title.');
       return;
     }
     if (!family?.id || !member?.id) return;
+
+    // Rotation is only meaningful with 2+ members; otherwise treat as a normal
+    // single/whole-family assignment. When rotating, assignedTo is derived so we
+    // persist null for it and keep the ordered list in `rotation`.
+    const isRotating = rotate && assignedTo.length >= 2;
+    const rotation = isRotating ? { memberIds: assignedTo, cadence: rotationCadence } : null;
+    const fixedAssignee = isRotating ? null : (assignedTo.length > 0 ? assignedTo[0] : null);
+    const days = scheduledDays.length > 0 && scheduledDays.length < 7 ? [...scheduledDays].sort((a, b) => a - b) : null;
 
     try {
       setIsLoading(true);
@@ -136,11 +170,14 @@ export default function CreateTaskScreen() {
           category,
           difficulty,
           recurrence,
-          assignedTo: assignedTo.length > 0 ? assignedTo[0] : null,
+          assignedTo: fixedAssignee,
+          rotation,
+          scheduledDays: days,
           pointValue,
           autoFailHour,
           taskEmoji,
-          requiresApproval,
+          requiresApproval: requiresApproval || requiresPhoto,
+          requiresPhoto,
         });
       } else {
         // Create mode
@@ -151,11 +188,14 @@ export default function CreateTaskScreen() {
           category,
           difficulty,
           recurrence,
-          assignedTo: assignedTo.length > 0 ? assignedTo[0] : null,
+          assignedTo: fixedAssignee,
+          rotation,
+          scheduledDays: days,
           pointValue,
           autoFailHour,
           taskEmoji,
-          requiresApproval,
+          requiresApproval: requiresApproval || requiresPhoto,
+          requiresPhoto,
           isActive: true,
           createdBy: member.id,
           createdAt: new Date(),
@@ -211,17 +251,10 @@ export default function CreateTaskScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel="Go back"
-              accessibilityRole="button"
-            >
-              <Text style={styles.backText}>← Back</Text>
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>{isEditMode ? 'Edit Task' : 'Create Task'}</Text>
-            {isEditMode ? (
+          <ScreenHeader
+            variant="modal"
+            title={isEditMode ? 'Edit Task' : 'Create Task'}
+            right={isEditMode ? (
               <TouchableOpacity
                 onPress={handleDelete}
                 disabled={isDeleting}
@@ -251,7 +284,7 @@ export default function CreateTaskScreen() {
                 </View>
               </TouchableOpacity>
             )}
-          </View>
+          />
 
           <View style={styles.form}>
             {/* Title */}
@@ -260,7 +293,7 @@ export default function CreateTaskScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
                 {/* Live emoji preview — updates as user types */}
                 <View style={[styles.emojiPreview, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={{ fontSize: 28 }}>{taskEmoji}</Text>
+                  <EmojiIcon emoji={taskEmoji} size={34} />
                 </View>
                 <TextInput
                   style={[styles.input, styles.inputFlex, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
@@ -402,7 +435,7 @@ export default function CreateTaskScreen() {
                           style={[styles.chip, selected && styles.chipSelected]}
                           onPress={() => toggleAssignee(m.id)}
                         >
-                          <Text style={styles.chipEmoji}>{m.avatarEmoji}</Text>
+                          <Avatar emoji={m.avatarEmoji} photoURL={m.photoURL} size={24} />
                           <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
                             {m.displayName.split(' ')[0]}
                           </Text>
@@ -422,6 +455,65 @@ export default function CreateTaskScreen() {
               </View>
             )}
 
+            {/* Rotate turns — cycle the chore through the selected members */}
+            {isParent && assignedTo.length >= 2 && (
+              <View style={styles.field}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1, paddingRight: Spacing.md }}>
+                    <Text style={[styles.label, { color: colors.text }]}>🔄 Rotate turns</Text>
+                    <Text style={{ fontSize: FontSize.xs, color: colors.textMuted }}>
+                      Take turns instead of everyone doing it — the chore hands off automatically.
+                    </Text>
+                  </View>
+                  <Switch value={rotate} onValueChange={setRotate} />
+                </View>
+                {rotate && (
+                  <>
+                    <View style={[styles.chipRow, { marginTop: Spacing.sm }]}>
+                      {(['weekly', 'daily'] as const).map((c) => (
+                        <TouchableOpacity
+                          key={c}
+                          style={[styles.chip, rotationCadence === c && styles.chipSelected]}
+                          onPress={() => setRotationCadence(c)}
+                        >
+                          <Text style={[styles.chipText, rotationCadence === c && styles.chipTextSelected]}>
+                            {c === 'weekly' ? 'Each week' : 'Each day'}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <Text style={{ fontSize: FontSize.xs, color: colors.primary, marginTop: 6, fontFamily: FontFamily.semiBold }}>
+                      {rotationNames} · changes {rotationCadence === 'weekly' ? 'every week' : 'every day'}
+                    </Text>
+                  </>
+                )}
+              </View>
+            )}
+
+            {/* Due on — limit which weekdays the task appears */}
+            {isParent && (
+              <View style={styles.field}>
+                <Text style={[styles.label, { color: colors.text }]}>Due on</Text>
+                <Text style={{ fontSize: FontSize.xs, color: colors.textMuted, marginBottom: Spacing.sm }}>
+                  Tap days to limit it; leave all off for every day.
+                </Text>
+                <View style={styles.chipRow}>
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((lbl, day) => {
+                    const on = scheduledDays.includes(day);
+                    return (
+                      <TouchableOpacity
+                        key={day}
+                        style={[styles.chip, on && styles.chipSelected]}
+                        onPress={() => toggleDay(day)}
+                      >
+                        <Text style={[styles.chipText, on && styles.chipTextSelected]}>{lbl.slice(0, 1)}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
             {/* Requires parent approval (Phase 4.3) */}
             {isParent && (
               <View style={styles.field}>
@@ -435,6 +527,26 @@ export default function CreateTaskScreen() {
                   <Switch
                     value={requiresApproval}
                     onValueChange={(v) => { setRequiresApproval(v); Haptics.selectionAsync(); }}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor="#FFFFFF"
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Require photo proof (Phase 5 #2) — implies approval */}
+            {isParent && (
+              <View style={styles.field}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flex: 1, paddingRight: Spacing.md }}>
+                    <Text style={[styles.label, { color: colors.text }]}>📸 Require photo proof</Text>
+                    <Text style={{ fontSize: FontSize.xs, color: colors.textMuted, marginTop: 2 }}>
+                      They snap a photo when done; you see it and approve to award points.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={requiresPhoto}
+                    onValueChange={(v) => { setRequiresPhoto(v); if (v) setRequiresApproval(true); Haptics.selectionAsync(); }}
                     trackColor={{ false: colors.border, true: colors.primary }}
                     thumbColor="#FFFFFF"
                   />
