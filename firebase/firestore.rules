@@ -101,8 +101,21 @@ service cloud.firestore {
       // ── Completions subcollection ─────────────────────────────────────────
       match /completions/{completionId} {
         allow read: if isFamilyMember(familyId);
-        // Any family member can create a completion (for their own tasks)
-        allow create: if isFamilyMember(familyId);
+        // Who may create a completion, and in what state:
+        //   • A PARENT may create any completion (their own instant award, or a
+        //     managed kid's claim — the client stamps those pending for Kid Mode,
+        //     but a parent is trusted to award directly).
+        //   • A NON-PARENT (child, whether self-account or managed) may create
+        //     only: a pending AWARD (status == 'pending', so it waits for a
+        //     parent OK — this is the rules-level backstop for the C3 "every kid
+        //     claim needs approval" rule), OR a negative PENALTY
+        //     (wasAutoFailed == true — a miss/auto-fail marker only ever DEDUCTS,
+        //     so a kid can never self-grant points through it). An approved or
+        //     status-less award from a kid is rejected here.
+        allow create: if isFamilyMember(familyId)
+          && (isParent(familyId)
+              || request.resource.data.status == 'pending'
+              || request.resource.data.wasAutoFailed == true);
         // Phase 4.3 task verification: a PARENT may approve/reject a completion,
         // changing ONLY the status (+ approver stamp). Everything else stays
         // immutable, and a child can never flip their own pending completion to

@@ -4,7 +4,8 @@
 > matter), then the latest entries in `docs/PROGRESS.md`. Say:
 > *"Read docs/HANDOFF.md and continue with the next pending item."*
 >
-> Last updated: **2026-10-31**, end of the long UX/engagement session.
+> Last updated: **2026-10-31** — Phase C committed; Phase D server batch built
+> (committed, **NOT deployed** — see §2/§3).
 
 ---
 
@@ -13,9 +14,10 @@
 | Thing | State |
 |---|---|
 | Branch | `main` (local only — **nothing pushed**) |
-| Commits this session | `40393aa` checkpoint (Phase 1–5, UX A+B) → `1a33f9d` redesign |
-| **Uncommitted** | **All of Phase C** (see §2) — tests green, build was running |
-| Tests | `npx jest --testPathIgnorePatterns="functions\|rules\|emulator"` → **26 suites / 403 passing**; `npx tsc --noEmit -p .` → 0 errors in app sources |
+| Commits this session | `1a33f9d` redesign → `291345d` Phase C → Phase D (this session) |
+| **Uncommitted** | none expected (Phase C + Phase D committed) |
+| **Deploy gate** | **Phase D needs `firebase deploy --only firestore:rules,functions --project familywin-35a97`** (user runs; Norton may flake the preflight → retry). Nothing in Phase D reaches prod until then. |
+| Tests | app: **26 suites / 403**; `tsc` 0 app-src errors. Emulator (use `npx firebase-tools@13.35.1`, CLI 15 needs JDK21): rules **39/39**, functions **49/49** |
 | Last APK | Phase C arm64 build **installed on the Pixel 2026-10-31, launches clean (no crash)**; screens not yet eyeballed by the user |
 | Phone | Pixel 10 Pro, wireless adb (paired). If offline → user re-enables *Wireless debugging* |
 | Firebase | Project `familywin-35a97`; 8 functions deployed (temp admin endpoint deleted) |
@@ -75,14 +77,17 @@ Size: **S** < 1h · **M** few hours · **L** a day+. "Deploy" = `firebase deploy
 |---|---|---|
 | C-final | Install, device-verify, **commit Phase C** | See §1 |
 
-### Phase D — one server deploy batch
-| # | Task | Size | Needs |
-|---|---|---|---|
-| D1 | **Rules**: kids' (non-parent) completions must be `status:'pending'` (closes the app-only enforcement of C3) | S | rules deploy + rules emulator test |
-| D2 | **Server claim-points lock**: stamp task points on the pending completion at creation; award that on approval (replaces the edit warning) | M | functions deploy |
-| D3 | **Sunday push** names every crown + respects `competitionMode` (CF `weeklyReset`) | S | functions deploy |
-| D4 | **Event pushes** (FCM): *overtaken*, *your claim/reward approved*, *streak ends tonight*; maybe *N pts from your reward*, *Vian claimed 3 tasks* (to parents) | L | **user to confirm list** (recommended first three); deploy |
-| D5 | Run functions + rules tests in the emulator before deploying (not run all session) | M | emulator |
+### Phase D — one server deploy batch — **BUILT + committed, NOT deployed**
+All code + emulator tests done this session. **Only step left: the user runs the
+deploy**, then device-verifies.
+| # | Task | State |
+|---|---|---|
+| D1 | **Rules**: non-parent completion must be a pending award OR a `wasAutoFailed` penalty (C3 backstop) | ✅ built; rules 39/39 |
+| D2 | **Server points-lock**: `onCompletionCreated` stamps `lockedPoints` on a pending claim; award pays the locked value (server-stamped, not client) | ✅ built; functions 49/49 |
+| D3 | **Sunday push** names every crown + respects `competitionMode` (`weeklyReset` + new `game.js`) | ✅ built; game 20/20 |
+| D4 | **Overtaken push** — `onTransactionCreated` → `detectOvertakes` (user chose this ONE event; dropped approved/streak/parent-activity) | ✅ built |
+| D-deploy | **`firebase deploy --only firestore:rules,functions --project familywin-35a97`** | ⏳ **user** |
+| D-verify | device: kid self-grant blocked, edited pending claim pays locked value, overtaken push arrives | ⏳ after deploy |
 
 ### Phase E — engagement loops
 | # | Task | Size |

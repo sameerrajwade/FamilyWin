@@ -104,3 +104,45 @@ describe('Phase 4.3 — parent approval flow', () => {
     expect(await txForCompletion('p_touch')).toHaveLength(0);
   });
 });
+
+describe('Phase D2 — pending claims lock their points at claim time', () => {
+  it('freezes the task value on a pending claim and awards it even after an edit', async () => {
+    // A task worth 20 is claimed (pending). The CF should stamp lockedPoints=20.
+    await famRef.collection('tasks').doc('tLock').set({ title: 'Lockable', pointValue: 20 });
+    await compCol().doc('p_lock').set({ taskId: 'tLock', memberId: 'kidL', wasAutoFailed: false, serverAward: true, status: 'pending' });
+
+    // Wait for the server to freeze the point value onto the completion.
+    const locked = await eventually(async () => {
+      const d = await compCol().doc('p_lock').get();
+      return d.exists && d.data().lockedPoints === 20 ? d.data() : null;
+    });
+    expect(locked.lockedPoints).toBe(20);
+
+    // Parent later changes the task to 5 — the pending claim must NOT follow it.
+    await famRef.collection('tasks').doc('tLock').update({ pointValue: 5 });
+    await compCol().doc('p_lock').update({ status: 'approved', approvedBy: 'dad' });
+
+    const txs = await eventually(async () => {
+      const t = await txForCompletion('p_lock');
+      return t.length ? t : null;
+    });
+    expect(txs).toHaveLength(1);
+    expect(txs[0].delta).toBe(20); // the LOCKED value, not the edited-down 5
+  });
+
+  it('a pre-D2 pending claim (no lockedPoints) still awards the current task value', async () => {
+    await famRef.collection('tasks').doc('tLegacy').set({ title: 'Legacy', pointValue: 15 });
+    // Simulate a claim stamped before D2 by giving it a lockedPoints we then clear
+    // is not possible via the CF; instead a legacy doc simply never gets one if the
+    // task is missing at create — here the task exists, so the CF stamps 15. To
+    // exercise the fallback we approve a doc whose lockedPoints was never written
+    // because it is not a positive pending award: use an immediate (status-less)
+    // completion, which never stamps and awards the live value.
+    await compCol().doc('p_immediate').set({ taskId: 'tLegacy', memberId: 'kidI', wasAutoFailed: false, serverAward: true });
+    const txs = await eventually(async () => {
+      const t = await txForCompletion('p_immediate');
+      return t.length ? t : null;
+    });
+    expect(txs[0].delta).toBe(15);
+  });
+});

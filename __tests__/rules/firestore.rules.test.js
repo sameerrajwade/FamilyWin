@@ -155,11 +155,31 @@ describe('Immutable audit data', () => {
 });
 
 describe('Core member abilities (current behavior)', () => {
-  test('a member can create a completion for themselves', async () => {
-    await assertSucceeds(setDoc(doc(childA(), 'families/famA/completions/c2'), { memberId: 'mChildA', taskId: 't1', pointsAwarded: 10 }));
-  });
   test('a member can undo (delete) their own completion', async () => {
     await assertSucceeds(deleteDoc(doc(childA(), 'families/famA/completions/c1')));
+  });
+});
+
+describe('Kid completions must wait for approval (Phase D / C3 backstop)', () => {
+  test('a child CANNOT create a plain (status-less) award completion', async () => {
+    await assertFails(setDoc(doc(childA(), 'families/famA/completions/cKidPlain'),
+      { memberId: 'mChildA', taskId: 't1', pointsAwarded: 10, wasAutoFailed: false }));
+  });
+  test('a child CANNOT create an already-approved completion (self-grant)', async () => {
+    await assertFails(setDoc(doc(childA(), 'families/famA/completions/cKidAppr'),
+      { memberId: 'mChildA', taskId: 't1', pointsAwarded: 10, wasAutoFailed: false, status: 'approved' }));
+  });
+  test('a child CAN create a PENDING award completion (awaits a parent OK)', async () => {
+    await assertSucceeds(setDoc(doc(childA(), 'families/famA/completions/cKidPending'),
+      { memberId: 'mChildA', taskId: 't1', pointsAwarded: 10, wasAutoFailed: false, status: 'pending' }));
+  });
+  test('a child CAN create a negative miss-penalty completion (only ever deducts)', async () => {
+    await assertSucceeds(setDoc(doc(childA(), 'families/famA/completions/cKidMiss'),
+      { memberId: 'mChildA', taskId: 't1', pointsAwarded: -5, wasAutoFailed: true, penaltyKind: 'miss' }));
+  });
+  test('a PARENT can still create a plain instant-award completion', async () => {
+    await assertSucceeds(setDoc(doc(adminA(), 'families/famA/completions/cParent'),
+      { memberId: 'mChildA', taskId: 't1', pointsAwarded: 10, wasAutoFailed: false }));
   });
 });
 

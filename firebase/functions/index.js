@@ -13,7 +13,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-// Deploy marker: iter-39 tz/deadline sweep + txCreatedAt week-attribution (2026-08-26).
+// Deploy marker: Phase D — D2 points-lock on pending claims, D3 multi-crown
+// weekly push + competitionMode, D4 live "overtaken" push (2026-10-31).
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require('firebase-functions/v2/firestore');
@@ -23,6 +24,9 @@ const { getMessaging } = require('firebase-admin/messaging');
 const { getAuth } = require('firebase-admin/auth');
 const { getStorage } = require('firebase-admin/storage');
 const { runMissedTaskSweep } = require('./sweep');
+const {
+  competitors, buildRanked, computeCrowns, crownsSummary, detectOvertakes,
+} = require('./game');
 
 initializeApp();
 
@@ -107,8 +111,16 @@ async function awardForCompletion(familyId, completionId, c) {
     delta = -penalty;
     reason = c.penaltyKind === 'autofail' ? `Auto-failed: ${title}` : `Missed: ${title}`;
   } else {
-    if (pointValue <= 0) return;
-    delta = pointValue;
+    // Phase D2 — fairness lock: a pending claim freezes the task's point value
+    // at claim time (stampLockedPoints, below). If present we award THAT, so a
+    // parent editing the task's points while a claim waits never changes what the
+    // approval pays out. Absent (immediate award, or a pre-D2 pending claim) →
+    // the current task value, exactly as before. lockedPoints is written only by
+    // the server (admin SDK), never trusted from the client, so this keeps the
+    // Phase 1.8 point-integrity guarantee intact.
+    const award = typeof c.lockedPoints === 'number' ? c.lockedPoints : pointValue;
+    if (award <= 0) return;
+    delta = award;
     reason = c.completedLate ? `Completed (late): ${title}` : `Completed: ${title}`;
   }
 
@@ -162,6 +174,24 @@ function isAwardable(c) {
   return c.status !== 'pending' && c.status !== 'rejected';
 }
 
+/**
+ * Phase D2 — freeze a pending AWARD claim's point value at claim time. Reads the
+ * task's current pointValue (server-authoritative) and merges it onto the
+ * completion as `lockedPoints`, so awardForCompletion pays that out on approval
+ * regardless of any later edit to the task. Only for positive claims (penalties
+ * recompute from the family's penalty mode and need no lock). Merging status
+ * stays 'pending', so onCompletionUpdated (which only reacts to a status change)
+ * does not re-fire an award.
+ */
+async function stampLockedPoints(familyId, completionId, c) {
+  const taskSnap = await db
+    .collection('families').doc(familyId).collection('tasks').doc(c.taskId).get();
+  const pointValue = taskSnap.exists ? (taskSnap.data().pointValue || 0) : 0;
+  await db
+    .collection('families').doc(familyId).collection('completions').doc(completionId)
+    .set({ lockedPoints: pointValue }, { merge: true });
+}
+
 // Award (or penalize) on completion create. Idempotent per completion id.
 exports.onCompletionCreated = onDocumentCreated(
   'families/{familyId}/completions/{completionId}',
@@ -170,8 +200,16 @@ exports.onCompletionCreated = onDocumentCreated(
     if (!snap) return;
     const c = snap.data();
     if (!c || c.serverAward !== true) return; // legacy/self-awarded — skip
-    if (!isAwardable(c)) return; // Phase 4.3: awaiting parent approval
     const { familyId, completionId } = event.params;
+    if (!isAwardable(c)) {
+      // Phase 4.3: awaiting parent approval → don't settle yet. Phase D2: but
+      // DO freeze the task's point value now so a later edit can't change the
+      // approved payout (positive claims only; absent lockedPoints means pre-D2).
+      if (c.status === 'pending' && c.wasAutoFailed !== true && typeof c.lockedPoints !== 'number') {
+        await stampLockedPoints(familyId, completionId, c);
+      }
+      return;
+    }
     await awardForCompletion(familyId, completionId, c);
   },
 );
@@ -211,6 +249,108 @@ exports.onCompletionDeleted = onDocumentDeleted(
     if (!c || c.serverAward !== true) return;
     const { familyId, completionId } = event.params;
     await reverseForCompletion(familyId, completionId, c);
+  },
+);
+
+// ─── LIVE "YOU GOT OVERTAKEN" PUSH (Phase D4) ────────────────────────────────
+// When a member earns points and climbs past someone on THIS week's leaderboard,
+// nudge the people they passed so the race stays live. Fires on every
+// transaction create (including the CF's own award tx), but does real work only
+// for a fresh, positive, this-week transaction by a competing member — and only
+// notifies members who were ahead and are now behind. Sends no transaction of
+// its own, so it can never loop.
+
+/** The UTC week window [start, end) containing `now`, honoring weekStartDay. */
+function weekRangeUTC(weekStartDay, now) {
+  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const back = (day.getUTCDay() - (weekStartDay || 1) + 7) % 7;
+  const start = new Date(day); start.setUTCDate(day.getUTCDate() - back);
+  const end = new Date(start); end.setUTCDate(start.getUTCDate() + 7);
+  return { start, end };
+}
+
+exports.onTransactionCreated = onDocumentCreated(
+  'families/{familyId}/transactions/{txId}',
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const tx = snap.data();
+    if (!tx) return;
+    const delta = tx.delta || 0;
+    if (delta <= 0) return; // only climbing moves someone up
+
+    // Live only: a back-dated catch-up/penalty tx (stamped on a past day) is
+    // history, not a live overtake — skip anything not from roughly "now".
+    const when = tx.createdAt && tx.createdAt.toDate ? tx.createdAt.toDate() : new Date();
+    const ageMs = Date.now() - when.getTime();
+    if (ageMs > 2 * 24 * 60 * 60 * 1000 || ageMs < -60 * 60 * 1000) return;
+
+    const { familyId } = event.params;
+    const actorId = tx.memberId;
+    if (!actorId) return;
+
+    const familySnap = await db.collection('families').doc(familyId).get();
+    if (!familySnap.exists) return;
+    const familyData = familySnap.data();
+
+    const membersSnap = await db
+      .collection('families').doc(familyId).collection('members').get();
+    const members = membersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    const mode = familyData.competitionMode === 'kids' ? 'kids' : 'everyone';
+    const players = competitors(members, mode);
+    const competitorIds = players.map((m) => m.id);
+    if (!competitorIds.includes(actorId)) return; // actor coaches, doesn't race
+
+    // This week's earned totals (reward spending excluded), including this tx.
+    const { start, end } = weekRangeUTC(familyData.weekStartDay, when);
+    const weekSnap = await db
+      .collection('families').doc(familyId).collection('transactions')
+      .where('createdAt', '>=', Timestamp.fromDate(start))
+      .where('createdAt', '<', Timestamp.fromDate(end))
+      .get();
+    const totals = {};
+    for (const id of competitorIds) totals[id] = 0;
+    for (const d of weekSnap.docs) {
+      const t = d.data();
+      if (totals[t.memberId] === undefined) continue;
+      if (t.source === 'redemption') continue;
+      totals[t.memberId] += t.delta || 0;
+    }
+
+    const passed = detectOvertakes(actorId, totals, delta, competitorIds);
+    if (!passed.length) return;
+
+    const actor = members.find((m) => m.id === actorId);
+    const actorName = (actor && actor.displayName ? actor.displayName : 'Someone').split(' ')[0];
+    const actorNow = totals[actorId] || 0;
+
+    // Notify each passed member on their own device (if they allow push).
+    for (const memberId of passed) {
+      const cfg = await db
+        .collection('families').doc(familyId)
+        .collection('notificationConfigs').doc(memberId).get();
+      if (!cfg.exists) continue;
+      const c = cfg.data();
+      if (c.enabled === false || !c.pushToken) continue;
+      const theirPoints = totals[memberId] || 0;
+      const gap = actorNow - theirPoints;
+      try {
+        await getMessaging().send({
+          notification: {
+            title: `${actorName} just passed you!`,
+            body: gap <= 0
+              ? `You're tied — do a task to pull back ahead.`
+              : `${actorName} is ${gap} pt${gap === 1 ? '' : 's'} ahead. Do a task to retake the lead!`,
+          },
+          data: { screen: 'leaderboard', actorId, memberId },
+          android: { channelId: 'alerts', priority: 'high' },
+          token: c.pushToken,
+        });
+      } catch (err) {
+        console.error(`overtaken push failed family=${familyId} member=${memberId}:`, err && err.message);
+      }
+    }
   },
 );
 
@@ -254,34 +394,51 @@ exports.weeklyReset = onSchedule('1 0 * * 1', async (event) => {
       const members = membersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       if (!members.length) continue;
 
-      // Aggregate point transactions for the week
+      // Aggregate transactions over the LAST TWO weeks: the crowned week
+      // (lastMonday→lastSunday) plus the week before it, which is the baseline
+      // for the 📈 Most Improved crown. Reward spending is excluded so totals
+      // match the leaderboard's "earned" number.
+      const prevMonday = new Date(lastMonday);
+      prevMonday.setDate(lastMonday.getDate() - 7);
       const txSnap = await db
         .collection('families').doc(familyId)
         .collection('transactions')
-        .where('createdAt', '>=', Timestamp.fromDate(lastMonday))
+        .where('createdAt', '>=', Timestamp.fromDate(prevMonday))
         .where('createdAt', '<=', Timestamp.fromDate(lastSunday))
         .get();
 
       const totals = {};
-      for (const member of members) totals[member.id] = 0;
+      const baseline = {};
+      for (const member of members) { totals[member.id] = 0; baseline[member.id] = 0; }
       for (const txDoc of txSnap.docs) {
-        const { memberId, delta } = txDoc.data();
-        if (totals[memberId] !== undefined) totals[memberId] += delta;
+        const { memberId, delta, source } = txDoc.data();
+        if (totals[memberId] === undefined) continue;
+        if (source === 'redemption') continue;
+        const when = txDoc.data().createdAt && txDoc.data().createdAt.toDate();
+        if (when && when < lastMonday) baseline[memberId] += delta;
+        else totals[memberId] += delta;
       }
 
-      // Rank members
-      const ranked = [...members]
-        .sort((a, b) => (totals[b.id] ?? 0) - (totals[a.id] ?? 0))
-        .map((member, idx) => ({
-          memberId: member.id,
-          displayName: member.displayName,
-          avatarEmoji: member.avatarEmoji,
-          points: totals[member.id] ?? 0,
-          rank: idx + 1,
-          winner: idx === 0,
-        }));
+      // Rank + crown only the members who COMPETE (Phase D3 — competitionMode).
+      // In 'kids' mode parents coach and don't rank; a kid-less family still
+      // falls back to everyone (see game.competitors).
+      const mode = familyData.competitionMode === 'kids' ? 'kids' : 'everyone';
+      const players = competitors(members, mode);
+      const entries = buildRanked(totals, players);
+      const goals = {};
+      for (const m of players) if (typeof m.weeklyGoal === 'number' && m.weeklyGoal > 0) goals[m.id] = m.weeklyGoal;
+      const crowns = computeCrowns(entries, baseline, goals);
 
-      // Write weekly score document
+      const ranked = entries.map((e) => ({
+        memberId: e.memberId,
+        displayName: e.displayName,
+        avatarEmoji: e.avatarEmoji,
+        points: e.points,
+        rank: e.rank,
+        winner: e.rank === 1 && e.points > 0,
+      }));
+
+      // Write weekly score document (now carries the crown row too).
       await db
         .collection('families').doc(familyId)
         .collection('weeklyScores').doc(weekId)
@@ -290,11 +447,13 @@ exports.weeklyReset = onSchedule('1 0 * * 1', async (event) => {
           weekStart: Timestamp.fromDate(lastMonday),
           weekEnd: Timestamp.fromDate(lastSunday),
           scores: ranked,
+          crowns,
           processedAt: Timestamp.now(),
         });
 
       // ── Send FCM push to all members ─────────────────────────────────────
-      const winner = ranked[0];
+      const winner = ranked.find((r) => r.winner) || null;
+      const summary = crownsSummary(crowns); // names every awarded crown
 
       // Fetch push tokens from notificationConfigs
       const configsSnap = await db
@@ -307,16 +466,22 @@ exports.weeklyReset = onSchedule('1 0 * * 1', async (event) => {
         .map((d) => d.data().pushToken)
         .filter(Boolean);
 
+      // Body names every crown this week, not just the top scorer. With no
+      // points earned at all, invite everyone into the fresh week instead.
+      const body = summary
+        ? `${summary}. New week starts now!`
+        : 'A fresh week is up for grabs — first points win it!';
+
       if (tokens.length > 0) {
         const message = {
           notification: {
-            title: `🏆 ${familyData.name} Weekly Results!`,
-            body: `${winner.avatarEmoji} ${winner.displayName} wins with ${winner.points} pts! New week starts now.`,
+            title: `🏆 ${familyData.name} — weekly results!`,
+            body,
           },
           data: {
             screen: 'leaderboard',
             weekId,
-            winnerId: winner.memberId,
+            winnerId: winner ? winner.memberId : '',
           },
           android: {
             channelId: 'weekly-results',
@@ -329,7 +494,7 @@ exports.weeklyReset = onSchedule('1 0 * * 1', async (event) => {
         console.log(`Family ${familyId}: sent ${response.successCount}/${tokens.length} notifications`);
       }
 
-      results.push({ familyId, weekId, memberCount: members.length, winner: winner.displayName, winnerPoints: winner.points });
+      results.push({ familyId, weekId, memberCount: members.length, winner: winner ? winner.displayName : null, winnerPoints: winner ? winner.points : 0 });
     } catch (err) {
       console.error(`Error processing family ${familyId}:`, err);
     }
