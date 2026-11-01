@@ -16,7 +16,7 @@
 | Branch | `main` (local only — **nothing pushed**) |
 | Commits this session | `1a33f9d` redesign → `291345d` Phase C → Phase D (this session) |
 | **Uncommitted** | none expected (Phase C + Phase D committed) |
-| **Deploy gate** | **Phase D needs `firebase deploy --only firestore:rules,functions --project familywin-35a97`** (user runs; Norton may flake the preflight → retry). Nothing in Phase D reaches prod until then. |
+| **Deploy** | Phase D **live in prod** (2026-10-31). Functions now on **Node 22**. Backlog: firebase-functions 5.1.1 → latest (breaking changes; CLI warns). |
 | Tests | app: **26 suites / 403**; `tsc` 0 app-src errors. Emulator (use `npx firebase-tools@13.35.1`, CLI 15 needs JDK21): rules **39/39**, functions **49/49** |
 | Last APK | Phase C arm64 build **installed on the Pixel 2026-10-31, launches clean (no crash)**; screens not yet eyeballed by the user |
 | Phone | Pixel 10 Pro, wireless adb (paired). If offline → user re-enables *Wireless debugging* |
@@ -86,7 +86,7 @@ deploy**, then device-verifies.
 | D2 | **Server points-lock**: `onCompletionCreated` stamps `lockedPoints` on a pending claim; award pays the locked value (server-stamped, not client) | ✅ built; functions 49/49 |
 | D3 | **Sunday push** names every crown + respects `competitionMode` (`weeklyReset` + new `game.js`) | ✅ built; game 20/20 |
 | D4 | **Overtaken push** — `onTransactionCreated` → `detectOvertakes` (user chose this ONE event; dropped approved/streak/parent-activity) | ✅ built |
-| D-deploy | **`firebase deploy --only firestore:rules,functions --project familywin-35a97`** | ⏳ **user** |
+| D-deploy | `firebase deploy --only firestore:rules,functions` — needed runtime bump Node 20→22 (20 decommissioned 2026-10-30) | ✅ **deployed 2026-10-31** |
 | D-verify | device: kid self-grant blocked, edited pending claim pays locked value, overtaken push arrives | ⏳ after deploy |
 
 ### Phase E — engagement loops
