@@ -170,6 +170,9 @@ export interface FamilyDoc {
   // G5 approval trust levels: kids' claims on tasks worth ≤ this many points
   // are approved by the server automatically (Cloud Function). Absent/0 = off.
   autoApproveUnder?: number | null;
+  // G7: leagues (family vs family) this family is in — written by the
+  // createLeague / joinLeague / leaveLeague Cloud Functions only.
+  leagueIds?: string[];
   // G6: "Discover more" — advanced features skipped at setup resurface as a
   // card on Today from week 2 (lib/starterKit DiscoverState).
   discover?: Record<string, { status: 'later' | 'done' | 'no'; until?: number }> | null;

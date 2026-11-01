@@ -28,6 +28,7 @@ const {
   competitors, buildRanked, computeCrowns, crownsSummary, detectOvertakes,
   streakWithShields, reachedMilestones, STREAK_WINDOW_DAYS, shouldAutoApprove,
 } = require('./game');
+const league = require('./league');
 
 initializeApp();
 
@@ -289,6 +290,16 @@ exports.onTransactionCreated = onDocumentCreated(
     if (!snap) return;
     const tx = snap.data();
     if (!tx) return;
+
+    // G7: any points change (up or down) refreshes this family's fair score
+    // in every league it's in. Writes only under leagues/ — never a new
+    // transaction — so this can't loop. Never let it break the overtaken push.
+    try {
+      await league.writeStandings(db, event.params.familyId, new Date());
+    } catch (err) {
+      console.error(`league standings update failed family=${event.params.familyId}:`, err && err.message);
+    }
+
     const delta = tx.delta || 0;
     if (delta <= 0) return; // only climbing moves someone up
 
@@ -727,4 +738,58 @@ exports.joinFamily = onCall(async (request) => {
   await batch.commit();
 
   return { ok: true, familyId: familyRef.id, memberId: memberRef.id };
+});
+
+// ─── FAMILY VS FAMILY LEAGUES (Phase G7) ─────────────────────────────────────
+// Parent-only callables; the logic + data shape live in league.js. A parent of
+// the caller's own family starts / joins / leaves on the family's behalf.
+
+async function requireParentFamily(request) {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'You must be signed in.');
+  const user = (await db.collection('users').doc(uid).get()).data();
+  if (!user || !user.familyId || !user.memberId) throw new HttpsError('failed-precondition', 'Join a family first.');
+  const me = (await db.collection('families').doc(user.familyId).collection('members').doc(user.memberId).get()).data();
+  if (!me || (me.role !== 'parent' && me.role !== 'admin_parent')) {
+    throw new HttpsError('permission-denied', 'Only a parent can manage leagues.');
+  }
+  return { uid, familyId: user.familyId };
+}
+
+function asHttpsError(err) {
+  if (err instanceof HttpsError) return err;
+  if (err instanceof league.LeagueError) return new HttpsError(err.code, err.message);
+  console.error('league call failed:', err);
+  return new HttpsError('internal', 'Something went wrong — please try again.');
+}
+
+exports.createLeague = onCall(async (request) => {
+  const { familyId } = await requireParentFamily(request);
+  try {
+    return await league.createLeague(db, { familyId, name: (request.data || {}).name });
+  } catch (err) { throw asHttpsError(err); }
+});
+
+exports.joinLeague = onCall(async (request) => {
+  const { uid, familyId } = await requireParentFamily(request);
+  // Same sliding-window brute-force guard as joinFamily, kept separately.
+  const rlRef = db.collection('joinRateLimits').doc(`league_${uid}`);
+  const now = Date.now();
+  const prior = (await rlRef.get()).data();
+  const attempts = ((prior && prior.attempts) || []).filter((t) => now - t < 60 * 60 * 1000);
+  if (attempts.length >= JOIN_MAX_ATTEMPTS_PER_HOUR) {
+    throw new HttpsError('resource-exhausted', 'Too many attempts. Please try again later.');
+  }
+  attempts.push(now);
+  await rlRef.set({ attempts }, { merge: true });
+  try {
+    return await league.joinLeague(db, { familyId, code: (request.data || {}).inviteCode });
+  } catch (err) { throw asHttpsError(err); }
+});
+
+exports.leaveLeague = onCall(async (request) => {
+  const { familyId } = await requireParentFamily(request);
+  try {
+    return await league.leaveLeague(db, { familyId, leagueId: String((request.data || {}).leagueId || '') });
+  } catch (err) { throw asHttpsError(err); }
 });

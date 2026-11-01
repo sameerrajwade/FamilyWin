@@ -75,6 +75,8 @@ export default function FamilyTab() {
               onPress={() => router.push('/app/approvals' as any)} styles={styles} colors={colors} />
             <Row icon="stats-chart-outline" label="This week’s report" sub="Chores handled, time saved, who to cheer on"
               onPress={() => router.push('/app/report' as any)} styles={styles} colors={colors} />
+            <Row icon="trophy-outline" label="Family league" sub={family?.leagueIds?.length ? 'Your family vs other families this season' : 'Challenge cousins or friends — family vs family'}
+              onPress={() => router.push('/app/league' as any)} styles={styles} colors={colors} />
             {kids.length > 0 && (
               <Row icon="phone-portrait-outline" label="Kid Mode" sub="Hand the phone over; kids claim their own tasks"
                 onPress={openKidMode} styles={styles} colors={colors} last />

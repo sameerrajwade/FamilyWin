@@ -8,6 +8,7 @@ import { Col, getFamilyMembers, getCurrentWeekId, getWeekCompletions, getMemberP
 import { buildLeaderboard, computeCrowns, getWeekLabel, getCurrentWeekRange, getLevel } from '@/lib/pointsEngine';
 import { useMemberLevels } from '@/lib/memberLevels';
 import { SeasonCard } from '@/components/ui/Season';
+import { LeagueCard } from '@/components/ui/League';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
@@ -204,6 +205,9 @@ export default function LeaderboardScreen() {
 
             {/* F1: the 4-week season race. */}
             <SeasonCard />
+
+            {/* G7: family vs family (or, for a parent, an invite to start one). */}
+            <LeagueCard />
 
             {/* Personal Best card — players only (coaches don't compete) */}
             {iAmPlayer && personalBest > 0 && (

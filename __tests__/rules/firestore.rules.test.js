@@ -273,3 +273,33 @@ describe('Bounties (Phase E4)', () => {
     await assertFails(deleteDoc(doc(childA(), B)));
   });
 });
+
+describe('Leagues (Phase G7: family vs family)', () => {
+  const seedLeague = () => testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'leagues/L1'), { name: 'Cousins Cup', inviteCode: 'ABC234', familyIds: ['famA'] });
+    await setDoc(doc(db, 'leagues/L1/standings/famA'), { familyName: 'Family A', points: 100, avgPoints: 50 });
+  });
+
+  test('members of a family in the league can read it and its standings', async () => {
+    await seedLeague();
+    await assertSucceeds(getDoc(doc(childA(), 'leagues/L1')));
+    await assertSucceeds(getDoc(doc(adminA(), 'leagues/L1/standings/famA')));
+  });
+  test('a family NOT in the league cannot read it or its standings', async () => {
+    await seedLeague();
+    await assertFails(getDoc(doc(adminB(), 'leagues/L1')));
+    await assertFails(getDoc(doc(adminB(), 'leagues/L1/standings/famA')));
+  });
+  test('nobody can write a league or a score from the app (Cloud Functions only)', async () => {
+    await seedLeague();
+    await assertFails(setDoc(doc(adminA(), 'leagues/L2'), { name: 'x', familyIds: ['famA'] }));
+    await assertFails(updateDoc(doc(adminA(), 'leagues/L1'), { familyIds: ['famA', 'famB'] }));
+    await assertFails(updateDoc(doc(adminA(), 'leagues/L1/standings/famA'), { avgPoints: 9999 }));
+    await assertFails(setDoc(doc(adminB(), 'leagues/L1/standings/famB'), { avgPoints: 9999 }));
+  });
+  test('signed-out users cannot read leagues', async () => {
+    await seedLeague();
+    await assertFails(getDoc(doc(anon(), 'leagues/L1')));
+  });
+});

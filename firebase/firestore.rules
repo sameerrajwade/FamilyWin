@@ -65,6 +65,22 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
 
+    // ── /leagues/{leagueId} (Phase G7: family vs family) ─────────────────────
+    // Readable only by members of a family IN the league. Everything is
+    // written by Cloud Functions (createLeague / joinLeague / leaveLeague and
+    // the standings refresh) — a family must never write its own score, and
+    // other families only ever see a family's name + score, not its members.
+    match /leagues/{leagueId} {
+      allow read: if isSignedIn() && myFamilyId() in resource.data.familyIds;
+      allow write: if false;
+
+      match /standings/{familyId} {
+        allow read: if isSignedIn()
+          && myFamilyId() in get(/databases/$(database)/documents/leagues/$(leagueId)).data.familyIds;
+        allow write: if false;
+      }
+    }
+
     // ── /families/{familyId} ─────────────────────────────────────────────────
 
     match /families/{familyId} {
