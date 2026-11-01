@@ -7,6 +7,7 @@ import { useAuthStore, useFamilyStore, usePointsStore } from '@/store';
 import { Col, getFamilyMembers, getCurrentWeekId, getWeekCompletions, getMemberPersonalBest } from '@/lib/firebase';
 import { buildLeaderboard, computeCrowns, getWeekLabel, getCurrentWeekRange, getLevel } from '@/lib/pointsEngine';
 import { useMemberLevels } from '@/lib/memberLevels';
+import { SeasonCard } from '@/components/ui/Season';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
@@ -200,6 +201,9 @@ export default function LeaderboardScreen() {
             <View style={styles.goalWrap}>
               <FamilyGoalCard />
             </View>
+
+            {/* F1: the 4-week season race. */}
+            <SeasonCard />
 
             {/* Personal Best card — players only (coaches don't compete) */}
             {iAmPlayer && personalBest > 0 && (

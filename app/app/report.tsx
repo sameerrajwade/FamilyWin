@@ -17,7 +17,10 @@ import { Col, getFamilyMembers } from '@/lib/firebase';
 import { useAuthStore } from '@/store';
 import { useTheme } from '@/lib/theme';
 import { getCurrentWeekRange, getWeekLabel } from '@/lib/pointsEngine';
-import { buildParentReport, formatMinutes, type ParentReport, type ReportTx } from '@/lib/familyGame';
+import { buildParentReport, formatMinutes, buildGameHealth, formatWait, STILL_ACTIVE_DAYS, type ParentReport, type ReportTx, type GameHealth } from '@/lib/familyGame';
+import { useMemberLevels } from '@/lib/memberLevels';
+import { useSeason } from '@/components/ui/Season';
+import { SEASON_WEEKS } from '@/lib/seasons';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Avatar } from '@/components/ui';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
@@ -32,6 +35,11 @@ export default function ParentReportScreen() {
   const [pending, setPending] = useState(0);
   const [loading, setLoading] = useState(true);
   const [weekLabel, setWeekLabel] = useState('');
+  // F3: game health — this week's completions + the app-wide ledger + season.
+  const [weekCompletions, setWeekCompletions] = useState<any[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
+  const ledger = useMemberLevels((s) => s.txns);
+  const { season, rows: seasonRows } = useSeason();
 
   useEffect(() => {
     (async () => {
@@ -40,12 +48,21 @@ export default function ParentReportScreen() {
         const { start } = getCurrentWeekRange(family.weekStartDay ?? 1);
         const lastStart = new Date(start); lastStart.setDate(lastStart.getDate() - 7);
         setWeekLabel(getWeekLabel(start));
-        const [txSnap, members, pendingSnap] = await Promise.all([
+        const [txSnap, members, pendingSnap, weekCompSnap] = await Promise.all([
           // Single-field range query — no composite index needed.
           Col.transactions(family.id).where('createdAt', '>=', firestore.Timestamp.fromDate(lastStart)).get(),
           getFamilyMembers(family.id),
           Col.completions(family.id).where('status', '==', 'pending').get(),
+          Col.completions(family.id).where('completedAt', '>=', firestore.Timestamp.fromDate(start)).get(),
         ]);
+        setMembers(members as any[]);
+        setWeekCompletions(weekCompSnap.docs.map((d) => {
+          const c: any = d.data();
+          return {
+            memberId: c.memberId, status: c.status, wasAutoFailed: c.wasAutoFailed, approvedBy: c.approvedBy ?? null,
+            completedAt: c.completedAt?.toDate?.() ?? null, approvedAt: c.approvedAt?.toDate?.() ?? null,
+          };
+        }));
         const thisWeek: ReportTx[] = [], lastWeek: ReportTx[] = [];
         for (const d of txSnap.docs) {
           const x = d.data();
@@ -65,6 +82,17 @@ export default function ParentReportScreen() {
   }, [family?.id, family?.weekStartDay]);
 
   const choreDelta = report ? report.chores - report.lastWeekChores : 0;
+
+  const health: GameHealth | null = useMemo(() => {
+    if (!members.length) return null;
+    const lastActiveByMember: Record<string, Date | null> = {};
+    for (const t of ledger) {
+      if (t.source !== 'task' || t.delta <= 0 || !t.date) continue;
+      const prev = lastActiveByMember[t.memberId];
+      if (!prev || t.date > prev) lastActiveByMember[t.memberId] = t.date;
+    }
+    return buildGameHealth({ completions: weekCompletions, members, seasonRows, lastActiveByMember });
+  }, [members, weekCompletions, ledger, seasonRows]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -95,6 +123,33 @@ export default function ParentReportScreen() {
           </View>
 
           <FamilyGoalCard />
+
+          {/* F3: is the game actually working for this family? */}
+          {health && (
+            <>
+              <Text style={styles.section}>Is the game working?</Text>
+              <View style={styles.tiles}>
+                <Tile emoji="📅" value={`${health.parentActiveDays}/7`} label="days a parent checked in" styles={styles} />
+                <Tile emoji="🙌" value={health.kidClaimedPct == null ? '—' : `${health.kidClaimedPct}%`} label="chores kids claimed themselves" styles={styles} />
+                <Tile emoji="⏳" value={health.medianApprovalMins == null ? '—' : formatWait(health.medianApprovalMins)} label="typical wait for your OK" styles={styles} />
+              </View>
+              {health.lastPlace && (
+                <View style={[styles.note, health.lastPlace.stillActive
+                  ? { borderColor: colors.success + '55', backgroundColor: colors.success + '10' }
+                  : { borderColor: colors.warning + '55', backgroundColor: colors.warning + '10' }]}>
+                  <EmojiIcon emoji={health.lastPlace.stillActive ? '💪' : '💛'} size={30} />
+                  <Text style={styles.noteText}>
+                    <Text style={styles.noteStrong}>Season {season.number}, week {season.week} of {SEASON_WEEKS}: </Text>
+                    {health.lastPlace.stillActive
+                      ? `${health.lastPlace.name} is in last place this season but still playing — that's the game working.`
+                      : health.lastPlace.daysSinceActive == null
+                        ? `${health.lastPlace.name} is in last place and hasn't done a chore yet this season. An easy win could get them back in.`
+                        : `${health.lastPlace.name} is in last place and hasn't done a chore in ${health.lastPlace.daysSinceActive} days (more than ${STILL_ACTIVE_DAYS}). An easy win could get them back in.`}
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
 
           <Text style={styles.section}>How each kid did</Text>
           {report.kids.length === 0 ? (

@@ -12,6 +12,8 @@ import { useAuthStore } from '@/store';
 import { getCompletionRate, getRankEmoji, calculateStreak, getCurrentWeekRange, getLevel } from '@/lib/pointsEngine';
 import { useMemberLevels } from '@/lib/memberLevels';
 import { LevelLadder } from '@/components/ui/LevelPerks';
+import { SeasonBadges } from '@/components/ui/Season';
+import { streakWithShields, activeDayKeys } from '@/lib/streakShield';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -159,7 +161,7 @@ export default function MemberProfileScreen() {
         setWeeklyPoints(weekly);
 
         // Calculate streak from completions
-        const streakDays = calcStreakFromCompletions(compList);
+        const streakDays = calcStreakFromCompletions(compList, family?.weekStartDay ?? 1);
         setStreak(streakDays);
       } catch (e) {
         if (__DEV__) console.error(e);
@@ -368,6 +370,8 @@ export default function MemberProfileScreen() {
 
               {/* E3: what each level unlocks — frames + the family's perks. */}
               <LevelLadder earned={earnedPts} perks={family?.levelPerks} />
+              {/* F1: medals from finished seasons (renders nothing until one ends). */}
+              <SeasonBadges memberId={id} />
 
               {streak > 0 && (
                 <TouchableOpacity style={styles.streakBadge} activeOpacity={0.85} onPress={shareStreak} accessibilityRole="button" accessibilityLabel={`Share ${streak} day streak`}>
@@ -600,22 +604,12 @@ export default function MemberProfileScreen() {
   );
 }
 
-function calcStreakFromCompletions(completions: CompletionDoc[]): number {
+/** Same streak as Home: shield-aware, and today never breaks it (lib/streakShield). */
+function calcStreakFromCompletions(completions: CompletionDoc[], weekStartDay: number): number {
   const dates = completions
-    .filter((c) => !c.wasAutoFailed && c.completedAt)
-    .map((c) => c.completedAt!.toDate().toDateString())
-    .filter((v, i, a) => a.indexOf(v) === i)
-    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-
-  let streak = 0;
-  const today = new Date();
-  for (let i = 0; i < dates.length; i++) {
-    const expected = new Date(today);
-    expected.setDate(today.getDate() - i);
-    if (dates[i] === expected.toDateString()) streak++;
-    else break;
-  }
-  return streak;
+    .filter((c) => !c.wasAutoFailed && c.completedAt && (c as any).status !== 'rejected')
+    .map((c) => c.completedAt!.toDate());
+  return streakWithShields(activeDayKeys(dates), new Date(), weekStartDay).streak;
 }
 
 function createStyles(colors: ThemeColors) {

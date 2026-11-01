@@ -110,3 +110,41 @@ describe('detectOvertakes', () => {
     expect(detectOvertakes('a', { a: 100, b: 100 }, 20, ['a', 'b'])).toEqual([]);
   });
 });
+
+describe('streakWithShields — server port (F2), same scenarios as the app', () => {
+  const { streakWithShields, reachedMilestones } = require(path.join(__dirname, '../../firebase/functions/game'));
+  const keys = (end, n, skip = []) => {
+    const out = [];
+    const [y, m, d] = end.split('-').map(Number);
+    for (let i = 0; i < n; i++) {
+      if (skip.includes(i)) continue;
+      out.push(new Date(Date.UTC(y, m - 1, d - i)).toISOString().slice(0, 10));
+    }
+    return out;
+  };
+  const today = '2026-11-20';
+
+  test('consecutive days; today not done yet does not break it', () => {
+    expect(streakWithShields(keys(today, 4), today).streak).toBe(4);
+    expect(streakWithShields(keys('2026-11-19', 4), today).streak).toBe(4);
+  });
+  test('a full week earns a shield that covers one missed day', () => {
+    const r = streakWithShields(keys(today, 21, [2]), today);
+    expect(r.shieldedDays).toEqual(['2026-11-18']);
+    expect(r.streak).toBe(20);
+  });
+  test('one shield, two misses in a row: covers the first, resets on the second', () => {
+    const r = streakWithShields([...keys('2026-11-17', 9), '2026-11-20'], today);
+    expect(r.shieldedDays).toEqual(['2026-11-18']);
+    expect(r.streak).toBe(1);
+  });
+  test('holds at most 2 shields', () => {
+    expect(streakWithShields(keys(today, 42), today).shields).toBe(2);
+  });
+  test('milestones reached so far (paid once each by the caller)', () => {
+    const B = { 7: 50, 14: 100, 30: 250 };
+    expect(reachedMilestones(6, B)).toEqual([]);
+    expect(reachedMilestones(8, B)).toEqual([7]);
+    expect(reachedMilestones(15, B)).toEqual([7, 14]);
+  });
+});

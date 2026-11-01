@@ -951,12 +951,12 @@ export async function approveCompletion(params: {
   });
 }
 
-/** Choose who competes: everyone (default) or kids only. Parents only, via rules. */
 /** E3: save the family's level perks (already cleaned by levelUnlocks.cleanPerks). */
 export async function setLevelPerks(familyId: string, perks: Record<string, string>): Promise<void> {
   await firestore().collection('families').doc(familyId).update({ levelPerks: perks });
 }
 
+/** Choose who competes: everyone (default) or kids only. Parents only, via rules. */
 export async function setCompetitionMode(familyId: string, mode: 'everyone' | 'kids'): Promise<void> {
   await firestore().collection('families').doc(familyId).update({ competitionMode: mode });
 }

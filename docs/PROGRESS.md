@@ -13,6 +13,15 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 60 (2026-11-01) — Phase F: seasons, streak shield, report game-health
+All 3 F items built + deployed + installed. Ledger: the E3 transactions listener now also keeps a compact ledger (`memberLevels.txns`) that seasons/badges/report read — no new reads, writes or rules.
+- **F1 seasons:** `lib/seasons` — fixed 4-week blocks from SEASON_EPOCH 2026-10-26 (aligned to weekStartDay) → Season 1 = Oct 26–Nov 22. Standings = earned (no redemptions) among competitors. Badges DERIVED for finished seasons: 🥇 champion (ties share), 🏅 earned all 4 weeks. UI (`components/ui/Season`): SeasonCard on Scores (week dots, top 4), SeasonBadges on profile, SeasonEndCard on the winner screen in week 1 of a new season. Device screenshot ✓ (Vian 191 / Sameer 185 / Vayu 0 / Asmita −66).
+- **F2 streak shield:** `lib/streakShield` (derived): +1 🛡 per family week with ≥5 active days, hold ≤2, auto-covers a single missed day, today never breaks. Home 🛡 chip (tap = explainer) + profile streak use it (profile's old counter broke whenever today wasn't done yet). **Server:** `game.streakWithShields` port (date keys) + `dailyStreakCheck` rewritten: member-timezone days, ONE single-field query/family (dropped the 3-where composite), pays any reached milestone once (reason dedupe unchanged). OLD BUG: it counted UTC days ending on the UTC day that had just started at 01:00 → streak ≈0 for US families, bonuses basically never paid.
+- **F3 report "Is the game working?":** `familyGame.buildGameHealth` — parent active days/7, % chores kids claimed themselves, median wait for a parent OK, last-place kid this season still active (≤3 days) or quiet. (Firebase Analytics events can't be read back, so it's all from completions/ledger.)
+- Tidy: setCompetitionMode's doc comment was orphaned by E3's insert — fixed.
+- **Tests:** tsc 0; app **31 suites / 459**; functions emulator **54/54**. **Deployed functions** (all 9 updated). APK installed 21:33, no errors.
+- **Next Up:** (1) after 01:00 UTC tonight: `firebase functions:log --only dailyStreakCheck` → confirm it ran clean. (2) user device-check: report health section, shield chip (appears after a 5-day week), level perks. (3) Phase G (Play Store). Backlog: firebase-functions 5→latest; server-side ledger totals when ledgers grow.
+
 ## Iteration 59 (2026-10-31) — E3 level unlocks (Phase E DONE) + daily-pack fix
 - **User fix (f2381ae):** daily surprise pack + quest ring count ONLY `recurrence==='daily'` tasks (weekly/monthly pending no longer blocks the bonus; day-specific tasks are daily+scheduledDays so still count). No daily tasks that day → no pack. Not retroactive for past days.
 - **Level source fixed:** new `pointsEngine.lifetimeEarned` (all deltas except `redemption`, ≥0). Levels used the SPENDABLE balance → redeeming lowered your level (old latent bug). Home chip + profile now level from earned.

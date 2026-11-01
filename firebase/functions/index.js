@@ -13,8 +13,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-// Deploy marker: Phase D — D2 points-lock on pending claims, D3 multi-crown
-// weekly push + competitionMode, D4 live "overtaken" push (2026-10-31).
+// Deploy marker: Phase F2 — dailyStreakCheck counts streaks with shields in each
+// member's own timezone (2026-11-01). Earlier: Phase D points-lock, crowns, overtaken.
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require('firebase-functions/v2/firestore');
@@ -23,9 +23,10 @@ const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 const { getAuth } = require('firebase-admin/auth');
 const { getStorage } = require('firebase-admin/storage');
-const { runMissedTaskSweep } = require('./sweep');
+const { runMissedTaskSweep, localDateKey } = require('./sweep');
 const {
   competitors, buildRanked, computeCrowns, crownsSummary, detectOvertakes,
+  streakWithShields, reachedMilestones, STREAK_WINDOW_DAYS,
 } = require('./game');
 
 initializeApp();
@@ -505,77 +506,70 @@ exports.weeklyReset = onSchedule('1 0 * * 1', async (event) => {
 });
 
 // ─── STREAK BONUS ─────────────────────────────────────────────────────────────
-// Runs daily at 01:00 UTC — awards streak bonuses (7d / 14d / 30d)
+// Runs daily at 01:00 UTC — awards streak bonuses (7d / 14d / 30d).
+//
+// Phase F2 rewrite: the streak is counted exactly like the app counts it
+// (game.streakWithShields — streak shields, "today isn't over"), on days in each
+// member's OWN timezone. The old version counted UTC days ending on the UTC day
+// that had just begun at 01:00, so for a US family the streak read 0 almost
+// every run and the bonuses effectively never paid. A milestone is now paid once
+// the streak has REACHED it (not only on the exact day), still at most once per
+// member per milestone (same reason-string dedupe as before).
 
-exports.dailyStreakCheck = onSchedule('0 1 * * *', async (event) => {
+exports.dailyStreakCheck = onSchedule('0 1 * * *', async () => {
   const STREAK_BONUSES = { 7: 50, 14: 100, 30: 250 };
+  const now = new Date();
   const familiesSnap = await db.collection('families').get();
 
   for (const familyDoc of familiesSnap.docs) {
     const familyId = familyDoc.id;
-    const membersSnap = await db
-      .collection('families').doc(familyId)
-      .collection('members').get();
+    const familyRef = db.collection('families').doc(familyId);
+    try {
+      const [membersSnap, configsSnap, recentSnap] = await Promise.all([
+        familyRef.collection('members').get(),
+        familyRef.collection('notificationConfigs').get(),
+        // ONE single-field range query per family (no composite index needed).
+        familyRef.collection('completions')
+          .where('completedAt', '>=', Timestamp.fromMillis(now.getTime() - (STREAK_WINDOW_DAYS + 1) * 86400000))
+          .get(),
+      ]);
 
-    for (const memberDoc of membersSnap.docs) {
-      const memberId = memberDoc.id;
+      const tzByMember = {};
+      configsSnap.docs.forEach((d) => { if (d.data().timezone) tzByMember[d.id] = d.data().timezone; });
+      const familyTz = Object.values(tzByMember)[0] || 'UTC';
+      const weekStartDay = familyDoc.data().weekStartDay ?? 1;
 
-      // Calculate streak from last 35 days of completions
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - 35);
+      for (const memberDoc of membersSnap.docs) {
+        const memberId = memberDoc.id;
+        const tz = tzByMember[memberId] || familyTz;
+        const dayKeys = recentSnap.docs
+          .map((d) => d.data())
+          .filter((c) => c.memberId === memberId && c.completedAt && c.wasAutoFailed !== true && c.status !== 'rejected')
+          .map((c) => localDateKey(c.completedAt.toDate(), tz));
+        const { streak } = streakWithShields(dayKeys, localDateKey(now, tz), weekStartDay);
 
-      const completionsSnap = await db
-        .collection('families').doc(familyId)
-        .collection('completions')
-        .where('memberId', '==', memberId)
-        .where('completedAt', '>=', Timestamp.fromDate(cutoff))
-        .where('wasAutoFailed', '==', false)
-        .get();
+        for (const milestone of reachedMilestones(streak, STREAK_BONUSES)) {
+          const reason = `🔥 ${milestone}-day streak bonus!`;
+          const alreadyAwarded = await familyRef.collection('transactions')
+            .where('memberId', '==', memberId)
+            .where('reason', '==', reason)
+            .limit(1)
+            .get();
+          if (!alreadyAwarded.empty) continue;
 
-      const daysWithCompletions = new Set(
-        completionsSnap.docs.map((d) => {
-          const date = d.data().completedAt.toDate();
-          return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-        }),
-      );
-
-      // Count consecutive days ending today
-      let streak = 0;
-      const today = new Date();
-      for (let i = 0; i < 35; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
-        const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-        if (daysWithCompletions.has(key)) streak++;
-        else break;
+          await familyRef.collection('transactions').add({
+            familyId,
+            memberId,
+            delta: STREAK_BONUSES[milestone],
+            reason,
+            source: 'bonus',
+            createdAt: Timestamp.now(),
+          });
+          console.log(`Streak bonus: family=${familyId} member=${memberId} streak=${streak} milestone=${milestone}`);
+        }
       }
-
-      // Check if streak milestone hit today
-      const bonus = STREAK_BONUSES[streak];
-      if (!bonus) continue;
-
-      // Avoid double-awarding: check if bonus already given for this streak length
-      const alreadyAwarded = await db
-        .collection('families').doc(familyId)
-        .collection('transactions')
-        .where('memberId', '==', memberId)
-        .where('reason', '==', `🔥 ${streak}-day streak bonus!`)
-        .limit(1)
-        .get();
-
-      if (!alreadyAwarded.empty) continue;
-
-      await db.collection('families').doc(familyId)
-        .collection('transactions').add({
-          familyId,
-          memberId,
-          delta: bonus,
-          reason: `🔥 ${streak}-day streak bonus!`,
-          source: 'bonus',
-          createdAt: Timestamp.now(),
-        });
-
-      console.log(`Streak bonus: family=${familyId} member=${memberId} streak=${streak} bonus=${bonus}`);
+    } catch (err) {
+      console.error(`dailyStreakCheck failed for family ${familyId}:`, err);
     }
   }
   return null;

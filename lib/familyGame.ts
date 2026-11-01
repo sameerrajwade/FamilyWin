@@ -194,6 +194,93 @@ export function buildParentReport(
   };
 }
 
+// ─── Game health metrics (Phase F3) ──────────────────────────────────────────
+// Is the game actually working for this family? Four honest numbers for the
+// Parent Report, all from data the app already has (completions + ledger).
+
+export interface MetricCompletion {
+  memberId: string;
+  completedAt: Date | null;
+  approvedAt?: Date | null;
+  approvedBy?: string | null;
+  status?: string;
+  wasAutoFailed?: boolean;
+}
+
+export interface GameHealth {
+  /** Days this week a parent did something (completed or approved). 0..7 */
+  parentActiveDays: number;
+  /** % of kids' chores the KID claimed (vs a parent ticking it). null = none yet. */
+  kidClaimedPct: number | null;
+  /** Median minutes from a kid's claim to a parent's OK. null = no approvals. */
+  medianApprovalMins: number | null;
+  /** The last-place kid this season and whether they're still playing. */
+  lastPlace: { memberId: string; name: string; daysSinceActive: number | null; stillActive: boolean } | null;
+}
+
+/** "Still playing" = did something within this many days. */
+export const STILL_ACTIVE_DAYS = 3;
+
+export function buildGameHealth(p: {
+  completions: MetricCompletion[];               // this week's completions
+  members: GameMember[];
+  seasonRows: { memberId: string; points: number; rank: number }[]; // season standings
+  lastActiveByMember: Record<string, Date | null>;                  // latest completed task
+  now?: Date;
+}): GameHealth {
+  const now = p.now ?? new Date();
+  const kids = new Set(p.members.filter(isKid).map((m) => m.id));
+  const parents = new Set(p.members.filter((m) => !isKid(m)).map((m) => m.id));
+
+  const parentDays = new Set<string>();
+  for (const c of p.completions) {
+    if (parents.has(c.memberId) && c.completedAt && !c.wasAutoFailed) parentDays.add(c.completedAt.toDateString());
+    if (c.approvedBy && parents.has(c.approvedBy) && c.approvedAt) parentDays.add(c.approvedAt.toDateString());
+  }
+
+  const kidDone = p.completions.filter((c) => kids.has(c.memberId) && !c.wasAutoFailed && c.status !== 'rejected');
+  const claimed = kidDone.filter((c) => c.status === 'pending' || c.status === 'approved' || !!c.approvedBy);
+
+  const waits = p.completions
+    .filter((c) => c.approvedBy && c.approvedAt && c.completedAt && c.status === 'approved')
+    .map((c) => (c.approvedAt!.getTime() - c.completedAt!.getTime()) / 60_000)
+    .filter((m) => m >= 0)
+    .sort((a, b) => a - b);
+  const median = waits.length === 0 ? null
+    : waits.length % 2 ? waits[(waits.length - 1) / 2]
+    : (waits[waits.length / 2 - 1] + waits[waits.length / 2]) / 2;
+
+  // Last place only means something with at least two kids racing.
+  const kidRows = p.seasonRows.filter((r) => kids.has(r.memberId));
+  let lastPlace: GameHealth['lastPlace'] = null;
+  if (kidRows.length >= 2) {
+    const last = kidRows[kidRows.length - 1];
+    const seen = p.lastActiveByMember[last.memberId] ?? null;
+    const days = seen ? Math.floor((now.getTime() - seen.getTime()) / 86_400_000) : null;
+    const m = p.members.find((x) => x.id === last.memberId);
+    lastPlace = {
+      memberId: last.memberId,
+      name: (m?.displayName || 'Someone').split(' ')[0],
+      daysSinceActive: days,
+      stillActive: days != null && days <= STILL_ACTIVE_DAYS,
+    };
+  }
+
+  return {
+    parentActiveDays: parentDays.size,
+    kidClaimedPct: kidDone.length ? Math.round((claimed.length / kidDone.length) * 100) : null,
+    medianApprovalMins: median == null ? null : Math.round(median),
+    lastPlace,
+  };
+}
+
+/** "12 min" / "3 h" / "2 days" — for the approval-time metric. */
+export function formatWait(mins: number): string {
+  if (mins < 60) return `${mins} min`;
+  if (mins < 48 * 60) return `${Math.round(mins / 60)} h`;
+  return `${Math.round(mins / 1440)} days`;
+}
+
 /** "2h 35m" / "45m" */
 export function formatMinutes(mins: number): string {
   const h = Math.floor(mins / 60), m = mins % 60;

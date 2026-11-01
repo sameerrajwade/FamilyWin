@@ -18,7 +18,7 @@ import {
   syncMissedPenalties, missedPenaltyMode, penaltyPauseActive, type CatchUpItem,
 } from '@/lib/firebase';
 import { pickPhotoUri } from '@/lib/photoPicker';
-import { getCurrentWeekRange, dailyStreak, getLevel, summarizeMemberPoints } from '@/lib/pointsEngine';
+import { getCurrentWeekRange, getLevel, summarizeMemberPoints } from '@/lib/pointsEngine';
 import { effectiveAssignee, isDueToday } from '@/lib/rotation';
 import { resolveTaskEmoji } from '@/lib/taskEmoji';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
@@ -31,6 +31,7 @@ import { openTaskEditor } from '@/lib/taskNav';
 import { checkSurprisePacks } from '@/lib/surprise';
 import { SurprisePackReveal } from '@/components/ui/SurprisePack';
 import { DailyQuestRing } from '@/components/ui/DailyQuestRing';
+import { streakWithShields, activeDayKeys, STREAK_WINDOW_DAYS, SHIELD_MIN_ACTIVE_DAYS, SHIELD_CAP } from '@/lib/streakShield';
 import { SavingGoalRow } from '@/components/ui/SavingGoal';
 import { BountyBoard } from '@/components/ui/BountyBoard';
 import { useMemberLevels } from '@/lib/memberLevels';
@@ -82,6 +83,7 @@ export default function HomeScreen() {
   const [weeklyPoints, setWeeklyPoints] = useState(0);
   const [pendingApprovals, setPendingApprovals] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [shields, setShields] = useState(0);
   const [showTour, setShowTour] = useState(false);
   const [lifetimePoints, setLifetimePoints] = useState(0);
   // Undo state — cleared after 5 seconds
@@ -211,12 +213,15 @@ export default function HomeScreen() {
     (async () => {
       if (!family?.id || !effectiveMember?.id) return;
       try {
-        const recent = await getRecentCompletions(family.id, effectiveMember.id, 35);
+        const recent = await getRecentCompletions(family.id, effectiveMember.id, STREAK_WINDOW_DAYS);
         if (cancelled) return;
         const dates = recent
-          .filter((c) => !c.wasAutoFailed && c.completedAt)
+          .filter((c) => !c.wasAutoFailed && c.completedAt && (c as any).status !== 'rejected')
           .map((c) => c.completedAt!.toDate());
-        setStreak(dailyStreak(dates));
+        // F2: shields cover a single missed day (same rule as the server bonus).
+        const s = streakWithShields(activeDayKeys(dates), new Date(), family.weekStartDay ?? 1);
+        setStreak(s.streak);
+        setShields(s.shields);
       } catch (e) {
         if (__DEV__) console.error('streak load failed:', e);
       }
@@ -666,6 +671,20 @@ export default function HomeScreen() {
             </View>
             <View style={styles.headerRight}>
               {streak > 0 && <StreakFlame streak={streak} />}
+              {shields > 0 && (
+                <TouchableOpacity
+                  style={[styles.shieldChip, { backgroundColor: colors.primary + '14', borderColor: colors.primary + '40' }]}
+                  onPress={() => Alert.alert(
+                    `🛡 Streak shield${shields > 1 ? ` ×${shields}` : ''}`,
+                    `A shield saves your streak if you miss a single day — it's used automatically.\n\nEarn one each week you're active on ${SHIELD_MIN_ACTIVE_DAYS}+ days (hold up to ${SHIELD_CAP}).`,
+                  )}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${shields} streak ${shields === 1 ? 'shield' : 'shields'}`}
+                >
+                  <EmojiIcon emoji="🛡" size={16} />
+                  <Text style={[styles.shieldCount, { color: colors.textAccent }]}>{shields}</Text>
+                </TouchableOpacity>
+              )}
               {isParent && (
                 <>
                   <TouchableOpacity
@@ -1062,6 +1081,8 @@ const styles = StyleSheet.create({
   actionPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: BorderRadius.full, ...Shadow.sm },
   actionPillText: { color: '#FFFFFF', fontFamily: FontFamily.extraBold, fontSize: FontSize.xs },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
+  shieldChip: { flexDirection: 'row', alignItems: 'center', gap: 3, borderWidth: 1, borderRadius: BorderRadius.full, paddingHorizontal: 7, paddingVertical: 3 },
+  shieldCount: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   greeting: { fontFamily: FontFamily.extraBold },

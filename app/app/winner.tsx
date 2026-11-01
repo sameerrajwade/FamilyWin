@@ -25,6 +25,7 @@ import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
 import { Avatar } from '@/components/ui';
+import { SeasonEndCard } from '@/components/ui/Season';
 import { BrandLockup } from '@/components/ui/Brand';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
 import { Confetti } from '@/components/ui/Animations';
@@ -135,6 +136,9 @@ export default function WinnerScreen() {
             <Text style={[styles.close, { color: colors.textSecondary }]}>✕</Text>
           </TouchableOpacity>
         </View>
+
+        {/* F1: the first week of a new season also crowns the season just ended. */}
+        {!loading && <SeasonEndCard />}
 
         {loading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 80 }} />

@@ -101,9 +101,9 @@ deploy**, then device-verifies.
 ### Phase F — long-term + measurement
 | # | Task | Size |
 |---|---|---|
-| F1 | 4-week **seasons** + season badges | L |
-| F2 | **Streak shield** (earn one save/week) | M |
-| F3 | Metrics in the Parent Report: parent active days, % kid-claimed, approval time, last-place kid still active in week 3 (`lib/analytics.ts` exists) | M |
+| F1 | 4-week **seasons** + season badges — `lib/seasons`, SeasonCard/Badges/EndCard | ✅ built (iter 60) |
+| F2 | **Streak shield** — `lib/streakShield` + server `dailyStreakCheck` rewrite (deployed) | ✅ built (iter 60) |
+| F3 | Report "Is the game working?" — parent days, % kid-claimed, approval wait, last-place kid active | ✅ built (iter 60) |
 
 ### Phase G — Play Store launch
 | # | Task | Notes |

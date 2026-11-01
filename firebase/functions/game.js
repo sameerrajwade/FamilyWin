@@ -132,6 +132,50 @@ function detectOvertakes(actorId, newTotals, delta, competitorIds) {
   return passed;
 }
 
+// ─── Streak shield (Phase F2) — port of lib/streakShield.ts ──────────────────
+// Same rules as the app: one shield per family week with ≥ 5 active days, hold
+// at most 2, a shield covers a single missed day automatically, and TODAY never
+// breaks a streak. Works on YYYY-MM-DD keys (already in the member's timezone),
+// so the server and every device count the same streak.
+
+const SHIELD_MIN_ACTIVE_DAYS = 5;
+const SHIELD_CAP = 2;
+const STREAK_WINDOW_DAYS = 42;
+
+function keyToUtc(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+function utcToKey(ms) {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+function streakWithShields(activeDayKeys, todayKey, weekStartDay = 1, windowDays = STREAK_WINDOW_DAYS) {
+  const active = new Set(activeDayKeys);
+  const DAY = 86400000;
+  const todayMs = keyToUtc(todayKey);
+  let ms = todayMs - (windowDays - 1) * DAY;
+  let streak = 0, shields = 0, weekActive = 0;
+  const shieldedDays = [];
+  for (let i = 0; i < windowDays; i++, ms += DAY) {
+    const key = utcToKey(ms);
+    if (i > 0 && new Date(ms).getUTCDay() === weekStartDay) {
+      if (weekActive >= SHIELD_MIN_ACTIVE_DAYS) shields = Math.min(SHIELD_CAP, shields + 1);
+      weekActive = 0;
+    }
+    if (active.has(key)) { streak++; weekActive++; }
+    else if (ms === todayMs) { /* today isn't over */ }
+    else if (streak > 0 && shields > 0) { shields--; shieldedDays.push(key); }
+    else streak = 0;
+  }
+  return { streak, shields, shieldedDays };
+}
+
+/** Milestones a streak has reached (e.g. 15 → [7, 14]); the caller pays each once. */
+function reachedMilestones(streak, bonuses) {
+  return Object.keys(bonuses).map(Number).filter((m) => streak >= m).sort((a, b) => a - b);
+}
+
 module.exports = {
   isKid,
   competitors,
@@ -139,4 +183,7 @@ module.exports = {
   computeCrowns,
   crownsSummary,
   detectOvertakes,
+  streakWithShields,
+  reachedMilestones,
+  STREAK_WINDOW_DAYS,
 };
