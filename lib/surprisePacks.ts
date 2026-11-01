@@ -120,11 +120,11 @@ export function questProgress(
 /** One line under the greeting that tells the player what the ring means. */
 export function questLabel(p: QuestProgress): string {
   if (p.total === 0) return "Let's make today count 💪";
-  if (p.complete) return 'Daily tasks done — surprise pack earned! 🎁';
+  if (p.complete) return 'Daily tasks done — bonus chest earned! 🎉';
   if (p.approved + p.pending === p.total) {
-    return `Daily tasks done — ${p.pending} waiting for an OK, then your pack 🎁`;
+    return `Daily tasks done — ${p.pending} waiting for an OK, then your bonus chest`;
   }
-  return `${p.approved + p.pending} of ${p.total} daily done today · finish them for a surprise pack`;
+  return `${p.approved + p.pending} of ${p.total} daily done today · finish them for a bonus chest (+${DAILY_PACK.min}–${DAILY_PACK.max})`;
 }
 
 /** Perfect week = a daily pack on every one of the week's 7 days. */

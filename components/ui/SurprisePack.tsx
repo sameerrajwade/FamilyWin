@@ -1,5 +1,5 @@
 /**
- * components/ui/SurprisePack.tsx — the surprise-pack reveal (Phase C8)
+ * components/ui/SurprisePack.tsx — the bonus-chest reveal (Phase C8; renamed G3)
  * ─────────────────────────────────────────────────────────────────────────────
  * <SurprisePackReveal familyId memberId /> watches that member's transactions
  * for NEW surprise packs (ids `surprise_day_*` / `surprise_week_*`, written by
@@ -17,6 +17,8 @@ import { Col } from '@/lib/firebase';
 import { Sounds } from '@/lib/sounds';
 import { useTheme } from '@/lib/theme';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
+import { BrandIcon } from '@/components/ui/BrandIcons';
+import { DAILY_PACK, WEEKLY_PACK } from '@/lib/surprisePacks';
 import { Confetti } from '@/components/ui/Animations';
 import { FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
 
@@ -87,22 +89,28 @@ function RevealModal({ pack, name, onDone }: { pack: Pack | null; name?: string;
 
   if (!pack) return null;
   const weekly = pack.kind === 'weekly';
+  // G3: show the possible range up front — a known bonus, not a gamble.
+  const range = weekly ? WEEKLY_PACK : DAILY_PACK;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onDone}>
       <View style={styles.overlay}>
         <Confetti visible={opened} count={weekly ? 140 : 90} />
         <View style={styles.card}>
           <Text style={styles.eyebrow}>{weekly ? 'PERFECT WEEK' : 'DAILY TASKS DONE'}</Text>
-          <Text style={styles.title}>{opened ? `+${pack.points} points!` : `${name ? name + ', a' : 'A'} surprise pack!`}</Text>
-          <TouchableOpacity onPress={opened ? undefined : open} activeOpacity={0.9} accessibilityRole="button" accessibilityLabel={opened ? `${pack.points} bonus points` : 'Open your surprise pack'}>
+          <Text style={styles.title}>
+            {opened ? `+${pack.points} points!` : `${name ? name + ', a' : 'A'} ${weekly ? 'perfect-week chest' : 'bonus chest'}!`}
+          </Text>
+          <TouchableOpacity onPress={opened ? undefined : open} activeOpacity={0.9} accessibilityRole="button" accessibilityLabel={opened ? `${pack.points} bonus points` : `Open your ${weekly ? 'perfect-week chest' : 'bonus chest'}`}>
             <Animated.View style={giftStyle}>
-              <EmojiIcon emoji={opened ? (weekly ? '🏆' : '💰') : '🎁'} size={weekly ? 150 : 128} />
+              {opened
+                ? <EmojiIcon emoji={weekly ? '🏆' : '💰'} size={weekly ? 150 : 128} />
+                : <BrandIcon name="chest" size={weekly ? 150 : 128} />}
             </Animated.View>
           </TouchableOpacity>
           <Text style={styles.sub}>
             {opened
               ? (weekly ? 'You finished every day this week. Legendary!' : 'You finished every daily task today. Keep the streak going!')
-              : 'Tap the gift to open it'}
+              : `Tap the chest to open it — worth ${range.min}–${range.max} points`}
           </Text>
           {opened && (
             <TouchableOpacity style={styles.btn} onPress={onDone} accessibilityRole="button">

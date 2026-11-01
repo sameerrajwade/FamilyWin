@@ -2,8 +2,8 @@
  * components/ui/DailyQuestRing.tsx — today's quest ring (Phase E1)
  * ─────────────────────────────────────────────────────────────────────────────
  * A small progress ring beside the Today greeting: how close this person is to
- * today's surprise pack. Purple arc = done and approved; amber arc = claimed,
- * waiting for a parent OK; the gift in the middle turns into a coin bag once
+ * today's bonus chest. Purple arc = done and approved; amber arc = claimed,
+ * waiting for a parent OK; the chest in the middle turns into a coin bag once
  * every daily task is approved (weekly/monthly tasks don't count). Progress
  * comes from lib/surprisePacks::questProgress so the ring and the pack always
  * agree on what "done" means.
@@ -12,6 +12,7 @@
 import { useTheme } from '@/lib/theme';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { ProgressRing } from '@/components/ui/ProgressRing';
+import { BrandIcon } from '@/components/ui/BrandIcons';
 import type { QuestProgress } from '@/lib/surprisePacks';
 
 export function DailyQuestRing({ progress, size = 46 }: { progress: QuestProgress; size?: number }) {
@@ -26,11 +27,13 @@ export function DailyQuestRing({ progress, size = 46 }: { progress: QuestProgres
       ]}
       accessibilityLabel={
         progress.complete
-          ? 'Surprise pack earned today'
+          ? 'Bonus chest earned today'
           : `${progress.approved} of ${progress.total} tasks approved today${progress.pending ? `, ${progress.pending} waiting for an OK` : ''}`
       }
     >
-      <EmojiIcon emoji={progress.complete ? '💰' : '🎁'} size={size * 0.46} />
+      {progress.complete
+        ? <EmojiIcon emoji="💰" size={size * 0.46} />
+        : <BrandIcon name="chest" size={size * 0.5} sparkle={false} />}
     </ProgressRing>
   );
 }

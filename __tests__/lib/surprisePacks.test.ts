@@ -117,8 +117,8 @@ describe('questProgress / questLabel (E1 daily quest ring)', () => {
   });
   it('labels each state', () => {
     expect(questLabel(questProgress([]))).toMatch(/make today count/);
-    expect(questLabel(questProgress([T({}), T(null)]))).toBe('1 of 2 daily done today · finish them for a surprise pack');
+    expect(questLabel(questProgress([T({}), T(null)]))).toBe('1 of 2 daily done today · finish them for a bonus chest (+5–20)');
     expect(questLabel(questProgress([T({}), T({ status: 'pending' })]))).toMatch(/1 waiting for an OK/);
-    expect(questLabel(questProgress([T({}), T({})]))).toMatch(/surprise pack earned/);
+    expect(questLabel(questProgress([T({}), T({})]))).toMatch(/bonus chest earned/);
   });
 });

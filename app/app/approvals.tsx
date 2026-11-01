@@ -117,7 +117,7 @@ export default function ApprovalsScreen() {
     const awards = (await Promise.all(checks)).flat();
     if (awards.length === 0) return;
     const nameOf = (id: string) => (approvedRows.find((r) => r.member?.id === id)?.member?.displayName ?? 'Someone').split(' ')[0];
-    Alert.alert('🎁 Surprise packs!', awards
+    Alert.alert('🎁 Bonus chests!', awards
       .map((a) => `${nameOf(a.memberId)} +${a.points}${a.kind === 'weekly' ? ' (perfect week!)' : ''}`)
       .join('\n'));
   }
