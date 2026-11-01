@@ -13,7 +13,8 @@ import { firestore } from '@/lib/fb';
 import { DEFAULT_ALLOWANCE_RATE } from '@/lib/pointsEngine';
 import { useAuthStore } from '@/store';
 import { useTheme, type ThemeColors } from '@/lib/theme';
-import { setMissedTaskPenalty, missedPenaltyMode, missedDeadlineHour, setMissedTaskDeadline, updateFamilyWeekStartDay, setFamilyPenaltyPause, PAUSE_INDEFINITE, setAllowanceSettings, setCompetitionMode } from '@/lib/firebase';
+import { setMissedTaskPenalty, missedPenaltyMode, missedDeadlineHour, setMissedTaskDeadline, updateFamilyWeekStartDay, setFamilyPenaltyPause, PAUSE_INDEFINITE, setAllowanceSettings, setCompetitionMode, setLevelPerks } from '@/lib/firebase';
+import { LevelPerksEditor } from '@/components/ui/LevelPerks';
 import { FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
 
 const DAY_MS = 86_400_000;
@@ -74,6 +75,18 @@ export default function ParentalControlsScreen() {
     } catch {
       setFamily({ ...family, competitionMode: prev });
       Alert.alert('Error', 'Could not update who competes.');
+    }
+  }
+
+  async function handleSavePerks(next: Record<string, string>) {
+    if (!family?.id) return;
+    const prev = family.levelPerks;
+    setFamily({ ...family, levelPerks: next });
+    try {
+      await setLevelPerks(family.id, next);
+    } catch {
+      setFamily({ ...family, levelPerks: prev });
+      Alert.alert('Error', 'Could not save the level perks.');
     }
   }
 
@@ -336,6 +349,16 @@ export default function ParentalControlsScreen() {
             </View>
           </SettingsBlock>
         )}
+      </SettingsGroup>
+
+      {/* E3: real-world perks that unlock with each level (frames unlock on their own). */}
+      <SettingsGroup title="Level perks">
+        <SettingsBlock isLast>
+          <Text style={[styles.blockHint, { color: colors.textSecondary }]}>
+            Levels climb with every point earned (spending doesn't lower them). Each level already unlocks a new avatar frame — add a real-world perk too if you like.
+          </Text>
+          <LevelPerksEditor perks={family?.levelPerks} onSave={handleSavePerks} />
+        </SettingsBlock>
       </SettingsGroup>
 
       {isAdmin && (

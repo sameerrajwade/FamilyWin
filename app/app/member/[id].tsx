@@ -10,6 +10,8 @@ import * as Haptics from 'expo-haptics';
 import { Col, getCurrentWeekId, getWeekStart, uploadMemberPhoto, removeMemberPhoto, setMemberWeeklyGoal, setMemberPenaltyPause, resetMemberPoints, PAUSE_INDEFINITE } from '@/lib/firebase';
 import { useAuthStore } from '@/store';
 import { getCompletionRate, getRankEmoji, calculateStreak, getCurrentWeekRange, getLevel } from '@/lib/pointsEngine';
+import { useMemberLevels } from '@/lib/memberLevels';
+import { LevelLadder } from '@/components/ui/LevelPerks';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -28,6 +30,9 @@ export default function MemberProfileScreen() {
   const [completions, setCompletions] = useState<CompletionDoc[]>([]);
   const [weeklyPoints, setWeeklyPoints] = useState(0);
   const [allTimePoints, setAllTimePoints] = useState(0);
+  // E3: the level reads lifetime EARNED from the app-wide store, so spending
+  // points on a reward never lowers it (allTimePoints stays the bank balance).
+  const earnedPts = useMemberLevels((s) => s.earned[id ?? ''] ?? 0);
   const [streak, setStreak] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -275,7 +280,7 @@ export default function MemberProfileScreen() {
     });
   }
   function shareLevel() {
-    const lv = getLevel(allTimePoints);
+    const lv = getLevel(earnedPts);
     setShareData({
       icon: 'shield',
       eyebrow: 'LEVEL UP',
@@ -327,7 +332,7 @@ export default function MemberProfileScreen() {
                 onPress={canEditPhoto ? handleChangePhoto : undefined}
                 style={styles.avatarWrap}
               >
-                <Avatar emoji={member?.avatarEmoji} photoURL={member?.photoURL} size={96} showRing ringColor={colors.primary} />
+                <Avatar emoji={member?.avatarEmoji} photoURL={member?.photoURL} size={96} showRing ringColor={colors.primary} memberId={member?.id} />
                 {canEditPhoto && (
                   <View style={styles.editBadge}>
                     {isUploadingPhoto ? (
@@ -345,7 +350,7 @@ export default function MemberProfileScreen() {
 
               {/* Lifetime level — climbs forever, never resets with the week (4.1) */}
               {(() => {
-                const lv = getLevel(allTimePoints);
+                const lv = getLevel(earnedPts);
                 return (
                   <TouchableOpacity style={styles.levelCard} activeOpacity={0.85} onPress={shareLevel} accessibilityRole="button" accessibilityLabel={`Share level ${lv.level}`}>
                     <View style={styles.levelTop}>
@@ -360,6 +365,9 @@ export default function MemberProfileScreen() {
                   </TouchableOpacity>
                 );
               })()}
+
+              {/* E3: what each level unlocks — frames + the family's perks. */}
+              <LevelLadder earned={earnedPts} perks={family?.levelPerks} />
 
               {streak > 0 && (
                 <TouchableOpacity style={styles.streakBadge} activeOpacity={0.85} onPress={shareStreak} accessibilityRole="button" accessibilityLabel={`Share ${streak} day streak`}>

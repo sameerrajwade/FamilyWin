@@ -43,17 +43,18 @@ describe('Family tab', () => {
     const { findByText } = render(<FamilyTab />);
     expect(await findByText('Rajwade Family')).toBeTruthy();
     expect(await findByText('Vian')).toBeTruthy();
-    expect(await findByText('Player')).toBeTruthy();
+    // E3: the role line also carries the lifetime level title.
+    expect(await findByText('Player · Lv 1 Rookie')).toBeTruthy();
     expect(await findByText('Sameer (you)')).toBeTruthy();
   });
 
   it('labels parents as competing by default, coaches in kids-only mode', async () => {
     const a = render(<FamilyTab />);
-    expect((await a.findAllByText('Parent · competing')).length).toBe(2);
+    expect((await a.findAllByText(/^Parent · competing · Lv \d/)).length).toBe(2);
     a.unmount();
     mockMode = 'kids';
     const b = render(<FamilyTab />);
-    expect((await b.findAllByText('Coach')).length).toBe(2);
+    expect((await b.findAllByText(/^Coach · Lv \d/)).length).toBe(2);
   });
 
   it('surfaces waiting claims with a count for parents', async () => {

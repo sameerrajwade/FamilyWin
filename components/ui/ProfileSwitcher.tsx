@@ -48,7 +48,7 @@ export function ProfileSwitcherBanner({ onPress }: ProfileSwitcherBannerProps) {
       activeOpacity={0.85}
     >
       <View style={styles.bannerLeft}>
-        <Avatar emoji={activeProfile?.avatarEmoji ?? '👤'} photoURL={activeProfile?.photoURL} size={32} />
+        <Avatar emoji={activeProfile?.avatarEmoji ?? '👤'} photoURL={activeProfile?.photoURL} size={32} memberId={activeProfile?.id} />
         <View>
           <Text style={styles.bannerLabel}>{isActingAsSelf ? 'Doing tasks for' : 'Acting as'}</Text>
           <Text style={styles.bannerName}>{isActingAsSelf ? 'Yourself' : activeProfile?.displayName}</Text>
@@ -165,7 +165,7 @@ function ProfileRow({
         onPressOut={() => { scale.value = withSpring(1, { damping: 12 }); }}
         activeOpacity={1}
       >
-        <Avatar emoji={member.avatarEmoji} photoURL={member.photoURL} size={44} />
+        <Avatar emoji={member.avatarEmoji} photoURL={member.photoURL} size={44} memberId={member.id} />
         <View style={styles.rowInfo}>
           <Text style={[styles.rowName, isActive && styles.rowNameActive]}>{label}</Text>
           <Text style={styles.rowRole}>

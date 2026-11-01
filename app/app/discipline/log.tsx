@@ -177,7 +177,7 @@ export default function DisciplineLogScreen() {
                         selectedMember?.id === m.id && { borderColor: colors.primary, backgroundColor: colors.primary + '18' }]}
                       onPress={() => { setSelectedMember(m); Haptics.selectionAsync(); }}
                     >
-                      <Avatar emoji={m.avatarEmoji} photoURL={m.photoURL} size={36} />
+                      <Avatar emoji={m.avatarEmoji} photoURL={m.photoURL} size={36} memberId={m.id} />
                       <Text style={[styles.memberName, { color: selectedMember?.id === m.id ? colors.primary : colors.text }]}>
                         {m.displayName.split(' ')[0]}
                       </Text>

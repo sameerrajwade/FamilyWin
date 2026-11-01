@@ -33,6 +33,8 @@ import { SurprisePackReveal } from '@/components/ui/SurprisePack';
 import { DailyQuestRing } from '@/components/ui/DailyQuestRing';
 import { SavingGoalRow } from '@/components/ui/SavingGoal';
 import { BountyBoard } from '@/components/ui/BountyBoard';
+import { useMemberLevels } from '@/lib/memberLevels';
+import { LevelUpReveal } from '@/components/ui/LevelPerks';
 import { questProgress, questLabel } from '@/lib/surprisePacks';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
@@ -555,7 +557,9 @@ export default function HomeScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setTimeout(() => setShowConfetti(false), 2400);
   }
-  const level = getLevel(lifetimePoints);
+  // E3: level reads lifetime EARNED (reward spending excluded), app-wide store.
+  const earnedPts = useMemberLevels((s) => s.earned[effectiveMember?.id ?? ''] ?? 0);
+  const level = getLevel(earnedPts);
 
   const getMascotMood = (): 'celebrating' | 'happy' | 'waiting' => {
     if (allDone) return 'celebrating';
@@ -610,6 +614,8 @@ export default function HomeScreen() {
       />
       <WelcomeTour visible={showTour} role={member?.role} onClose={dismissTour} />
       <SurprisePackReveal familyId={family?.id} memberId={effectiveMember?.id} name={effectiveMember?.displayName?.split(' ')[0]} />
+      {/* E3: plays once per device when this profile reaches a new level. */}
+      <LevelUpReveal member={effectiveMember as any} perks={family?.levelPerks} />
       {/* Brand always sits on top, above the family profile switcher */}
       <BrandBar />
       {/* Profile strip: who we're looking at (parents switch here) + THAT
@@ -825,7 +831,7 @@ export default function HomeScreen() {
                   accessibilityLabel="Open Kid Mode"
                 >
                   {target
-                    ? <Avatar emoji={target.avatarEmoji} photoURL={target.photoURL} size={26} />
+                    ? <Avatar emoji={target.avatarEmoji} photoURL={target.photoURL} size={26} memberId={target.id} />
                     : <EmojiIcon emoji="👶" size={26} />}
                   <Text style={[styles.tileTitle, { color: colors.text }]} numberOfLines={1}>
                     Hand phone to {target ? (target.displayName ?? '').split(' ')[0] : 'a kid'}
@@ -1007,7 +1013,7 @@ function ProfileTabBar({ members, self, activeId, onSelect, colors, right }: {
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
             >
-              <Avatar emoji={p.avatarEmoji} photoURL={(p as any).photoURL} size={32} />
+              <Avatar emoji={p.avatarEmoji} photoURL={(p as any).photoURL} size={32} memberId={p.id} />
               <Text style={[ptStyles.name, { color: active ? colors.primary : colors.textSecondary }]}>
                 {p.id === self.id ? 'Me' : p.displayName.split(' ')[0]}
               </Text>

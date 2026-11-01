@@ -13,6 +13,16 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 59 (2026-10-31) — E3 level unlocks (Phase E DONE) + daily-pack fix
+- **User fix (f2381ae):** daily surprise pack + quest ring count ONLY `recurrence==='daily'` tasks (weekly/monthly pending no longer blocks the bonus; day-specific tasks are daily+scheduledDays so still count). No daily tasks that day → no pack. Not retroactive for past days.
+- **Level source fixed:** new `pointsEngine.lifetimeEarned` (all deltas except `redemption`, ≥0). Levels used the SPENDABLE balance → redeeming lowered your level (old latent bug). Home chip + profile now level from earned.
+- **App-wide levels:** `lib/memberLevels` zustand store fed by ONE family-wide transactions listener in tabs/_layout (scale note in file: move to CF counter if ledgers get huge).
+- **Frames:** `<Avatar memberId>` draws the earned frame (Lv2 bronze, 3 silver, 4+ gold w/ 3D tier badge, 6 purple, 7 accent, 8 gold, 9 purple — design tokens only) at 19 call sites; podium/winner keep rank rings. `lib/levelUnlocks` (frameFor, levelLadder, unlocksBetween, cleanPerks; 11 tests).
+- **Titles:** "Lv N Title" on leaderboard rows + Family tab member lines.
+- **Perks:** `FamilyDoc.levelPerks` + `setLevelPerks`; Game rules → "Level perks" editor (saves on end-edit). Profile `LevelLadder`. `LevelUpReveal` (Today + Kid Mode) once per device per level (`level_seen_<id>`; first sight = silent baseline).
+- **No deploy needed** (parent family-doc update already allowed). Tests: tsc 0; **29 suites / 442**. APK installed 23:4x; screenshot: Sameer profile bronze frame + ladder render in dark mode ✓.
+- **Next Up:** (1) user device-check bounties, savings ring, quest ring, perks editor, level-up reveal. (2) Phase F (seasons, streak shield, report metrics) or G (Play Store). (3) backlog: firebase-functions 5→latest; levels via CF counter when ledgers grow.
+
 ## Iteration 58 (2026-10-31) — E4 Bounties (built; RULES DEPLOY PENDING — user)
 - **Data:** `/families/{id}/bounties/{id}` {title, points, emoji, status open|claimed|done, createdBy, claimedBy, claimedAt, completedAt, approvedBy}. `lib/bounties.ts`: watch/post/claim (txn, first wins → `BountyTakenError`)/release/award (txn: fixed-id `bounty_<id>` source:'bonus' tx + status done)/delete. Pure: `familyGame.visibleBounties` (claimed → open newest → won <24h), `canClaimBounty` (open, not the poster), `bountyTxId`.
 - **Rules:** new `bounties` match — parents do everything; a non-parent may ONLY claim an open bounty for themselves or withdraw their own claim (status/claimedBy/claimedAt only). Emulator **rules 50/50** (+11).

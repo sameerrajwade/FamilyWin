@@ -285,7 +285,7 @@ export interface LevelInfo {
 }
 
 // Cumulative floors + titles. Bands widen so higher levels feel earned.
-const LEVEL_TIERS: { floor: number; title: string; emoji: string }[] = [
+export const LEVEL_TIERS: readonly { floor: number; title: string; emoji: string }[] = [
   { floor: 0,     title: 'Rookie',    emoji: '🌱' },
   { floor: 150,   title: 'Helper',    emoji: '🧹' },
   { floor: 400,   title: 'Achiever',  emoji: '⭐' },
@@ -316,6 +316,18 @@ export function formatCash(amount: number, currency: string = '$'): string {
 /** Whole points needed to be worth at least `pointsPerUnit` (one payable unit). */
 export function pointsForOneUnit(pointsPerUnit: number): number {
   return Math.max(1, Math.round(pointsPerUnit || 0));
+}
+
+/**
+ * What a level is computed from: every point a member has EARNED, ever —
+ * tasks, bonuses, packs, bounties, minus penalties — but NOT reward spending.
+ * (Levels used to read the spendable balance, so redeeming a reward lowered
+ * your level; with E3 unlocks that would also take a frame away.)
+ */
+export function lifetimeEarned(txns: { delta: number; source?: string }[]): number {
+  let total = 0;
+  for (const t of txns) if (t.source !== 'redemption') total += t.delta || 0;
+  return Math.max(0, total);
 }
 
 export function getLevel(lifetimePoints: number): LevelInfo {

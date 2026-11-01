@@ -9,7 +9,9 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/lib/theme';
-import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
+import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
+import { useLevelOf } from '@/lib/memberLevels';
+import { frameFor } from '@/lib/levelUnlocks';
 import { BrandIcon, type BrandIconName } from '@/components/ui/BrandIcons';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 
@@ -228,6 +230,13 @@ interface AvatarProps {
   ringColor?: string;
   /** Firebase Storage download URL — shows a real photo instead of emoji */
   photoURL?: string | null;
+  /**
+   * E3: whose avatar this is. When set, their earned level FRAME (bronze →
+   * silver → gold → purple…) replaces the plain ring, with the level's badge
+   * from Lv 4 up. Leave it off where the ring means something else (podium
+   * rank colours, the winner screen).
+   */
+  memberId?: string | null;
 }
 
 /**
@@ -235,28 +244,51 @@ interface AvatarProps {
  * alike: a photo if they uploaded one, otherwise their 3D avatar on a soft
  * tinted disc. Never render `member.avatarEmoji` as raw text (CLAUDE.md #10).
  */
-export function Avatar({ emoji, size = 44, showRing, ringColor, photoURL }: AvatarProps) {
+export function Avatar({ emoji, size = 44, showRing, ringColor, photoURL, memberId }: AvatarProps) {
   const { colors } = useTheme();
-  const ring = showRing ? Math.max(2, Math.round(size * 0.055)) : 0;
+  const level = useLevelOf(memberId);
+  const frame = memberId ? frameFor(level) : null;
+  const frameColor = frame
+    ? { bronze: Colors.bronze, silver: Colors.silver, gold: Colors.gold, primary: colors.primary, accent: colors.accent }[frame.color]
+    : null;
+  const ring = frame
+    ? Math.max(2, Math.round(size * frame.weight))
+    : showRing ? Math.max(2, Math.round(size * 0.055)) : 0;
+  const badgeSize = Math.max(14, Math.round(size * 0.36));
+  const showBadge = !!frame?.badge && size >= 30;
   return (
-    <View style={[
-      styles.avatar,
-      {
-        width: size, height: size, borderRadius: size / 2,
-        borderWidth: ring || 1,
-        borderColor: showRing ? (ringColor ?? colors.primary) : colors.primary + '1F',
-        backgroundColor: colors.primary + '12',
-        overflow: 'hidden',
-      },
-    ]}>
-      {photoURL ? (
-        <Image
-          source={{ uri: photoURL }}
-          style={{ width: size, height: size, borderRadius: size / 2 }}
-          resizeMode="cover"
-        />
-      ) : (
-        <EmojiIcon emoji={emoji || '🙂'} size={Math.round(size * 0.72)} />
+    <View style={{ width: size, height: size }}>
+      <View style={[
+        styles.avatar,
+        {
+          width: size, height: size, borderRadius: size / 2,
+          borderWidth: ring || 1,
+          borderColor: frameColor ?? (showRing ? (ringColor ?? colors.primary) : colors.primary + '1F'),
+          backgroundColor: colors.primary + '12',
+          overflow: 'hidden',
+        },
+      ]}>
+        {photoURL ? (
+          <Image
+            source={{ uri: photoURL }}
+            style={{ width: size, height: size, borderRadius: size / 2 }}
+            resizeMode="cover"
+          />
+        ) : (
+          <EmojiIcon emoji={emoji || '🙂'} size={Math.round(size * 0.72)} />
+        )}
+      </View>
+      {showBadge && (
+        <View
+          style={[styles.levelBadge, {
+            width: badgeSize, height: badgeSize, borderRadius: badgeSize / 2,
+            right: -badgeSize * 0.18, bottom: -badgeSize * 0.12,
+            backgroundColor: colors.surface, borderColor: frameColor ?? colors.border,
+          }]}
+          accessibilityLabel={`Level ${frame!.level}`}
+        >
+          <EmojiIcon emoji={frame!.badge!} size={Math.round(badgeSize * 0.7)} />
+        </View>
       )}
     </View>
   );
@@ -375,6 +407,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontFamily: FontFamily.bold },
   avatar: { alignItems: 'center', justifyContent: 'center' },
+  levelBadge: { position: 'absolute', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
   emptyState: { alignItems: 'center', paddingVertical: Spacing.xxl, paddingHorizontal: Spacing.lg },
   emptyEmoji: { fontSize: 56, marginBottom: Spacing.md },
   emptyBrandCircle: { alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md },

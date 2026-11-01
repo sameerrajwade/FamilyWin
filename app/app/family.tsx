@@ -352,7 +352,7 @@ function MemberRow({ member, isSelf, isAdmin, isLast, onRolePress, onRemove, onE
       accessibilityRole="button"
       accessibilityLabel={`View ${member.displayName}'s profile`}
     >
-      <Avatar emoji={member.avatarEmoji} photoURL={member.photoURL} size={44} />
+      <Avatar emoji={member.avatarEmoji} photoURL={member.photoURL} size={44} memberId={member.id} />
       <View style={{ flex: 1 }}>
         <Text style={[styles.memberName, { color: colors.text }]}>
           {member.displayName}{isSelf ? ' (You)' : ''}

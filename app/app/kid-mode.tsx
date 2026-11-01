@@ -40,6 +40,7 @@ import { Confetti } from '@/components/ui/Animations';
 import { SurprisePackReveal } from '@/components/ui/SurprisePack';
 import { SavingGoalRow } from '@/components/ui/SavingGoal';
 import { BountyBoard } from '@/components/ui/BountyBoard';
+import { LevelUpReveal } from '@/components/ui/LevelPerks';
 import { BrandLogo } from '@/components/ui/BrandIcons';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 
@@ -194,6 +195,7 @@ export default function KidModeScreen() {
       <Confetti visible={confetti} count={70} />
       {/* Packs land when a grown-up approves — the kid opens it right here. */}
       <SurprisePackReveal familyId={family?.id} memberId={kid.id} name={first} />
+      <LevelUpReveal member={kid} perks={family?.levelPerks} />
 
       <View style={styles.topBar}>
         <BrandLogo size={16} tagline={false} />
@@ -208,7 +210,7 @@ export default function KidModeScreen() {
             const on = k.id === kid.id;
             return (
               <TouchableOpacity key={k.id} onPress={() => { switchKid(k.id); Haptics.selectionAsync().catch(() => {}); }} style={[styles.kidChip, on && styles.kidChipOn]} accessibilityRole="button" accessibilityState={{ selected: on }}>
-                <Avatar emoji={k.avatarEmoji} photoURL={k.photoURL} size={34} showRing={on} ringColor={colors.primary} />
+                <Avatar emoji={k.avatarEmoji} photoURL={k.photoURL} size={34} showRing={on} ringColor={colors.primary} memberId={k.id} />
                 <Text style={[styles.kidChipText, on && { color: colors.textAccent }]}>{(k.displayName ?? '').split(' ')[0]}</Text>
               </TouchableOpacity>
             );
@@ -219,7 +221,7 @@ export default function KidModeScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <LinearGradient colors={Gradients.primary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
           <View style={styles.heroTop}>
-            <Avatar emoji={kid.avatarEmoji} photoURL={kid.photoURL} size={64} showRing ringColor="#FFFFFF" />
+            <Avatar emoji={kid.avatarEmoji} photoURL={kid.photoURL} size={64} showRing ringColor="#FFFFFF" memberId={kid.id} />
             <View style={{ flex: 1 }}>
               <Text style={styles.heroHi}>Hi {first}! 👋</Text>
               <Text style={styles.heroSub}>

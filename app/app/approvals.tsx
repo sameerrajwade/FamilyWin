@@ -203,7 +203,7 @@ export default function ApprovalsScreen() {
             return (
               <View key={id} style={styles.card}>
                 <View style={styles.cardTop}>
-                  <Avatar emoji={row.member?.avatarEmoji ?? '🦁'} photoURL={row.member?.photoURL} size={40} />
+                  <Avatar emoji={row.member?.avatarEmoji ?? '🦁'} photoURL={row.member?.photoURL} size={40} memberId={row.member?.id} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.taskTitle} numberOfLines={1}>{row.task?.title ?? 'Task'}</Text>
                     <Text style={styles.taskMeta}>

@@ -5,7 +5,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { firestore } from '@/lib/fb';
 import { useAuthStore, useFamilyStore, usePointsStore } from '@/store';
 import { Col, getFamilyMembers, getCurrentWeekId, getWeekCompletions, getMemberPersonalBest } from '@/lib/firebase';
-import { buildLeaderboard, computeCrowns, getWeekLabel, getCurrentWeekRange } from '@/lib/pointsEngine';
+import { buildLeaderboard, computeCrowns, getWeekLabel, getCurrentWeekRange, getLevel } from '@/lib/pointsEngine';
+import { useMemberLevels } from '@/lib/memberLevels';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
@@ -21,6 +22,8 @@ import { FamilyGoalCard } from '@/components/ui/FamilyGoal';
 export default function LeaderboardScreen() {
   const { member: currentMember, family } = useAuthStore();
   const { members, setMembers } = useFamilyStore();
+  // E3: lifetime level per member (title shown on each row).
+  const earnedMap = useMemberLevels((s) => s.earned);
   const { weeklyTotals, setWeeklyTotals } = usePointsStore();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [crowns, setCrowns] = useState<CrownSlot[]>([]);
@@ -279,7 +282,7 @@ export default function LeaderboardScreen() {
                       ) : (
                         <Text style={[styles.rowRankNum, { color: colors.textMuted }]}>{entry.rank}</Text>
                       )}
-                      <Avatar emoji={entry.avatarEmoji} photoURL={entry.photoURL} size={40} />
+                      <Avatar emoji={entry.avatarEmoji} photoURL={entry.photoURL} size={40} memberId={entry.memberId} />
                       <View style={styles.rowInfo}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                           <Text style={[styles.rowName, { color: colors.text }]}>{entry.displayName}{entry.isCurrentUser ? ' (You)' : ''}</Text>
@@ -288,7 +291,7 @@ export default function LeaderboardScreen() {
                           )}
                         </View>
                         <Text style={[styles.rowStats, { color: colors.textSecondary }]}>
-                          {entry.tasksCompleted} done this week
+                          Lv {getLevel(earnedMap[entry.memberId] ?? 0).level} {getLevel(earnedMap[entry.memberId] ?? 0).title} · {entry.tasksCompleted} done this week
                           {entry.streak > 0 ? ` · 🔥 ${entry.streak}d` : ''}
                         </Text>
                       </View>
@@ -308,7 +311,7 @@ export default function LeaderboardScreen() {
                 <View style={styles.coachRow}>
                   {coachRows.map((c) => (
                     <View key={c.id} style={styles.coachItem}>
-                      <Avatar emoji={c.avatarEmoji} photoURL={c.photoURL} size={32} />
+                      <Avatar emoji={c.avatarEmoji} photoURL={c.photoURL} size={32} memberId={c.id} />
                       <Text style={[styles.coachName, { color: colors.text }]}>{c.name}</Text>
                       <Text style={[styles.coachPts, { color: colors.textAccent }]}>{c.points} pts</Text>
                     </View>

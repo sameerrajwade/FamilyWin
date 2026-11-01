@@ -101,7 +101,7 @@ export default function ParentReportScreen() {
             <Text style={styles.muted}>Add a child profile to see their week here.</Text>
           ) : report.kids.map((k) => (
             <TouchableOpacity key={k.memberId} style={styles.kidRow} onPress={() => router.push(`/app/member/${k.memberId}` as any)} activeOpacity={0.8}>
-              <Avatar emoji={k.avatarEmoji} photoURL={k.photoURL} size={44} />
+              <Avatar emoji={k.avatarEmoji} photoURL={k.photoURL} size={44} memberId={k.memberId} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.kidName}>{k.name}</Text>
                 <Text style={styles.kidMeta}>{k.chores} chores · {k.points} pts</Text>

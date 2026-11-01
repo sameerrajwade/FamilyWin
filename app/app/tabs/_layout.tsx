@@ -11,6 +11,7 @@ import { Col, getNotifConfig, penaltyPauseActive } from '@/lib/firebase';
 import { getCurrentWeekRange } from '@/lib/pointsEngine';
 import { competitors, shouldShowCrowning } from '@/lib/familyGame';
 import { dateKeyOf } from '@/lib/surprisePacks';
+import { useMemberLevels } from '@/lib/memberLevels';
 import { ensureReminders, pauseReminders } from '@/lib/notifications';
 import { useReminderStatus } from '@/lib/reminderStatus';
 import { useKidMode } from '@/lib/kidMode';
@@ -56,6 +57,18 @@ export default function AppTabsLayout() {
       );
     return () => unsub();
   }, [family?.id, setMembers]);
+
+  // E3: everyone's lifetime level for the avatar frames (one listener app-wide).
+  useEffect(() => {
+    if (!family?.id) return;
+    const { setFromTransactions, reset } = useMemberLevels.getState();
+    reset();
+    const unsub = Col.transactions(family.id).onSnapshot(
+      (snap) => setFromTransactions(snap.docs.map((d) => d.data() as any)),
+      (err) => { if (__DEV__) console.error('[levels listener]', err); },
+    );
+    return () => unsub();
+  }, [family?.id]);
 
   // ALWAYS-ON reminders for the account holder (morning plan for parents,
   // evening check-in for everyone). Runs on every launch so existing users who

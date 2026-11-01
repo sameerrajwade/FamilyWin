@@ -193,7 +193,7 @@ export default function SettingsScreen() {
                 accessibilityLabel={profilePhotoURL ? 'Change profile photo' : 'Change avatar emoji'}
                 accessibilityRole="button"
               >
-                <Avatar emoji={selectedEmoji} photoURL={profilePhotoURL} size={72} />
+                <Avatar emoji={selectedEmoji} photoURL={profilePhotoURL} size={72} memberId={member?.id} />
                 <View style={[styles.editBadge, { backgroundColor: colors.primary }]}>
                   {isUploadingPhoto
                     ? <ActivityIndicator color="#FFF" size="small" style={{ transform: [{ scale: 0.6 }] }} />

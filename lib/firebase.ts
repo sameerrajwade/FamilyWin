@@ -170,6 +170,9 @@ export interface FamilyDoc {
   // Who ranks on the leaderboard / wins crowns. Absent = 'everyone' (parents
   // compete too); 'kids' = parents coach. See lib/familyGame CompetitionMode.
   competitionMode?: 'everyone' | 'kids';
+  // E3: real-world perks a parent attaches to levels, e.g. { "4": "Pick the
+  // Friday movie" }. Keys are level numbers 2..max (lib/levelUnlocks).
+  levelPerks?: Record<string, string> | null;
   createdAt: Timestamp;
 }
 
@@ -949,6 +952,11 @@ export async function approveCompletion(params: {
 }
 
 /** Choose who competes: everyone (default) or kids only. Parents only, via rules. */
+/** E3: save the family's level perks (already cleaned by levelUnlocks.cleanPerks). */
+export async function setLevelPerks(familyId: string, perks: Record<string, string>): Promise<void> {
+  await firestore().collection('families').doc(familyId).update({ levelPerks: perks });
+}
+
 export async function setCompetitionMode(familyId: string, mode: 'everyone' | 'kids'): Promise<void> {
   await firestore().collection('families').doc(familyId).update({ competitionMode: mode });
 }

@@ -498,7 +498,7 @@ export default function RewardsScreen() {
                 </Text>
                 {pendingRedemptions.map((r) => (
                   <View key={r.id} style={[styles.historyRow, styles.pendingRow, { backgroundColor: colors.surface }]}>
-                    <Avatar emoji={r.memberEmoji ?? '👤'} photoURL={r.memberPhotoURL} size={28} />
+                    <Avatar emoji={r.memberEmoji ?? '👤'} photoURL={r.memberPhotoURL} size={28} memberId={r.memberId} />
                     <View style={styles.historyInfo}>
                       <Text style={[styles.historyTitle, { color: colors.text }]}>{r.memberName} wants</Text>
                       <Text style={[styles.historySubtitle, { color: colors.textSecondary }]}>
@@ -636,7 +636,7 @@ function ProfileTabBar({ members, self, activeId, onSelect, colors }: {
               style={[ptStyles.tab, active && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}
               onPress={() => onSelect(p)}
             >
-              <Avatar emoji={p.avatarEmoji} photoURL={(p as any).photoURL} size={28} />
+              <Avatar emoji={p.avatarEmoji} photoURL={(p as any).photoURL} size={28} memberId={p.id} />
               <Text style={[ptStyles.tabLabel, { color: active ? colors.primary : colors.textSecondary }]}>
                 {p.id === self.id ? 'Me' : p.displayName.split(' ')[0]}
               </Text>

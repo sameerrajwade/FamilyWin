@@ -454,7 +454,7 @@ export default function CreateTaskScreen() {
                           style={[styles.chip, selected && styles.chipSelected]}
                           onPress={() => toggleAssignee(m.id)}
                         >
-                          <Avatar emoji={m.avatarEmoji} photoURL={m.photoURL} size={24} />
+                          <Avatar emoji={m.avatarEmoji} photoURL={m.photoURL} size={24} memberId={m.id} />
                           <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
                             {m.displayName.split(' ')[0]}
                           </Text>

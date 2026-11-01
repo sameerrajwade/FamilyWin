@@ -378,7 +378,7 @@ function TransactionRow({ tx, showMember, colors, members }: {
       <View style={styles.txInfo}>
         {txMember && (
           <View style={styles.txMemberRow}>
-            <Avatar emoji={txMember.avatarEmoji} photoURL={txMember.photoURL} size={16} />
+            <Avatar emoji={txMember.avatarEmoji} photoURL={txMember.photoURL} size={16} memberId={txMember.id} />
             <Text style={[styles.txMemberName, { color: colors.textAccent }]}>
               {txMember.displayName.split(' ')[0]}
             </Text>

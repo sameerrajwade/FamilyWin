@@ -19,6 +19,8 @@ import { useAuthStore, useFamilyStore } from '@/store';
 import { useTheme } from '@/lib/theme';
 import { useKidMode } from '@/lib/kidMode';
 import { isKid, competitors } from '@/lib/familyGame';
+import { getLevel } from '@/lib/pointsEngine';
+import { useMemberLevels } from '@/lib/memberLevels';
 import { BrandBar } from '@/components/ui/Brand';
 import { Avatar } from '@/components/ui';
 import { Icon, type IconName } from '@/components/ui/Icon';
@@ -29,6 +31,8 @@ import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants
 export default function FamilyTab() {
   const { member, family } = useAuthStore();
   const { members } = useFamilyStore();
+  // E3: lifetime level per member (title under each name).
+  const earnedMap = useMemberLevels((s) => s.earned);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
@@ -86,11 +90,12 @@ export default function FamilyTab() {
             <TouchableOpacity key={m.id} style={[styles.member, i < people.length - 1 && styles.divider]}
               onPress={() => router.push(`/app/member/${m.id}` as any)} activeOpacity={0.7}
               accessibilityRole="button" accessibilityLabel={`Open ${m.displayName}'s profile`}>
-              <Avatar emoji={m.avatarEmoji} photoURL={m.photoURL} size={42} />
+              <Avatar emoji={m.avatarEmoji} photoURL={m.photoURL} size={42} memberId={m.id} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.memberName}>{m.displayName}{m.id === member?.id ? ' (you)' : ''}</Text>
                 <Text style={styles.memberMeta}>
                   {isKid(m) ? 'Player' : players.has(m.id) ? 'Parent · competing' : 'Coach'}
+                  {` · Lv ${getLevel(earnedMap[m.id] ?? 0).level} ${getLevel(earnedMap[m.id] ?? 0).title}`}
                 </Text>
               </View>
               <Text style={styles.memberPts}>{thisWeek[m.id] ?? 0}<Text style={styles.memberPtsUnit}> pts</Text></Text>
