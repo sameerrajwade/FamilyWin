@@ -199,7 +199,7 @@ function createStyles(colors: ThemeColors) {
     padding: Spacing.md, marginTop: Spacing.lg,
     borderWidth: 1, borderColor: colors.primary + '33',
   },
-  infoTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary, marginBottom: 6 },
+  infoTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textAccent, marginBottom: 6 },
   infoText: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.text, lineHeight: 20 },
   saveBtn: {
     backgroundColor: colors.primary, borderRadius: BorderRadius.md,

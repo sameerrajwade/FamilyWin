@@ -281,6 +281,14 @@ Font: **Nunito** (Regular/SemiBold/Bold/ExtraBold/Black) — loaded in `_layout.
 
 **Never change UI colours or fonts** — the design system is finalised.
 
+**One approved exception (2026-10-31, dark mode readability):** text uses the
+`textAccent` / `textDanger` / `textMuted` tokens from `lib/theme.tsx`. In light
+mode they equal the brand colours above (no visual change); in dark mode they
+are lighter (`#9D97FF`, `#FF8A8A`, `#A1A7B3`) because brand purple/red TEXT
+measured 4.0–4.5:1 on dark cards (below the 4.5:1 reading minimum). Fills
+(buttons, chips) keep `colors.primary` / `colors.danger`. For any text style use
+`color: colors.textAccent` / `colors.textDanger`, never `colors.primary`.
+
 ---
 
 ## Theme System (lib/theme.tsx)

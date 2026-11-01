@@ -324,7 +324,7 @@ export function SectionHeader({ title, subtitle, action }: SectionHeaderProps) {
       </View>
       {action ? (
         <TouchableOpacity onPress={action.onPress} style={styles.sectionAction}>
-          <Text style={[styles.sectionActionText, { color: colors.primary }]}>{action.label}</Text>
+          <Text style={[styles.sectionActionText, { color: colors.textAccent }]}>{action.label}</Text>
         </TouchableOpacity>
       ) : null}
     </View>

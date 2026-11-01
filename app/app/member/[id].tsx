@@ -311,7 +311,7 @@ export default function MemberProfileScreen() {
         <ScreenHeader
           right={!isLoading ? (
             <TouchableOpacity onPress={shareRecap} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel="Share this week">
-              <Text style={[styles.backText, { color: colors.primary }]}>Share ↗</Text>
+              <Text style={[styles.backText, { color: colors.textAccent }]}>Share ↗</Text>
             </TouchableOpacity>
           ) : undefined}
         />
@@ -384,7 +384,7 @@ export default function MemberProfileScreen() {
                   <View style={styles.goalHeader}>
                     <Text style={styles.goalTitle}>🎯 Weekly Goal</Text>
                     <Text style={styles.goalNumbers}>
-                      <Text style={{ color: colors.primary, fontFamily: FontFamily.extraBold }}>{weeklyPoints}</Text>
+                      <Text style={{ color: colors.textAccent, fontFamily: FontFamily.extraBold }}>{weeklyPoints}</Text>
                       <Text style={{ color: colors.textSecondary }}> / {currentGoal} pts</Text>
                     </Text>
                   </View>
@@ -543,7 +543,7 @@ export default function MemberProfileScreen() {
                 <View style={styles.modalBtns}>
                   {currentGoal ? (
                     <TouchableOpacity style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => saveGoal(true)} disabled={savingGoal}>
-                      <Text style={[styles.modalBtnText, { color: colors.danger }]}>Clear</Text>
+                      <Text style={[styles.modalBtnText, { color: colors.textDanger }]}>Clear</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setShowGoalModal(false)} disabled={savingGoal}>
@@ -585,7 +585,7 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { padding: Spacing.lg, paddingBottom: 0 },
-  backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.primary },
+  backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.textAccent },
   hero: { alignItems: 'center', padding: Spacing.xl },
   avatarWrap: { position: 'relative', marginBottom: Spacing.sm },
   avatarEmojiWrap: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', ...Shadow.sm },
@@ -611,7 +611,7 @@ function createStyles(colors: ThemeColors) {
   section: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },
   sectionTitle: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: colors.text, marginBottom: Spacing.sm },
   adjustBtn: { backgroundColor: colors.surface, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: colors.primary + '55', ...Shadow.sm },
-  adjustBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.primary },
+  adjustBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.textAccent },
   adjustHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textMuted, textAlign: 'center', marginTop: 6 },
   pauseRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: Spacing.sm, alignItems: 'center' },
   pauseChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: BorderRadius.md, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center' },
@@ -621,7 +621,7 @@ function createStyles(colors: ThemeColors) {
   resumeBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: BorderRadius.md, backgroundColor: colors.primary },
   resumeBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFF' },
   resetBtn: { backgroundColor: colors.surface, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: colors.danger + '55', ...Shadow.sm },
-  resetBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.danger },
+  resetBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.textDanger },
   // Weekly goal
   goalCard: { backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, borderWidth: 1.5, borderColor: colors.primary + '33', ...Shadow.sm },
   goalCardMet: { borderColor: colors.gold + '88', backgroundColor: colors.gold + '12' },
@@ -632,7 +632,7 @@ function createStyles(colors: ThemeColors) {
   goalFill: { height: '100%', borderRadius: 5, backgroundColor: colors.primary },
   goalHint: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.textSecondary, marginTop: 8 },
   goalSetBtn: { backgroundColor: colors.surface, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: colors.primary + '55', ...Shadow.sm },
-  goalSetBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.primary },
+  goalSetBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.textAccent },
   // Goal modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg, paddingBottom: Spacing.xxl },
@@ -641,7 +641,7 @@ function createStyles(colors: ThemeColors) {
   modalSub: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 },
   presetRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md },
   presetChip: { flex: 1, backgroundColor: colors.primary + '12', borderColor: colors.primary + '44', borderWidth: 1, borderRadius: BorderRadius.md, paddingVertical: 10, alignItems: 'center' },
-  presetChipText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.primary },
+  presetChipText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.textAccent },
   goalInput: { borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 14, fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: colors.text, backgroundColor: colors.background, marginBottom: Spacing.md },
   modalBtns: { flexDirection: 'row', gap: Spacing.sm },
   modalBtn: { flex: 1, borderRadius: BorderRadius.md, paddingVertical: 14, alignItems: 'center' },
@@ -660,6 +660,6 @@ function createStyles(colors: ThemeColors) {
   txDate: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 },
   txDelta: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold, minWidth: 44, textAlign: 'right' },
   seeAllBtn: { borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md, paddingVertical: 11, alignItems: 'center', marginTop: 2 },
-  seeAllText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary },
+  seeAllText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textAccent },
   });
 }

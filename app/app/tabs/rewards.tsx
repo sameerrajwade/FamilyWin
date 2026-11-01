@@ -28,6 +28,7 @@ import { Col, getActiveRewards, requestRedemption, approveRedemption, rejectRede
 import { pointsToCash, formatCash, pointsForOneUnit } from '@/lib/pointsEngine';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
+import { rewardIcon } from '@/lib/rewardIcon';
 import { useAuthStore, usePointsStore, useFamilyStore } from '@/store';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
@@ -141,8 +142,10 @@ export default function RewardsScreen() {
           return {
             ...red,
             isPayout,
-            rewardTitle: isPayout ? `💸 Cash out ${formatCash(red.cashAmount ?? 0, red.currency ?? '$')}` : (matchedReward?.title ?? 'Reward'),
-            rewardCost: isPayout ? (red.points ?? 0) : (matchedReward?.pointCost ?? 0),
+            rewardTitle: isPayout ? `💸 Cash out ${formatCash(red.cashAmount ?? 0, red.currency ?? '$')}` : (red.rewardTitle ?? matchedReward?.title ?? 'Reward'),
+            // Charge the price LOCKED when the kid asked; only legacy requests
+            // (made before the lock) fall back to today's price.
+            rewardCost: isPayout ? (red.points ?? 0) : (red.pointCost ?? matchedReward?.pointCost ?? 0),
             memberName: matchedMember?.displayName,
             memberEmoji: matchedMember?.avatarEmoji,
             memberPhotoURL: matchedMember?.photoURL,
@@ -227,6 +230,8 @@ export default function RewardsScreen() {
                 familyId: family.id,
                 rewardId: reward.id,
                 memberId: effectiveMember.id,
+                pointCost: reward.pointCost,
+                rewardTitle: reward.title,
               });
               Alert.alert('Request Sent! 🎉', 'A parent will approve your reward soon.');
               loadData();
@@ -241,30 +246,7 @@ export default function RewardsScreen() {
     );
   }
 
-  function handleRemove(reward: RewardDoc) {
-    if (!family?.id) return;
-    Alert.alert(
-      'Remove Reward?',
-      `Remove "${reward.title}" from the rewards store? Past redemptions stay in history.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove', style: 'destructive',
-          onPress: async () => {
-            try {
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-              // Optimistic: drop it from the list immediately.
-              setRewards((prev) => prev.filter((r) => r.id !== reward.id));
-              await deactivateReward(family.id, reward.id);
-            } catch {
-              Alert.alert('Error', 'Could not remove the reward. Pull to refresh and try again.');
-              loadData();
-            }
-          },
-        },
-      ],
-    );
-  }
+
 
   async function handleApprove(redemptionId: string, memberId: string, pointCost: number, memberName?: string, rewardTitle?: string, isPayout?: boolean) {
     if (!family?.id || !member?.id) return;
@@ -381,7 +363,7 @@ export default function RewardsScreen() {
                   <Text style={[styles.pointsLabel, { color: colors.textSecondary }]}>
                     💰 {actingAsMember ? `${actingAsMember.displayName.split(' ')[0]}'s` : 'Your'} Points Vault
                   </Text>
-                  <Text style={[styles.pointsBig, { color: colors.primary }]}>
+                  <Text style={[styles.pointsBig, { color: colors.textAccent }]}>
                     {bankBalance !== null ? bankBalance : weekPoints}
                     <Text style={[styles.pointsSuffix, { color: colors.textSecondary }]}> pts</Text>
                   </Text>
@@ -393,11 +375,11 @@ export default function RewardsScreen() {
                 </View>
                 <View style={styles.pointsBreakdown}>
                   <Text style={[styles.pointsBreakdownItem, { color: colors.textSecondary }]}>
-                    📅 This week: <Text style={{ color: colors.primary, fontFamily: FontFamily.bold }}>{weekPoints} pts</Text>
+                    📅 This week: <Text style={{ color: colors.textAccent, fontFamily: FontFamily.bold }}>{weekPoints} pts</Text>
                   </Text>
                   {bankBalance !== null && bankBalance !== weekPoints && (
                     <Text style={[styles.pointsBreakdownItem, { color: colors.textSecondary }]}>
-                      💰 All-time: <Text style={{ color: colors.primary, fontFamily: FontFamily.bold }}>{bankBalance} pts</Text>
+                      💰 All-time: <Text style={{ color: colors.textAccent, fontFamily: FontFamily.bold }}>{bankBalance} pts</Text>
                     </Text>
                   )}
                 </View>
@@ -432,7 +414,7 @@ export default function RewardsScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Available Rewards</Text>
                 {isParent && rewards.length > 0 && (
                   <TouchableOpacity onPress={() => router.push('/app/reward/packs' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={[styles.packsLink, { color: colors.primary }]}>🎁 Packs</Text>
+                    <Text style={[styles.packsLink, { color: colors.textAccent }]}>🎁 Packs</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -465,7 +447,7 @@ export default function RewardsScreen() {
                           isRedeeming={redeemingId === reward.id}
                           onRedeem={() => handleRedeem(reward)}
                           isParent={isParent}
-                          onRemove={() => handleRemove(reward)}
+                          onRemove={() => router.push({ pathname: '/app/manage/[kind]' as any, params: { kind: 'rewards', edit: reward.id } })}
                           colors={colors}
                         />
                       </ScalePress>
@@ -530,7 +512,7 @@ export default function RewardsScreen() {
                         {(r.redeemedAt as any)?.toDate?.()?.toLocaleDateString?.() ?? ''}
                       </Text>
                       {r.status === 'rejected' && (r as any).rejectionReason ? (
-                        <Text style={[styles.historySubtitle, { color: colors.danger, marginTop: 2 }]}>
+                        <Text style={[styles.historySubtitle, { color: colors.textDanger, marginTop: 2 }]}>
                           "{(r as any).rejectionReason}"
                         </Text>
                       ) : null}
@@ -540,7 +522,7 @@ export default function RewardsScreen() {
                 ))}
                 {redemptions.length > 5 && (
                   <TouchableOpacity style={[styles.seeAllBtn, { borderColor: colors.border }]} onPress={() => setShowAllRedemptions((v) => !v)} accessibilityRole="button">
-                    <Text style={[styles.seeAllText, { color: colors.primary }]}>
+                    <Text style={[styles.seeAllText, { color: colors.textAccent }]}>
                       {showAllRedemptions ? 'Show less' : `See all ${redemptions.length}`}
                     </Text>
                   </TouchableOpacity>
@@ -641,30 +623,7 @@ const ptStyles = StyleSheet.create({
 
 // ─── Reward Card ──────────────────────────────────────────────────────────────
 
-// Pick a fitting emoji for a reward. Uses an explicit `icon` field if the reward
-// has one, otherwise infers from keywords in the title, falling back to 🎁.
-function rewardIcon(reward: RewardDoc): string {
-  const explicit = (reward as any).icon;
-  if (explicit) return explicit;
-  const t = (reward.title ?? '').toLowerCase();
-  const map: [RegExp, string][] = [
-    [/screen|tablet|phone|ipad|device/, '📱'],
-    [/game|xbox|playstation|ps5|nintendo|switch|roblox|minecraft/, '🎮'],
-    [/tv|movie|netflix|show|cinema|film/, '🍿'],
-    [/ice ?cream|dessert|candy|sweet|chocolate|treat/, '🍦'],
-    [/dinner|meal|food|pizza|restaurant|lunch|snack/, '🍽️'],
-    [/money|cash|allowance|dollar|\$/, '💵'],
-    [/late|bedtime|stay up|sleep in/, '🌙'],
-    [/toy|lego/, '🧸'],
-    [/book|story|read/, '📚'],
-    [/outing|trip|park|zoo|beach|out/, '🎡'],
-    [/skip|chore|day off|pass/, '🎟️'],
-    [/friend|sleepover|party/, '🎉'],
-    [/sport|bike|ball|swim|scooter/, '⚽'],
-  ];
-  for (const [re, emoji] of map) if (re.test(t)) return emoji;
-  return '🎁';
-}
+
 
 function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, isParent, onRemove, colors }: {
   reward: RewardDoc; spendablePoints: number; isRedeeming: boolean;
@@ -702,7 +661,7 @@ function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, isParent, 
             <View style={[styles.affordFill, { width: `${progress * 100}%`, backgroundColor: colors.primary }]} />
           </View>
           <Text style={[styles.affordLabel, { color: colors.textSecondary }]}>
-            <Text style={{ color: colors.primary, fontFamily: FontFamily.extraBold }}>{remaining}</Text> pts to go
+            <Text style={{ color: colors.textAccent, fontFamily: FontFamily.extraBold }}>{remaining}</Text> pts to go
           </Text>
         </View>
       )}
@@ -718,13 +677,13 @@ function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, isParent, 
         </ScalePress>
         {isParent && onRemove && (
           <TouchableOpacity
-            style={[styles.removeBtn, { borderColor: colors.danger + '55' }]}
+            style={[styles.removeBtn, { borderColor: colors.primary + '55' }]}
             onPress={onRemove}
-            accessibilityLabel={`Remove ${reward.title}`}
+            accessibilityLabel={`Edit ${reward.title}`}
             accessibilityRole="button"
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <Text style={[styles.removeBtnText, { color: colors.danger }]}>🗑 Remove</Text>
+            <Text style={[styles.removeBtnText, { color: colors.textAccent }]}>✏️ Edit</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -739,7 +698,7 @@ function StatusBadge({ status }: { status: string }) {
   const configs: Record<string, { bg: string; color: string; label: string }> = {
     pending:  { bg: colors.warning + '22', color: colors.warning, label: 'Pending' },
     approved: { bg: colors.success + '22', color: colors.success, label: 'Approved' },
-    rejected: { bg: colors.danger + '22',  color: colors.danger,  label: 'Rejected' },
+    rejected: { bg: colors.danger + '22',  color: colors.textDanger,  label: 'Rejected' },
   };
   const cfg = configs[status] ?? { bg: colors.border, color: colors.textMuted, label: status };
   return (
@@ -816,7 +775,7 @@ function CreateRewardModal({ familyId, memberId, colors, onClose, onCreated }: {
                     style={[styles.preset, { borderColor: colors.primary + '44', backgroundColor: colors.primary + '12' }]}
                     onPress={() => { setTitle(p.label); setPointCost(p.cost); }}
                   >
-                    <Text style={[styles.presetText, { color: colors.primary }]}>{p.label}</Text>
+                    <Text style={[styles.presetText, { color: colors.textAccent }]}>{p.label}</Text>
                     <Text style={[styles.presetCost, { color: colors.textSecondary }]}>{p.cost} pts</Text>
                   </TouchableOpacity>
                 ))}

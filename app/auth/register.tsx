@@ -175,7 +175,7 @@ function createStyles(colors: ThemeColors) {
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { flexGrow: 1, padding: Spacing.lg },
   backBtn: { marginBottom: Spacing.md, alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
-  backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.primary },
+  backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.textAccent },
   header: { alignItems: 'center', marginBottom: Spacing.lg },
   logo: { fontSize: 56, marginBottom: Spacing.sm },
   title: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, color: colors.text },
@@ -214,7 +214,7 @@ function createStyles(colors: ThemeColors) {
   primaryBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFF', letterSpacing: 0.5 },
   loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: Spacing.lg },
   loginText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary },
-  loginLink: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary },
+  loginLink: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textAccent },
   });
 }
 

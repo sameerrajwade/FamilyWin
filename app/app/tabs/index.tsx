@@ -26,7 +26,8 @@ import { useReminderStatus } from '@/lib/reminderStatus';
 import { findCompletionForPeriod, dayKey } from '@/lib/completionMatch';
 import { useKidMode } from '@/lib/kidMode';
 import { isKid } from '@/lib/familyGame';
-import { FamilyGoalCard } from '@/components/ui/FamilyGoal';
+import { FamilyGoalBar } from '@/components/ui/FamilyGoal';
+import { openTaskEditor } from '@/lib/taskNav';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
@@ -516,7 +517,6 @@ export default function HomeScreen() {
   const completedCount = (todaysTasks as any[]).filter((t) => t.completion && !t.completion.wasAutoFailed).length;
   const totalCount = todaysTasks.length;
   const allDone = completedCount === totalCount && totalCount > 0;
-  const progressPct = totalCount > 0 ? completedCount / totalCount : 0;
   const level = getLevel(lifetimePoints);
 
   const getMascotMood = (): 'celebrating' | 'happy' | 'waiting' => {
@@ -573,19 +573,35 @@ export default function HomeScreen() {
       <WelcomeTour visible={showTour} role={member?.role} onClose={dismissTour} />
       {/* Brand always sits on top, above the family profile switcher */}
       <BrandBar />
-      {/* Profile tabs — visible to parents when family has other members */}
-      {isParent && members.length > 1 && (
-        <ProfileTabBar
-          members={members}
-          self={member!}
-          activeId={actingAsMember?.id ?? member?.id ?? ''}
-          onSelect={(m) => {
-            const { setActingAsMember } = useAuthStore.getState();
-            setActingAsMember(m?.id === member?.id ? null : m);
-          }}
-          colors={colors}
-        />
-      )}
+      {/* Profile strip: who we're looking at (parents switch here) + THAT
+          profile's points and level on the right — replaces the big hero
+          banner so today's tasks start near the top of the screen. */}
+      <ProfileTabBar
+        members={isParent && members.length > 1 ? members : []}
+        self={member!}
+        activeId={actingAsMember?.id ?? member?.id ?? ''}
+        onSelect={(m) => {
+          const { setActingAsMember } = useAuthStore.getState();
+          setActingAsMember(m?.id === member?.id ? null : m);
+        }}
+        colors={colors}
+        right={
+          <TouchableOpacity
+            style={[styles.scoreChip, { backgroundColor: colors.primary + '14', borderColor: colors.primary + '33' }]}
+            onPress={() => effectiveMember?.id && router.push(`/app/member/${effectiveMember.id}` as any)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`${lifetimePoints} points to spend, level ${level.level} ${level.title}. Open profile`}
+          >
+            <Text style={[styles.scoreChipPts, { color: colors.textAccent }]}>{lifetimePoints}<Text style={[styles.scoreChipUnit, { color: colors.textSecondary }]}> pts</Text></Text>
+            <Text style={[styles.scoreChipSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              {level.emoji} Lv {level.level} · {weeklyPoints >= 0 ? '+' : ''}{weeklyPoints} wk
+            </Text>
+          </TouchableOpacity>
+        }
+      />
+      {/* Family co-op goal — one thin line, always visible (Bet 3). */}
+      <FamilyGoalBar />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
@@ -624,7 +640,7 @@ export default function HomeScreen() {
                     activeOpacity={0.85}
                   >
                     <Icon name="warning" size={15} color={colors.danger} />
-                    <Text style={[styles.actionPillText, { color: colors.danger }]}>Penalty</Text>
+                    <Text style={[styles.actionPillText, { color: colors.textDanger }]}>Penalty</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -638,63 +654,6 @@ export default function HomeScreen() {
             </View>
           </SlideIn>
         )}
-        <SlideIn delay={130}>
-          <StatsHero
-            level={level}
-            spendable={lifetimePoints}
-            weeklyPoints={weeklyPoints}
-            completedCount={completedCount}
-            totalCount={totalCount}
-            progressPct={progressPct}
-            allDone={allDone}
-          />
-        </SlideIn>
-
-        {/* Bet 3 — the family co-op goal (parents see a "set one" prompt). */}
-        {!actingAsMember && (
-          <View style={styles.section}>
-            <SlideIn delay={105}>
-              <FamilyGoalCard compact />
-            </SlideIn>
-          </View>
-        )}
-
-        {/* Kid Mode entry (Bet 1): the kids claim their own tasks; you approve
-            in one swipe later. Only when there are kids to hand the phone to. */}
-        {isParent && kidProfiles.length > 0 && (
-          <View style={styles.section}>
-            <SlideIn delay={110}>
-              <TouchableOpacity
-                style={[styles.kidModeCard, { backgroundColor: colors.success + '14', borderColor: colors.success + '55' }]}
-                onPress={() => {
-                  const start = actingAsMember && kidProfiles.some((k) => k.id === actingAsMember.id) ? actingAsMember.id : kidProfiles[0].id;
-                  useKidMode.getState().enter(start);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-                  router.push('/app/kid-mode' as any);
-                }}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel="Open Kid Mode"
-              >
-                <View style={styles.kidModeAvatars}>
-                  {kidProfiles.slice(0, 3).map((k, i) => (
-                    <View key={k.id} style={{ marginLeft: i === 0 ? 0 : -12 }}>
-                      <Avatar emoji={k.avatarEmoji} photoURL={k.photoURL} size={34} />
-                    </View>
-                  ))}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.catchUpTitle, { color: colors.text }]}>Hand the phone to a kid</Text>
-                  <Text style={[styles.catchUpSub, { color: colors.textSecondary }]}>
-                    Kid Mode: they tap “I did it!”, you approve later in one go.
-                  </Text>
-                </View>
-                <Icon name="chevron-forward" size={20} color={colors.textMuted} />
-              </TouchableOpacity>
-            </SlideIn>
-          </View>
-        )}
-
         {isParent && pendingApprovals > 0 && (
           <View style={styles.section}>
             <SlideIn delay={120}>
@@ -706,14 +665,9 @@ export default function HomeScreen() {
                 accessibilityLabel={`${pendingApprovals} completions awaiting approval`}
               >
                 <Icon name="checkmark-done-circle-outline" size={22} color={colors.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.catchUpTitle, { color: colors.text }]}>
-                    {pendingApprovals} {pendingApprovals === 1 ? 'claim' : 'claims'} waiting for your OK
-                  </Text>
-                  <Text style={[styles.catchUpSub, { color: colors.textSecondary }]}>
-                    The kids are waiting on their points — approve them all in one tap.
-                  </Text>
-                </View>
+                <Text style={[styles.catchUpTitle, { color: colors.text, flex: 1 }]}>
+                  {pendingApprovals} {pendingApprovals === 1 ? 'claim' : 'claims'} waiting for your OK
+                </Text>
                 <Icon name="chevron-forward" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </SlideIn>
@@ -745,51 +699,14 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {catchUpItems.length > 0 && (
-          <View style={styles.section}>
-            <SlideIn delay={150}>
-              <TouchableOpacity
-                style={[styles.catchUpCard, { backgroundColor: colors.warning + '14', borderColor: colors.warning + '55' }]}
-                onPress={() => router.push('/app/catch-up' as any)}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={`Catch up ${catchUpItems.length} missed tasks`}
-              >
-                <Icon name="time-outline" size={22} color={colors.warning} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.catchUpTitle, { color: colors.text }]}>
-                    Catch up {catchUpItems.length} missed {catchUpItems.length === 1 ? 'task' : 'tasks'}
-                  </Text>
-                  <Text style={[styles.catchUpSub, { color: colors.textSecondary }]}>
-                    Mark them done within 2 days to win the points back.
-                  </Text>
-                </View>
-                <Icon name="chevron-forward" size={20} color={colors.textMuted} />
-              </TouchableOpacity>
-            </SlideIn>
-          </View>
-        )}
-
         <View style={styles.section}>
-          <SlideIn delay={200}>
-            <View style={styles.tasksHeader}>
-              <Text style={[styles.tasksHeaderTitle, { color: colors.text }]}>Today's Tasks</Text>
-              {totalCount > 0 && (
-                <View style={[styles.tasksCountChip, { backgroundColor: allDone ? colors.success : colors.primary + '18' }]}>
-                  <Text style={[styles.tasksCountText, { color: allDone ? '#FFFFFF' : colors.primary }]}>
-                    {allDone ? '🎉 all done' : `${completedCount}/${totalCount} done`}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </SlideIn>
           {isLoadingTasks ? <LoadingSkeletons /> :
             todaysTasks.length === 0 ? (
               <SlideIn delay={250}>
                 <EmptyState brandIcon="chest" title="No tasks today!" subtitle="Kick-start the week with a ready-made starter pack, or add your own." action={{ label: '📦 Browse starter packs', onPress: () => router.push('/app/task/packs' as any) }} />
                 {isParent && (
                   <TouchableOpacity style={styles.emptyAltBtn} onPress={() => router.push('/app/task/create')} activeOpacity={0.7}>
-                    <Text style={[styles.emptyAltBtnText, { color: colors.primary }]}>＋ Or create a single task</Text>
+                    <Text style={[styles.emptyAltBtnText, { color: colors.textAccent }]}>＋ Or create a single task</Text>
                   </TouchableOpacity>
                 )}
               </SlideIn>
@@ -809,84 +726,60 @@ export default function HomeScreen() {
                   + (task.completion?.wasAutoFailed ? ':failed' : '')
                   + (task.completion?.status ? ':' + task.completion.status : '');
                 return (
-                  <SlideIn key={cardKey} delay={250 + i * 60}>
+                  <SlideIn key={cardKey} delay={120 + i * 50}>
                     <AdultTaskCard task={task} onComplete={handleCompleteTask} onUndo={handleUndoTask} onRecover={handleRecoverTask} onDelete={handleDeleteTask} isCompleting={completingTaskId === task.id} colors={colors} fontSize={fontSize} isReadOnly={isReadOnly} isParent={isParent} weekProgress={weekProgress} />
                   </SlideIn>
                 );
               })
             )}
         </View>
+
+        {/* Secondary actions live BELOW the tasks as small side-by-side tiles,
+            so they never push today's list off-screen. */}
+        {(catchUpItems.length > 0 || (isParent && kidProfiles.length > 0)) && (
+          <View style={[styles.section, styles.tileRow]}>
+            {catchUpItems.length > 0 && (
+              <TouchableOpacity
+                style={[styles.tile, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => router.push('/app/catch-up' as any)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={`${catchUpItems.length} tasks you can still catch up`}
+              >
+                <EmojiIcon emoji="⏰" size={26} />
+                <Text style={[styles.tileTitle, { color: colors.text }]}>{catchUpItems.length} to catch up</Text>
+                <Text style={[styles.tileSub, { color: colors.textSecondary }]}>Win the points back</Text>
+              </TouchableOpacity>
+            )}
+            {isParent && kidProfiles.length > 0 && (() => {
+              const selectedKid = actingAsMember && kidProfiles.find((k) => k.id === actingAsMember.id);
+              const target = selectedKid ?? (kidProfiles.length === 1 ? kidProfiles[0] : null);
+              return (
+                <TouchableOpacity
+                  style={[styles.tile, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={() => {
+                    useKidMode.getState().enter((target ?? kidProfiles[0]).id);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                    router.push('/app/kid-mode' as any);
+                  }}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open Kid Mode"
+                >
+                  {target
+                    ? <Avatar emoji={target.avatarEmoji} photoURL={target.photoURL} size={26} />
+                    : <EmojiIcon emoji="👶" size={26} />}
+                  <Text style={[styles.tileTitle, { color: colors.text }]} numberOfLines={1}>
+                    Hand phone to {target ? (target.displayName ?? '').split(' ')[0] : 'a kid'}
+                  </Text>
+                  <Text style={[styles.tileSub, { color: colors.textSecondary }]}>Kid Mode</Text>
+                </TouchableOpacity>
+              );
+            })()}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function AnimatedProgressBar({ progress, color }: { progress: number; color: string }) {
-  const width = useSharedValue(0);
-  useEffect(() => { width.value = withTiming(progress * 100, { duration: 800 }); }, [progress]);
-  const animStyle = useAnimatedStyle(() => ({ width: `${width.value}%` as any }));
-  return <View style={styles.progressBarBg}><Animated.View style={[styles.progressBarFill, { backgroundColor: color }, animStyle]} /></View>;
-}
-
-// ── Hero card — one cohesive gradient panel fusing points, level, and today's ──
-// progress. Replaces the two flat stacked cards for a designed, branded anchor.
-function StatsHero({ level, spendable, weeklyPoints, completedCount, totalCount, progressPct, allDone }: {
-  level: { level: number; title: string; emoji: string; progress: number; next: number | null };
-  spendable: number;
-  weeklyPoints: number;
-  completedCount: number;
-  totalCount: number;
-  progressPct: number;
-  allDone: boolean;
-}) {
-  const levelWidth = useSharedValue(0);
-  const taskWidth = useSharedValue(0);
-  useEffect(() => { levelWidth.value = withTiming(Math.round(level.progress * 100), { duration: 800 }); }, [level.progress]);
-  useEffect(() => { taskWidth.value = withTiming(Math.round(progressPct * 100), { duration: 800 }); }, [progressPct]);
-  const levelBarStyle = useAnimatedStyle(() => ({ width: `${levelWidth.value}%` as any }));
-  const taskBarStyle = useAnimatedStyle(() => ({ width: `${taskWidth.value}%` as any }));
-
-  return (
-    <LinearGradient
-      colors={[...Gradients.primary]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.hero, Shadow.md]}
-    >
-      {/* Top row — weekly points headline + today's tally */}
-      <View style={styles.heroTopRow}>
-        <View style={styles.heroPointsBlock}>
-          <View style={styles.heroPointsRow}>
-            <Text style={styles.heroPointsNum}>{spendable}</Text>
-            <Text style={styles.heroPointsUnit}>pts</Text>
-          </View>
-          <Text style={styles.heroPointsLabel}>to spend</Text>
-          <Text style={styles.heroPointsSub}>{weeklyPoints >= 0 ? '+' : ''}{weeklyPoints} earned this week</Text>
-        </View>
-        <View style={styles.heroTodayChip}>
-          <Text style={styles.heroTodayNum}>{allDone ? '✓' : `${completedCount}/${totalCount}`}</Text>
-          <Text style={styles.heroTodayLabel}>{allDone ? 'all done' : 'today'}</Text>
-        </View>
-      </View>
-
-      {/* Divider (the today chip above already conveys task progress, so the
-          standalone progress bar was dropped to keep the hero compact). */}
-      <View style={styles.heroDivider} />
-
-      {/* Level row — emoji + title + XP bar to next level */}
-      <View style={styles.heroLevelRow}>
-        <Text style={styles.heroLevelEmoji}>{level.emoji}</Text>
-        <View style={styles.heroLevelInfo}>
-          <View style={styles.heroLevelTop}>
-            <Text style={styles.heroLevelTitle} numberOfLines={1}>Lv {level.level} · {level.title}</Text>
-            <Text style={styles.heroLevelNext}>{level.next != null ? `${level.next} to Lv ${level.level + 1}` : '⭐ Max'}</Text>
-          </View>
-          <View style={styles.heroLevelTrack}>
-            <Animated.View style={[styles.heroLevelFill, { backgroundColor: Gradients.gold[0] }, levelBarStyle]} />
-          </View>
-        </View>
-      </View>
-    </LinearGradient>
   );
 }
 
@@ -910,19 +803,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
   function openEdit() {
     setMenuOpen(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push({
-      pathname: '/app/task/create' as any,
-      params: {
-        taskId: task.id,
-        taskData: JSON.stringify({
-          title: task.title, description: task.description, category: task.category,
-          difficulty: task.difficulty, recurrence: task.recurrence, assignedTo: task.assignedTo,
-          rotation: task.rotation ?? null, scheduledDays: task.scheduledDays ?? null,
-          pointValue: task.pointValue, autoFailHour: task.autoFailHour, taskEmoji: task.taskEmoji,
-          requiresApproval: task.requiresApproval, requiresPhoto: task.requiresPhoto,
-        }),
-      },
-    });
+    openTaskEditor(task);
   }
 
   // Gamified recurrence pill — a live stat, not a grey label.
@@ -930,7 +811,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
   const recPill = rec === 'daily'
     ? { icon: '🔥', label: streak > 0 ? `${streak}` : 'Daily', color: colors.warning }
     : rec === 'weekly'
-    ? { icon: '📅', label: 'Weekly', color: colors.primary }
+    ? { icon: '📅', label: 'Weekly', color: colors.textAccent }
     : rec === 'monthly'
     ? { icon: '🗓️', label: 'Monthly', color: catColor }
     : { icon: '⚡', label: 'One-time', color: colors.info ?? catColor };
@@ -1016,7 +897,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
               onPress={() => { setMenuOpen(false); onDelete?.(task); }}
             >
               <Text style={taskMenuStyles.rowIcon}>🗑️</Text>
-              <Text style={[taskMenuStyles.rowText, { color: colors.danger }]}>Delete task</Text>
+              <Text style={[taskMenuStyles.rowText, { color: colors.textDanger }]}>Delete task</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[taskMenuStyles.row, taskMenuStyles.cancelRow, { borderTopColor: colors.border }]} onPress={() => setMenuOpen(false)}>
               <Text style={[taskMenuStyles.rowText, { color: colors.textSecondary, textAlign: 'center', width: '100%' }]}>Cancel</Text>
@@ -1040,18 +921,20 @@ const taskMenuStyles = StyleSheet.create({
 });
 
 // ── Profile tab bar — shown for any parent when there are other members ──────
-function ProfileTabBar({ members, self, activeId, onSelect, colors }: {
+function ProfileTabBar({ members, self, activeId, onSelect, colors, right }: {
   members: any[];
   self: any;
   activeId: string;
   onSelect: (m: any) => void;
   colors: any;
+  /** Pinned on the right of the strip — the active profile's score chip. */
+  right?: React.ReactNode;
 }) {
   // Show self first, then all other members
   const allProfiles = [self, ...members.filter((m) => m.id !== self.id)];
   return (
     <View style={[ptStyles.bar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={ptStyles.scroll}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={ptStyles.scroll} style={{ flex: 1 }}>
         {allProfiles.map((p) => {
           const active = p.id === activeId;
           const isOtherAdult = p.id !== self.id && !p.isManaged;
@@ -1076,11 +959,13 @@ function ProfileTabBar({ members, self, activeId, onSelect, colors }: {
           );
         })}
       </ScrollView>
+      {right ? <View style={ptStyles.right}>{right}</View> : null}
     </View>
   );
 }
 const ptStyles = StyleSheet.create({
-  bar: { borderBottomWidth: 1, paddingTop: 4 },
+  bar: { borderBottomWidth: 1, paddingTop: 4, flexDirection: 'row', alignItems: 'center' },
+  right: { paddingRight: Spacing.md, paddingLeft: Spacing.xs, paddingBottom: 4 },
   scroll: { paddingHorizontal: Spacing.md, gap: 4 },
   tab: { alignItems: 'center', paddingHorizontal: Spacing.sm, paddingBottom: 8, paddingTop: 4, minWidth: 56, borderBottomWidth: 2.5, borderBottomColor: 'transparent' },
   avatar: { fontSize: 26 },
@@ -1179,8 +1064,14 @@ const styles = StyleSheet.create({
   undoBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: '#FFF' },
   // Missed-task catch-up card
   catchUpCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: BorderRadius.lg, borderWidth: 1.5, padding: Spacing.md },
-  kidModeCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: BorderRadius.lg, borderWidth: 1.5, padding: Spacing.md },
-  kidModeAvatars: { flexDirection: 'row', alignItems: 'center' },
+  scoreChip: { borderRadius: BorderRadius.lg, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5, alignItems: 'flex-end', minWidth: 92 },
+  scoreChipPts: { fontSize: FontSize.lg, fontFamily: FontFamily.black ?? FontFamily.extraBold, lineHeight: 22 },
+  scoreChipUnit: { fontSize: FontSize.xs, fontFamily: FontFamily.bold },
+  scoreChipSub: { fontSize: 11, fontFamily: FontFamily.bold },
+  tileRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm, marginBottom: Spacing.xl },
+  tile: { flex: 1, borderRadius: BorderRadius.lg, borderWidth: 1, padding: Spacing.md, gap: 4 },
+  tileTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold, marginTop: 4 },
+  tileSub: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold },
   catchUpTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md },
   catchUpSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, marginTop: 2 },
   // Today's Tasks section header

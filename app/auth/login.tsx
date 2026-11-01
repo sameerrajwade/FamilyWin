@@ -210,7 +210,7 @@ function createStyles(colors: ThemeColors) {
   scroll: { flexGrow: 1, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.xl },
   header: { alignItems: 'center', marginBottom: Spacing.xxl, marginTop: Spacing.xl },
   logo: { fontSize: 64, marginBottom: Spacing.sm },
-  appName: { fontSize: FontSize.xxxl, fontFamily: FontFamily.black, color: colors.primary, letterSpacing: -0.5 },
+  appName: { fontSize: FontSize.xxxl, fontFamily: FontFamily.black, color: colors.textAccent, letterSpacing: -0.5 },
   tagline: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: Spacing.xs, letterSpacing: 1, textTransform: 'uppercase' },
   form: {
     backgroundColor: colors.surface, borderRadius: BorderRadius.xl,
@@ -232,7 +232,7 @@ function createStyles(colors: ThemeColors) {
   eyeButton: { paddingHorizontal: Spacing.md, paddingVertical: 14 },
   eyeIcon: { fontSize: 18 },
   forgotPassword: { alignSelf: 'flex-end', marginBottom: Spacing.md },
-  forgotPasswordText: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.primary },
+  forgotPasswordText: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.textAccent },
   primaryButton: {
     backgroundColor: colors.primary, borderRadius: BorderRadius.md,
     paddingVertical: 16, alignItems: 'center', marginTop: Spacing.xs, ...Shadow.lg,
@@ -253,6 +253,6 @@ function createStyles(colors: ThemeColors) {
   googleButtonText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.text },
   secondaryButton: { alignItems: 'center', paddingVertical: Spacing.sm },
   secondaryButtonText: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary },
-  linkText: { fontFamily: FontFamily.bold, color: colors.primary },
+  linkText: { fontFamily: FontFamily.bold, color: colors.textAccent },
   });
 }

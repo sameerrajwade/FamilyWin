@@ -125,7 +125,7 @@ export function WelcomeTour({ visible, role, onClose }: {
               onPress={() => goTo(activeRoute)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.jumpText, { color: colors.primary }]}>{slides[index].cta ?? 'Take me there'} →</Text>
+              <Text style={[styles.jumpText, { color: colors.textAccent }]}>{slides[index].cta ?? 'Take me there'} →</Text>
             </TouchableOpacity>
           )}
 

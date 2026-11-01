@@ -115,7 +115,7 @@ export default function NotificationsScreen() {
           accessibilityRole="button"
           accessibilityLabel="Turn on notifications"
         >
-          <Text style={[styles.blockedTitle, { color: colors.danger }]}>🔕 Reminders can't reach you</Text>
+          <Text style={[styles.blockedTitle, { color: colors.textDanger }]}>🔕 Reminders can't reach you</Text>
           <Text style={[styles.blockedBody, { color: colors.text }]}>
             Notifications are turned off for Lootboard on this phone. Tap to turn them on.
           </Text>
@@ -131,7 +131,7 @@ export default function NotificationsScreen() {
             onPress={() => setEditing('morning')}
             right={
               <View style={[styles.timeBtn, { backgroundColor: colors.primary + '20' }]}>
-                <Text style={[styles.timeBtnText, { color: colors.primary }]}>{formatTime(morningTime)}</Text>
+                <Text style={[styles.timeBtnText, { color: colors.textAccent }]}>{formatTime(morningTime)}</Text>
               </View>
             }
           />
@@ -144,7 +144,7 @@ export default function NotificationsScreen() {
           onPress={() => setEditing('evening')}
           right={
             <View style={[styles.timeBtn, { backgroundColor: colors.primary + '20' }]}>
-              <Text style={[styles.timeBtnText, { color: colors.primary }]}>{formatTime(eveningTime)}</Text>
+              <Text style={[styles.timeBtnText, { color: colors.textAccent }]}>{formatTime(eveningTime)}</Text>
             </View>
           }
         />

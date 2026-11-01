@@ -46,7 +46,6 @@ export default function SettingsScreen() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [profilePhotoURL, setProfilePhotoURL] = useState<string | undefined>(member?.photoURL);
 
-  const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
 
   // ── Profile photo ──────────────────────────────────────────────────────────
 
@@ -235,9 +234,9 @@ export default function SettingsScreen() {
             >
               <Text style={[styles.profileName, { color: colors.text }]}>{member?.displayName}</Text>
               <Text style={[styles.profileRole, { color: colors.textSecondary }]}>{member?.role?.replace('_', ' ')}</Text>
-              <Text style={[styles.profileFamily, { color: colors.primary }]}>{family?.name}</Text>
+              <Text style={[styles.profileFamily, { color: colors.textAccent }]}>{family?.name}</Text>
               <View style={styles.viewProfileRow}>
-                <Text style={[styles.viewProfileText, { color: colors.primary }]}>View my profile</Text>
+                <Text style={[styles.viewProfileText, { color: colors.textAccent }]}>View my profile</Text>
                 <Icon name="chevron-forward" size={14} color={colors.primary} />
               </View>
             </TouchableOpacity>
@@ -247,16 +246,8 @@ export default function SettingsScreen() {
         {/* ── Lootboard Plus (free-for-all right now) ── */}
         <FreeForAllBanner />
 
-        {/* ── Family ── */}
-        <SettingsGroup title="Family">
-          <NavRow
-            icon="people-outline"
-            label="Family & Members"
-            subtitle="Members, roles, invite code & child profiles"
-            isLast
-            onPress={() => router.push('/app/family' as any)}
-          />
-        </SettingsGroup>
+        {/* Family & Members and the game rules moved to the Family tab —
+            Settings is now just you + the app. */}
 
         {/* ── Preferences ── */}
         <SettingsGroup title="Preferences">
@@ -274,19 +265,6 @@ export default function SettingsScreen() {
             onPress={() => router.push('/app/settings/notifications' as any)}
           />
         </SettingsGroup>
-
-        {/* ── Parents ── */}
-        {isParent && (
-          <SettingsGroup title="Parents">
-            <NavRow
-              icon="shield-checkmark-outline"
-              label="Parental Controls"
-              subtitle="Discipline, missed-task penalty & weekly reset"
-              isLast
-              onPress={() => router.push('/app/settings/parental' as any)}
-            />
-          </SettingsGroup>
-        )}
 
         {/* ── Support ── */}
         <SettingsGroup title="Support">

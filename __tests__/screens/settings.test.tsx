@@ -59,11 +59,11 @@ describe('SettingsScreen — Parent', () => {
   // Help & Legal) + inline Account actions. Invite code / managed children /
   // discipline / notification toggles now live on their own sub-screens.
 
-  it('renders the Family settings group (header condensed to the brand row)', async () => {
-    // The redundant "Settings" H1 was removed (we're already on the Settings
-    // tab); a compact Lootboard brand row replaces it. Assert a real section.
+  // Settings is now 'you + the app': Family & Members and the game rules
+  // (old Parental Controls) moved to the Family tab.
+  it('renders the Preferences group (header condensed to the brand row)', async () => {
     const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('Family & Members')).toBeTruthy();
+    expect(await findByText('Appearance')).toBeTruthy();
   });
 
   it('shows the profile card (name + family)', async () => {
@@ -72,9 +72,10 @@ describe('SettingsScreen — Parent', () => {
     expect(await findByText('Smith Family')).toBeTruthy();
   });
 
-  it('links to Family & Members', async () => {
-    const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('Family & Members')).toBeTruthy();
+  it('no longer hosts Family & Members (moved to the Family tab)', async () => {
+    const { findByText, queryByText } = render(<SettingsScreen />);
+    await findByText('Appearance');
+    expect(queryByText('Family & Members')).toBeNull();
   });
 
   it('links to Appearance and Notifications', async () => {
@@ -83,9 +84,10 @@ describe('SettingsScreen — Parent', () => {
     expect(await findByText('Notifications')).toBeTruthy();
   });
 
-  it('shows the Parental Controls row for parents', async () => {
-    const { findByText } = render(<SettingsScreen />);
-    expect(await findByText('Parental Controls')).toBeTruthy();
+  it('no longer hosts Parental Controls (now Family → Game rules)', async () => {
+    const { findByText, queryByText } = render(<SettingsScreen />);
+    await findByText('Appearance');
+    expect(queryByText('Parental Controls')).toBeNull();
   });
 
   it('links to Help & Legal', async () => {

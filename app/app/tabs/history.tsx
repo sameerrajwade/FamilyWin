@@ -279,7 +279,7 @@ export default function HistoryScreen() {
                       <View style={[styles.barTrack, { backgroundColor: colors.border + '66' }]}>
                         <View style={[styles.bar, { height, backgroundColor: isCurrent ? colors.primary : (isPositive ? colors.success : colors.danger), opacity: isCurrent ? 1 : 0.65 }]} />
                       </View>
-                      <Text style={[styles.barLabel, { color: colors.textMuted }, isCurrent && { color: colors.primary, fontFamily: FontFamily.bold }]}>{d.week}</Text>
+                      <Text style={[styles.barLabel, { color: colors.textMuted }, isCurrent && { color: colors.textAccent, fontFamily: FontFamily.bold }]}>{d.week}</Text>
                     </View>
                   );
                 })}
@@ -337,7 +337,7 @@ export default function HistoryScreen() {
                       onPress={() => setShowAllActivity((v) => !v)}
                       accessibilityRole="button"
                     >
-                      <Text style={[styles.seeAllText, { color: colors.primary }]}>
+                      <Text style={[styles.seeAllText, { color: colors.textAccent }]}>
                         {showAllActivity ? 'Show less' : `See all ${transactions.length} activities`}
                       </Text>
                     </TouchableOpacity>
@@ -379,7 +379,7 @@ function TransactionRow({ tx, showMember, colors, members }: {
         {txMember && (
           <View style={styles.txMemberRow}>
             <Avatar emoji={txMember.avatarEmoji} photoURL={txMember.photoURL} size={16} />
-            <Text style={[styles.txMemberName, { color: colors.primary }]}>
+            <Text style={[styles.txMemberName, { color: colors.textAccent }]}>
               {txMember.displayName.split(' ')[0]}
             </Text>
           </View>

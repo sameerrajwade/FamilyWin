@@ -22,6 +22,7 @@ export default function AppLayout() {
       {/* Kid Mode: no swipe-back — only the grown-up gate exits. */}
       <Stack.Screen name="kid-mode" options={{ gestureEnabled: false, animation: 'fade' }} />
       <Stack.Screen name="report" />
+      <Stack.Screen name="manage/[kind]" />
     </Stack>
   );
 }

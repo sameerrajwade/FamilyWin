@@ -48,7 +48,7 @@ export function ScreenHeader({ title, subtitle, variant = 'push', right, onBack 
           accessibilityLabel={isModal ? 'Close' : 'Back'}
         >
           <Icon name={isModal ? 'close' : 'chevron-back'} size={isModal ? 20 : 24} color={isModal ? colors.text : colors.primary} />
-          {!isModal && <Text style={[styles.backText, { color: colors.primary }]}>Back</Text>}
+          {!isModal && <Text style={[styles.backText, { color: colors.textAccent }]}>Back</Text>}
         </TouchableOpacity>
       </View>
       <View style={styles.center}>

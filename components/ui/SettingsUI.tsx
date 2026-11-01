@@ -96,7 +96,7 @@ function createStyles(colors: ThemeColors) {
     container: { flex: 1, backgroundColor: colors.background },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
     backBtn: { flexDirection: 'row', alignItems: 'center', width: 60 },
-    backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.primary },
+    backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.textAccent },
     headerTitle: { flex: 1, textAlign: 'center', fontSize: FontSize.lg, fontFamily: FontFamily.extraBold, color: colors.text },
     group: { marginBottom: Spacing.lg, paddingHorizontal: Spacing.lg },
     groupTitle: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing.sm, marginLeft: 4, color: colors.textSecondary },

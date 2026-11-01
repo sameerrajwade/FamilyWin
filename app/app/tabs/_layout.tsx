@@ -109,7 +109,7 @@ export default function AppTabsLayout() {
         name="index"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="list-outline" iconActive="list" label="Tasks" focused={focused} />
+            <TabIcon icon="list-outline" iconActive="list" label="Today" focused={focused} />
           ),
         }}
       />
@@ -122,18 +122,20 @@ export default function AppTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="history"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="stats-chart-outline" iconActive="stats-chart" label="Insights" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="rewards"
         options={{
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="gift-outline" iconActive="gift" label="Rewards" focused={focused} />
+          ),
+        }}
+      />
+      {/* Family = people + the game (members, approvals, report, setup, rules).
+          It replaces the old Insights tab, whose overlap with Scores confused. */}
+      <Tabs.Screen
+        name="family"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="people-outline" iconActive="people" label="Family" focused={focused} />
           ),
         }}
       />
@@ -145,6 +147,9 @@ export default function AppTabsLayout() {
           ),
         }}
       />
+      {/* Points history (old Insights) — no tab of its own; opened from
+          Family → Points history. */}
+      <Tabs.Screen name="history" options={{ href: null }} />
     </Tabs>
   );
 }

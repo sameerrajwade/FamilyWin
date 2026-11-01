@@ -80,13 +80,24 @@ describe('LeaderboardScreen', () => {
     expect(await findByText('This week')).toBeTruthy();
   });
 
-  // Phase B, Bet 3: kids are the players, parents are coaches. The current
-  // user here is a parent, so they appear in the Coaches strip — not ranked.
-  it('ranks kids and lists parents as coaches', async () => {
+  // Who competes: default 'everyone' — parents rank too (current user is a
+  // parent, so their row is highlighted). 'kids' mode makes parents coaches.
+  it('by default everyone competes, including the current parent', async () => {
+    const { findAllByText, queryByText } = render(<LeaderboardScreen />);
+    // 3 players → podium + list, so names can appear twice.
+    expect((await findAllByText('Tommy')).length).toBeGreaterThan(0);
+    expect((await findAllByText(/\(You\)/)).length).toBeGreaterThan(0);
+    expect(queryByText(/COACHES/)).toBeNull();
+  });
+
+  it("in 'kids' mode parents are listed as coaches, not ranked", async () => {
+    const { useAuthStore } = require('@/store');
+    (useAuthStore as jest.Mock).mockReturnValue({ member: mockMember, family: { ...mockFamily, competitionMode: 'kids' } });
     const { findByText, queryByText } = render(<LeaderboardScreen />);
     expect(await findByText('Tommy')).toBeTruthy();
     expect(await findByText(/COACHES/)).toBeTruthy();
     expect(queryByText(/\(You\)/)).toBeNull();
+    (useAuthStore as jest.Mock).mockReturnValue({ member: mockMember, family: mockFamily });
   });
 
   it('shows week label', async () => {

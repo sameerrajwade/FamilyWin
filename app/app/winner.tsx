@@ -71,9 +71,10 @@ export default function WinnerScreen() {
           if (d.source === 'task' && d.delta > 0) taskCounts[d.memberId] = (taskCounts[d.memberId] ?? 0) + 1;
         }
 
-        // Bet 3: kids are crowned; parents coach.
+        // Crowned players follow the family's competition mode (default:
+        // everyone; 'kids' = parents coach).
         const members = await getFamilyMembers(family.id);
-        const players = competitors(members as any[]);
+        const players = competitors(members as any[], family.competitionMode);
         const lb = buildLeaderboard(totals, players as any, member.id, {}, {});
         const goals: Record<string, number> = {};
         for (const m of players as any[]) if (typeof m.weeklyGoal === 'number' && m.weeklyGoal > 0) goals[m.id] = m.weeklyGoal;
@@ -86,7 +87,7 @@ export default function WinnerScreen() {
         setLoading(false);
       }
     })();
-  }, [family?.id, member?.id]);
+  }, [family?.id, member?.id, family?.competitionMode]);
 
   // Champions = everyone tied at rank 1 with a positive score.
   const champions = board.filter((e) => e.rank === 1 && e.points > 0);
@@ -205,7 +206,7 @@ export default function WinnerScreen() {
                     <Text style={[styles.standName, { color: colors.text }]} numberOfLines={1}>
                       {e.displayName}{e.isCurrentUser ? ' (You)' : ''}
                     </Text>
-                    <Text style={[styles.standPts, { color: colors.primary }]}>{e.points}</Text>
+                    <Text style={[styles.standPts, { color: colors.textAccent }]}>{e.points}</Text>
                   </View>
                 ))}
               </View>

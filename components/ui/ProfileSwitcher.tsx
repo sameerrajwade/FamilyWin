@@ -233,9 +233,9 @@ function createStyles(colors: ThemeColors) {
   rowAvatar: { fontSize: 36 },
   rowInfo: { flex: 1 },
   rowName: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.text },
-  rowNameActive: { color: colors.primary },
+  rowNameActive: { color: colors.textAccent },
   rowRole: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
-  checkmark: { fontSize: FontSize.lg, color: colors.primary, fontFamily: FontFamily.black },
+  checkmark: { fontSize: FontSize.lg, color: colors.textAccent, fontFamily: FontFamily.black },
 
   // Empty hint
   emptyHint: { padding: Spacing.xl, alignItems: 'center' },

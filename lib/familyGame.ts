@@ -26,18 +26,32 @@ export function isKid(m: Pick<GameMember, 'role' | 'isManaged'>): boolean {
 }
 
 /**
- * The members who RANK on the leaderboard. Kids only — parents coach. A family
- * with no kids yet (just two parents trying it out) still gets a leaderboard,
- * so fall back to everyone.
+ * Who competes (family setting, parent-chosen — default 'everyone'):
+ *   'everyone' — parents and kids all rank, appear on the podium, win crowns.
+ *                Healthy family competition; a one-kid family has rivals.
+ *   'kids'     — only kids rank; parents are COACHES (their points still count
+ *                toward the family co-op goal).
  */
-export function competitors<T extends Pick<GameMember, 'role' | 'isManaged'>>(members: T[]): T[] {
+export type CompetitionMode = 'everyone' | 'kids';
+
+/**
+ * The members who RANK on the leaderboard. In 'kids' mode a family with no
+ * kids yet (two parents trying it out) still gets a leaderboard: everyone.
+ */
+export function competitors<T extends Pick<GameMember, 'role' | 'isManaged'>>(
+  members: T[], mode: CompetitionMode | null | undefined = 'everyone',
+): T[] {
+  if (mode !== 'kids') return members;
   const kids = members.filter(isKid);
   return kids.length > 0 ? kids : members;
 }
 
-export function coaches<T extends Pick<GameMember, 'role' | 'isManaged'>>(members: T[]): T[] {
-  const kids = members.filter(isKid);
-  return kids.length > 0 ? members.filter((m) => !isKid(m)) : [];
+/** Members who coach instead of competing (only ever non-empty in 'kids' mode). */
+export function coaches<T extends Pick<GameMember, 'role' | 'isManaged'>>(
+  members: T[], mode: CompetitionMode | null | undefined = 'everyone',
+): T[] {
+  const ranked = new Set(competitors(members, mode));
+  return members.filter((m) => !ranked.has(m));
 }
 
 // ─── Family co-op goal ───────────────────────────────────────────────────────
@@ -136,7 +150,9 @@ export function buildParentReport(
   lastWeek: ReportTx[],
   members: GameMember[],
 ): ParentReport {
-  const players = competitors(members);
+  // The report is about the KIDS (the parent's payoff), whatever the
+  // competition mode — falls back to everyone in a kid-less family.
+  const players = competitors(members, 'kids');
   const pointsBy = (txs: ReportTx[], id: string) => txs.filter((t) => t.memberId === id).reduce((s, t) => s + earned(t), 0);
   const choresBy = (txs: ReportTx[], id: string) => txs.filter((t) => t.memberId === id && isChore(t)).length;
 

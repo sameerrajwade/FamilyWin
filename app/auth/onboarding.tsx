@@ -353,13 +353,13 @@ export default function OnboardingScreen() {
               )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => pickPhoto(setProfilePhotoUri)} activeOpacity={0.7}>
-              <Text style={{ color: colors.primary, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>
+              <Text style={{ color: colors.textAccent, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>
                 {profilePhotoUri ? 'Change Photo' : 'Add Photo'}
               </Text>
             </TouchableOpacity>
             {profilePhotoUri && (
               <TouchableOpacity onPress={() => setProfilePhotoUri(null)} activeOpacity={0.7}>
-                <Text style={{ color: colors.danger, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>Remove</Text>
+                <Text style={{ color: colors.textDanger, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>Remove</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -468,10 +468,10 @@ export default function OnboardingScreen() {
           >
             <Text style={{ fontSize: 28 }}>👶</Text>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.primary }}>Add Child Profiles</Text>
+              <Text style={{ fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.textAccent }}>Add Child Profiles</Text>
               <Text style={{ fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 }}>Kids don't need a phone — you complete tasks on their behalf</Text>
             </View>
-            <Text style={{ fontSize: FontSize.lg, color: colors.primary }}>→</Text>
+            <Text style={{ fontSize: FontSize.lg, color: colors.textAccent }}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.primaryBtn, { marginTop: Spacing.md }]} onPress={goToApp} activeOpacity={0.85}>
@@ -512,13 +512,13 @@ export default function OnboardingScreen() {
               )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => pickPhoto(setChildPhotoUri)} activeOpacity={0.7}>
-              <Text style={{ color: colors.primary, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>
+              <Text style={{ color: colors.textAccent, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>
                 {childPhotoUri ? 'Change Photo' : 'Add Photo'}
               </Text>
             </TouchableOpacity>
             {childPhotoUri && (
               <TouchableOpacity onPress={() => setChildPhotoUri(null)} activeOpacity={0.7}>
-                <Text style={{ color: colors.danger, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>Remove</Text>
+                <Text style={{ color: colors.textDanger, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm }}>Remove</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -565,7 +565,7 @@ function createStyles(colors: ThemeColors) {
   stepSubtitle: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl },
   stepHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg },
   stepBackBtn: { minHeight: 44, justifyContent: 'center' },
-  stepBackText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.primary },
+  stepBackText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.textAccent },
   stepDots: { flexDirection: 'row', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
   dotActive: { backgroundColor: colors.primary, width: 24 },
@@ -591,10 +591,10 @@ function createStyles(colors: ThemeColors) {
   previewRole: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, textTransform: 'capitalize' },
   familyPreview: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.primaryLight + '22', borderRadius: BorderRadius.lg, padding: Spacing.md, marginVertical: Spacing.md, borderWidth: 1.5, borderColor: colors.primary + '44' },
   familyPreviewEmoji: { fontSize: 28 },
-  familyPreviewName: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: colors.primary },
+  familyPreviewName: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: colors.textAccent },
   inviteCodeCard: { backgroundColor: colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.xl, alignItems: 'center', width: '100%', marginVertical: Spacing.xl, ...Shadow.lg, borderWidth: 2, borderColor: colors.primary + '44' },
   inviteCodeLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.semiBold, color: colors.textSecondary, marginBottom: Spacing.sm },
-  inviteCode: { fontSize: 42, fontFamily: FontFamily.black, color: colors.primary, letterSpacing: 8 },
+  inviteCode: { fontSize: 42, fontFamily: FontFamily.black, color: colors.textAccent, letterSpacing: 8 },
   inviteCodeHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textMuted, marginTop: Spacing.sm, textAlign: 'center' },
   choiceCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.lg, width: '100%', marginBottom: Spacing.md, ...Shadow.md, borderWidth: 1.5, borderColor: colors.border },
   choiceCardSecondary: { borderColor: colors.accent + '66' },
@@ -602,7 +602,7 @@ function createStyles(colors: ThemeColors) {
   choiceInfo: { flex: 1 },
   choiceTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.text },
   choiceDesc: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 },
-  choiceArrow: { fontSize: FontSize.xl, color: colors.primary },
+  choiceArrow: { fontSize: FontSize.xl, color: colors.textAccent },
   primaryBtn: { backgroundColor: colors.primary, borderRadius: BorderRadius.md, paddingVertical: 16, alignItems: 'center', marginTop: Spacing.lg, width: '100%', ...Shadow.lg },
   primaryBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: '#FFF', letterSpacing: 0.5 },
   addChildCta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: colors.primary + '10', borderRadius: BorderRadius.lg, padding: Spacing.md, marginTop: Spacing.md, borderWidth: 2, borderColor: colors.primary + '44' },

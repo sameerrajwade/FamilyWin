@@ -194,7 +194,7 @@ export default function ApprovalsScreen() {
                   >
                     {busyId === id
                       ? <ActivityIndicator color={colors.danger} size="small" />
-                      : <Text style={[styles.rejectBtnText, { color: colors.danger }]}>Reject</Text>}
+                      : <Text style={[styles.rejectBtnText, { color: colors.textDanger }]}>Reject</Text>}
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.approveBtn, { backgroundColor: colors.success }]}
@@ -233,7 +233,7 @@ function createStyles(colors: ThemeColors) {
     approveAllBtn: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md, borderRadius: BorderRadius.lg, paddingVertical: 14, alignItems: 'center', ...Shadow.sm },
     approveAllText: { color: '#FFFFFF', fontSize: FontSize.md, fontFamily: FontFamily.extraBold },
     backBtn: { flexDirection: 'row', alignItems: 'center', width: 60 },
-    backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.primary },
+    backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.textAccent },
     headerTitle: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold, color: colors.text },
     intro: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 },
     card: { backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.sm, ...Shadow.sm },

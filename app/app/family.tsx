@@ -212,7 +212,7 @@ export default function FamilyScreen() {
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>CHILDREN</Text>
             {isParent && (
               <TouchableOpacity onPress={() => setShowAddChild(true)}>
-                <Text style={[styles.addChildLink, { color: colors.primary }]}>+ Add Child</Text>
+                <Text style={[styles.addChildLink, { color: colors.textAccent }]}>+ Add Child</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -221,7 +221,7 @@ export default function FamilyScreen() {
               <TouchableOpacity style={styles.emptyChildRow} onPress={() => setShowAddChild(true)}>
                 <Text style={styles.emptyChildEmoji}>👶</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.emptyChildTitle, { color: colors.primary }]}>Add a child profile</Text>
+                  <Text style={[styles.emptyChildTitle, { color: colors.textAccent }]}>Add a child profile</Text>
                   <Text style={[styles.emptyChildSub, { color: colors.textSecondary }]}>Kids don't need a phone — switch to their profile on the Tasks tab</Text>
                 </View>
                 <Icon name="chevron-forward" size={20} color={colors.primary} />
@@ -251,7 +251,7 @@ export default function FamilyScreen() {
                   onPress={() => setShowAddChild(true)}
                 >
                   <Icon name="add-circle" size={18} color={colors.primary} />
-                  <Text style={[styles.addAnotherText, { color: colors.primary }]}>Add Another Child</Text>
+                  <Text style={[styles.addAnotherText, { color: colors.textAccent }]}>Add Another Child</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -362,17 +362,17 @@ function MemberRow({ member, isSelf, isAdmin, isLast, onRolePress, onRemove, onE
       <View style={styles.memberActions}>
         {onEdit && (
           <TouchableOpacity style={[styles.actionChip, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '44' }]} onPress={onEdit} accessibilityRole="button" accessibilityLabel={`Edit ${member.displayName}`}>
-            <Text style={[styles.actionChipText, { color: colors.primary }]}>Edit</Text>
+            <Text style={[styles.actionChipText, { color: colors.textAccent }]}>Edit</Text>
           </TouchableOpacity>
         )}
         {isAdmin && !isSelf && !member.isManaged && onRolePress && (
           <TouchableOpacity style={[styles.actionChip, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '44' }]} onPress={onRolePress} accessibilityRole="button" accessibilityLabel={`Change role for ${member.displayName}`}>
-            <Text style={[styles.actionChipText, { color: colors.primary }]}>Role</Text>
+            <Text style={[styles.actionChipText, { color: colors.textAccent }]}>Role</Text>
           </TouchableOpacity>
         )}
         {isAdmin && !isSelf && (
           <TouchableOpacity style={[styles.actionChip, { backgroundColor: colors.danger + '15', borderColor: colors.danger + '44' }]} onPress={onRemove} accessibilityRole="button" accessibilityLabel={`Remove ${member.displayName}`}>
-            <Text style={[styles.actionChipText, { color: colors.danger }]}>Remove</Text>
+            <Text style={[styles.actionChipText, { color: colors.textDanger }]}>Remove</Text>
           </TouchableOpacity>
         )}
         <Icon name="chevron-forward" size={18} color={colors.textMuted} />
@@ -528,11 +528,11 @@ function AddChildModal({ familyId, onClose, onAdded }: {
               <View style={styles.photoPreviewBadge}><Icon name="pencil" size={11} color="#FFF" /></View>
             </TouchableOpacity>
             <TouchableOpacity onPress={handlePickPhoto}>
-              <Text style={[styles.addChildLink, { color: colors.primary }]}>{photoUri ? 'Change Photo' : 'Add Photo'}</Text>
+              <Text style={[styles.addChildLink, { color: colors.textAccent }]}>{photoUri ? 'Change Photo' : 'Add Photo'}</Text>
             </TouchableOpacity>
             {photoUri && (
               <TouchableOpacity onPress={() => setPhotoUri(null)}>
-                <Text style={[styles.addChildLink, { color: colors.danger }]}>Remove</Text>
+                <Text style={[styles.addChildLink, { color: colors.textDanger }]}>Remove</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -676,7 +676,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleChangePhotoPress} disabled={isPhotoBusy}>
-              <Text style={[styles.addChildLink, { color: colors.primary }]}>{photoURL ? 'Change Photo' : 'Add Photo'}</Text>
+              <Text style={[styles.addChildLink, { color: colors.textAccent }]}>{photoURL ? 'Change Photo' : 'Add Photo'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -740,7 +740,7 @@ function RoleModal({ target, onClose, onSelect, colors }: {
                 <Text style={[styles.roleLabel, { color: colors.text }]}>{r.label}</Text>
                 <Text style={[styles.roleDesc, { color: colors.textSecondary }]}>{r.desc}</Text>
               </View>
-              {target.role === r.role && <Text style={{ color: colors.primary, fontFamily: FontFamily.black }}>✓</Text>}
+              {target.role === r.role && <Text style={{ color: colors.textAccent, fontFamily: FontFamily.black }}>✓</Text>}
             </TouchableOpacity>
           ))}
           <TouchableOpacity style={[styles.cancelBtn, { marginTop: Spacing.md }]} onPress={onClose}>
@@ -805,7 +805,7 @@ function SwitchFamilyModal({ currentFamilyName, onClose, onSubmit, colors }: {
             maxLength={6}
             editable={!busy}
           />
-          {error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
+          {error && <Text style={[styles.errorText, { color: colors.textDanger }]}>{error}</Text>}
 
           <View style={styles.modalBtns}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={busy}>

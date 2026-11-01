@@ -9,17 +9,26 @@ const vian: GameMember = { id: 'vian', displayName: 'Vian', role: 'child', isMan
 const vayu: GameMember = { id: 'vayu', displayName: 'Vayu', role: 'child', isManaged: true };
 
 describe('who competes', () => {
-  it('kids are players, parents are coaches', () => {
+  it('identifies kids', () => {
     expect(isKid(vian)).toBe(true);
     expect(isKid(dad)).toBe(false);
     expect(isKid({ role: 'parent', isManaged: true })).toBe(true);
-    expect(competitors([dad, vian, mom, vayu]).map((m) => m.id)).toEqual(['vian', 'vayu']);
-    expect(coaches([dad, vian, mom, vayu]).map((m) => m.id)).toEqual(['dad', 'mom']);
   });
 
-  it('a kid-less family still gets a leaderboard of everyone', () => {
-    expect(competitors([dad, mom]).map((m) => m.id)).toEqual(['dad', 'mom']);
-    expect(coaches([dad, mom])).toEqual([]);
+  it('defaults to everyone competing (no coaches)', () => {
+    expect(competitors([dad, vian, mom, vayu]).map((m) => m.id)).toEqual(['dad', 'vian', 'mom', 'vayu']);
+    expect(coaches([dad, vian, mom, vayu])).toEqual([]);
+    expect(competitors([dad, vian], undefined).length).toBe(2); // absent setting = everyone
+  });
+
+  it("'kids' mode: kids rank, parents coach", () => {
+    expect(competitors([dad, vian, mom, vayu], 'kids').map((m) => m.id)).toEqual(['vian', 'vayu']);
+    expect(coaches([dad, vian, mom, vayu], 'kids').map((m) => m.id)).toEqual(['dad', 'mom']);
+  });
+
+  it("'kids' mode with no kids still ranks everyone", () => {
+    expect(competitors([dad, mom], 'kids').map((m) => m.id)).toEqual(['dad', 'mom']);
+    expect(coaches([dad, mom], 'kids')).toEqual([]);
   });
 });
 

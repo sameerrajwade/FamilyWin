@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Col, getActiveTasks, updateTask, deleteTask } from '@/lib/firebase';
+import { Col, getActiveTasks, updateTask, deleteTask, countPendingClaimsForTask } from '@/lib/firebase';
 import { detectTaskEmoji } from '@/lib/taskEmoji';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { useAuthStore, useFamilyStore } from '@/store';
@@ -150,6 +150,25 @@ export default function CreateTaskScreen() {
     }
     if (!family?.id || !member?.id) return;
 
+    // Fairness guard: claims waiting for approval are awarded the task's points
+    // AT APPROVAL TIME (server-side). Changing points now would silently change
+    // what kids who already did it receive — so say so before saving.
+    if (isEditMode && taskId && editData?.pointValue != null && pointValue !== editData.pointValue) {
+      const waiting = await countPendingClaimsForTask(family.id, taskId).catch(() => 0);
+      if (waiting > 0) {
+        const go = await new Promise<boolean>((resolve) => Alert.alert(
+          'Claims are waiting',
+          `${waiting} ${waiting === 1 ? 'claim' : 'claims'} for this task ${waiting === 1 ? 'is' : 'are'} waiting for approval. ${waiting === 1 ? 'It' : 'They'} will be awarded ${pointValue} pts instead of ${editData.pointValue}. Approve them first if you want the old value.`,
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Save anyway', onPress: () => resolve(true) },
+          ],
+          { cancelable: true, onDismiss: () => resolve(false) },
+        ));
+        if (!go) return;
+      }
+    }
+
     // Rotation is only meaningful with 2+ members; otherwise treat as a normal
     // single/whole-family assignment. When rotating, assignedTo is derived so we
     // persist null for it and keep the ordered list in `rotation`.
@@ -263,11 +282,11 @@ export default function CreateTaskScreen() {
                 accessibilityRole="button"
               >
                 {isDeleting ? (
-                  <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.danger }}>…</Text>
+                  <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textDanger }}>…</Text>
                 ) : (
                   <View style={styles.headerLink}>
                     <Icon name="trash-outline" size={16} color={colors.danger} />
-                    <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.danger }}>Delete</Text>
+                    <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textDanger }}>Delete</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -280,7 +299,7 @@ export default function CreateTaskScreen() {
               >
                 <View style={styles.headerLink}>
                   <Icon name="cube" size={16} color={colors.primary} />
-                  <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary }}>Packs</Text>
+                  <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textAccent }}>Packs</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -482,7 +501,7 @@ export default function CreateTaskScreen() {
                         </TouchableOpacity>
                       ))}
                     </View>
-                    <Text style={{ fontSize: FontSize.xs, color: colors.primary, marginTop: 6, fontFamily: FontFamily.semiBold }}>
+                    <Text style={{ fontSize: FontSize.xs, color: colors.textAccent, marginTop: 6, fontFamily: FontFamily.semiBold }}>
                       {rotationNames} · changes {rotationCadence === 'weekly' ? 'every week' : 'every day'}
                     </Text>
                   </>
@@ -561,7 +580,7 @@ export default function CreateTaskScreen() {
                 <TouchableOpacity onPress={() => setCustomPoints(!customPoints)}>
                   <View style={styles.headerLink}>
                     <Icon name={customPoints ? 'arrow-undo' : 'pencil'} size={13} color={colors.primary} />
-                    <Text style={{ fontSize: FontSize.xs, color: colors.primary, fontFamily: FontFamily.bold }}>
+                    <Text style={{ fontSize: FontSize.xs, color: colors.textAccent, fontFamily: FontFamily.bold }}>
                       {customPoints ? 'Use difficulty preset' : 'Customise'}
                     </Text>
                   </View>
@@ -642,7 +661,7 @@ function createStyles(colors: ThemeColors) {
   backText: {
     fontSize: FontSize.md,
     fontFamily: FontFamily.semiBold,
-    color: colors.primary,
+    color: colors.textAccent,
   },
   headerTitle: {
     fontSize: FontSize.lg,
@@ -771,12 +790,12 @@ function createStyles(colors: ThemeColors) {
     color: colors.text,
   },
   suggestBox: { marginTop: Spacing.sm, backgroundColor: colors.primary + '0C', borderRadius: BorderRadius.md, borderWidth: 1, borderColor: colors.primary + '33', overflow: 'hidden' },
-  suggestLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.primary, paddingHorizontal: Spacing.sm, paddingTop: Spacing.sm, paddingBottom: 4 },
+  suggestLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.textAccent, paddingHorizontal: Spacing.sm, paddingTop: Spacing.sm, paddingBottom: 4 },
   suggestRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.sm, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.primary + '22' },
   suggestEmoji: { fontSize: 20 },
   suggestTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.text },
   suggestMeta: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
-  suggestReuse: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: colors.primary },
+  suggestReuse: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: colors.textAccent },
   duplicateBox: { marginTop: Spacing.sm, backgroundColor: colors.warning + '15', borderRadius: BorderRadius.md, borderWidth: 1.5, borderColor: colors.warning + '55', padding: Spacing.md },
   duplicateTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.warning, marginBottom: 6 },
   duplicateText: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.text, lineHeight: 18, marginBottom: Spacing.sm },

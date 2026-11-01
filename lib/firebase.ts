@@ -165,6 +165,9 @@ export interface FamilyDoc {
   // (kids AND parents) earns toward together, with a shared reward. Absent =
   // no goal set. Progress is computed client-side (lib/familyGame).
   familyGoal?: { target: number; reward: string } | null;
+  // Who ranks on the leaderboard / wins crowns. Absent = 'everyone' (parents
+  // compete too); 'kids' = parents coach. See lib/familyGame CompetitionMode.
+  competitionMode?: 'everyone' | 'kids';
   createdAt: Timestamp;
 }
 
@@ -926,6 +929,11 @@ export async function approveCompletion(params: {
   });
 }
 
+/** Choose who competes: everyone (default) or kids only. Parents only, via rules. */
+export async function setCompetitionMode(familyId: string, mode: 'everyone' | 'kids'): Promise<void> {
+  await firestore().collection('families').doc(familyId).update({ competitionMode: mode });
+}
+
 /** Set (or clear with null) the family co-op goal. Parents only, via rules. */
 export async function setFamilyGoal(familyId: string, goal: { target: number; reward: string } | null): Promise<void> {
   await firestore().collection('families').doc(familyId).update({ familyGoal: goal });
@@ -1329,6 +1337,9 @@ export interface RedemptionDoc {
   status: 'pending' | 'approved' | 'rejected';
   redeemedAt: Timestamp;
   approvedBy?: string;
+  /** Price locked at request time (absent on pre-lock requests → current price). */
+  pointCost?: number;
+  rewardTitle?: string;
   // Phase 5 #3 — a "payout" (cash-out) is a redemption variant: it reuses the
   // redemptions collection + rules (no deploy) but has no reward. `points` is
   // deducted on approval and `cashAmount` is the recorded virtual payout.
@@ -1398,6 +1409,22 @@ export async function deactivateReward(familyId: string, rewardId: string): Prom
   await Col.rewards(familyId).doc(rewardId).update({ isActive: false });
 }
 
+/**
+ * Edit a reward in place. Safe for pending requests: those charge the price
+ * locked at request time (RedemptionDoc.pointCost), not this new one.
+ */
+export async function updateReward(
+  familyId: string,
+  rewardId: string,
+  updates: { title: string; pointCost: number; description?: string },
+): Promise<void> {
+  await Col.rewards(familyId).doc(rewardId).update({
+    title: updates.title.trim(),
+    pointCost: updates.pointCost,
+    description: updates.description?.trim() ? updates.description.trim() : firestore.FieldValue.delete(),
+  });
+}
+
 // ─── PENALTY HELPERS ─────────────────────────────────────────────────────────
 // Parent-defined penalty presets (the customizable "negative rewards" list).
 // Applying one writes a source:'discipline' negative transaction — the same
@@ -1411,6 +1438,9 @@ export interface PenaltyDoc {
   /** Positive magnitude of points to deduct (the transaction delta is -points). */
   points: number;
   emoji?: string;
+  /** 'bonus' presets ADD points; absent/'penalty' presets deduct. Bonuses live
+   *  in the same parent-editable collection (rules already allow it). */
+  kind?: 'penalty' | 'bonus';
   isActive: boolean;
   createdBy: string;
   createdAt: Timestamp;
@@ -1430,16 +1460,56 @@ export async function createPenalty(params: {
   points: number;
   emoji?: string;
   createdBy: string;
+  kind?: 'penalty' | 'bonus';
 }): Promise<void> {
   await Col.penalties(params.familyId).add({
     familyId: params.familyId,
     title: params.title,
     points: Math.abs(params.points),
     ...(params.emoji ? { emoji: params.emoji } : {}),
+    ...(params.kind === 'bonus' ? { kind: 'bonus' } : {}),
     createdBy: params.createdBy,
     isActive: true,
     createdAt: firestore.Timestamp.now(),
   });
+}
+
+/** Edit a penalty or bonus preset in place. */
+export async function updatePenalty(
+  familyId: string,
+  penaltyId: string,
+  updates: { title: string; points: number; emoji?: string },
+): Promise<void> {
+  await Col.penalties(familyId).doc(penaltyId).update({
+    title: updates.title.trim(),
+    points: Math.abs(updates.points),
+    emoji: updates.emoji ? updates.emoji : firestore.FieldValue.delete(),
+  });
+}
+
+/**
+ * Save the starter list of one kind as the family's own presets — called
+ * before the first edit/add of that kind so the remaining starters don't
+ * disappear once a custom one exists. Idempotent per kind: no-op if the family
+ * already has any preset of that kind.
+ */
+export async function materializeStarterPresets(
+  familyId: string,
+  kind: 'penalty' | 'bonus',
+  starters: { title: string; points: number; emoji: string }[],
+  createdBy: string,
+): Promise<void> {
+  const existing = await getActivePenalties(familyId);
+  if (existing.some((p) => (p.kind ?? 'penalty') === kind)) return;
+  const batch = firestore().batch();
+  for (const s of starters) {
+    batch.set(Col.penalties(familyId).doc(), {
+      familyId, title: s.title, points: Math.abs(s.points), emoji: s.emoji,
+      ...(kind === 'bonus' ? { kind: 'bonus' } : {}),
+      createdBy, isActive: true, createdAt: firestore.Timestamp.now(),
+    });
+  }
+  await batch.commit();
 }
 
 /** Soft-delete a penalty preset (keeps it out of the picker, preserves history). */
@@ -1451,6 +1521,10 @@ export async function requestRedemption(params: {
   familyId: string;
   rewardId: string;
   memberId: string;
+  /** Price AT REQUEST TIME — approval charges this, so a parent editing the
+   *  reward's cost afterwards can't silently change what the kid pays. */
+  pointCost: number;
+  rewardTitle?: string;
 }): Promise<void> {
   await Col.redemptions(params.familyId).add({
     rewardId: params.rewardId,
@@ -1458,7 +1532,15 @@ export async function requestRedemption(params: {
     memberId: params.memberId,
     status: 'pending',
     redeemedAt: firestore.Timestamp.now(),
+    pointCost: params.pointCost,
+    ...(params.rewardTitle ? { rewardTitle: params.rewardTitle } : {}),
   });
+}
+
+/** Pending task claims (Kid Mode / approval tasks) waiting on a parent, for one task. */
+export async function countPendingClaimsForTask(familyId: string, taskId: string): Promise<number> {
+  const snap = await Col.completions(familyId).where('taskId', '==', taskId).get();
+  return snap.docs.filter((d) => d.data().status === 'pending').length;
 }
 
 export async function approveRedemption(params: {

@@ -9,7 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { Sounds } from '@/lib/sounds';
 import {
   addPointTransaction, getFamilyMembers,
-  getActivePenalties, createPenalty, deletePenalty,
+  getActivePenalties, createPenalty, materializeStarterPresets,
 } from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
@@ -17,25 +17,8 @@ import { useTheme } from '@/lib/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { STARTER_PENALTIES, STARTER_BONUSES } from '@/constants/presets';
 import type { MemberDoc, PenaltyDoc } from '@/lib/firebase';
-
-// Built-in bonus presets. Penalty presets are now parent-defined (the "negative
-// rewards" list) and loaded from Firestore — see penalties state below. A couple
-// of built-in penalties seed the list for families that haven't added their own.
-const QUICK_REASONS = [
-  { label: '🤝 Helped Without Being Asked', delta: +20, type: 'bonus' },
-  { label: '⭐ Exceptional Behavior', delta: +30, type: 'bonus' },
-  { label: '📖 Read for 30 Minutes', delta: +15, type: 'bonus' },
-  { label: '🎯 Completed All Tasks Early', delta: +25, type: 'bonus' },
-  { label: '😊 Great Attitude', delta: +10, type: 'bonus' },
-];
-
-// Fallback penalty presets shown when a family hasn't defined any custom ones.
-const DEFAULT_PENALTIES = [
-  { title: 'Talked Back', points: 15, emoji: '😤' },
-  { title: 'Not Following Schedule', points: 10, emoji: '🕐' },
-  { title: 'Disrespectful', points: 20, emoji: '🗣️' },
-];
 
 export default function DisciplineLogScreen() {
   const { member, family } = useAuthStore();
@@ -68,11 +51,22 @@ export default function DisciplineLogScreen() {
     } catch { /* non-fatal — fall back to defaults */ }
   }
 
-  // The penalty presets shown: parent-defined ones if any, else the built-in
-  // seed list. Custom presets can be removed; the seed ones cannot.
-  const penaltyPresets = penalties.length > 0
-    ? penalties.map((p) => ({ id: p.id, title: p.title, points: p.points, emoji: p.emoji ?? '⚠️', custom: true }))
-    : DEFAULT_PENALTIES.map((p) => ({ id: p.title, title: p.title, points: p.points, emoji: p.emoji, custom: false }));
+  // Presets shown: the family's own list of each kind if it has one, else the
+  // starter list. Everything is editable from Family → Penalties & bonuses
+  // (long-press here jumps straight to that preset's editor).
+  const ownPenalties = penalties.filter((p) => (p.kind ?? 'penalty') === 'penalty');
+  const ownBonuses = penalties.filter((p) => p.kind === 'bonus');
+  const penaltyPresets = ownPenalties.length > 0
+    ? ownPenalties.map((p) => ({ id: p.id, title: p.title, points: p.points, emoji: p.emoji ?? '⚠️', custom: true }))
+    : STARTER_PENALTIES.map((p) => ({ id: p.title, title: p.title, points: p.points, emoji: p.emoji, custom: false }));
+  const bonusPresets = ownBonuses.length > 0
+    ? ownBonuses.map((p) => ({ id: p.id, title: p.title, points: p.points, emoji: p.emoji ?? '⭐', custom: true }))
+    : STARTER_BONUSES.map((p) => ({ id: p.title, title: p.title, points: p.points, emoji: p.emoji, custom: false }));
+
+  function editPreset(p: { id: string; custom: boolean }) {
+    Haptics.selectionAsync().catch(() => {});
+    router.push({ pathname: '/app/manage/[kind]' as any, params: { kind: 'penalties', ...(p.custom ? { edit: p.id } : {}) } });
+  }
 
   function applyPreset(title: string, points: number, bonus: boolean) {
     Haptics.selectionAsync();
@@ -83,23 +77,12 @@ export default function DisciplineLogScreen() {
 
   async function handleAddPenalty(title: string, points: number, emoji: string) {
     if (!family?.id || !member?.id) return;
+    // Keep the starters: the first custom penalty used to make them vanish.
+    await materializeStarterPresets(family.id, 'penalty', STARTER_PENALTIES, member.id);
     await createPenalty({ familyId: family.id, title, points, emoji, createdBy: member.id });
     setShowAddPenalty(false);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     loadPenalties();
-  }
-
-  function handleDeletePenalty(p: { id: string; title: string }) {
-    Alert.alert('Remove penalty?', `Remove "${p.title}" from your penalty list? Past records are kept.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove', style: 'destructive',
-        onPress: async () => {
-          if (!family?.id) return;
-          try { await deletePenalty(family.id, p.id); loadPenalties(); } catch { Alert.alert('Error', 'Could not remove penalty.'); }
-        },
-      },
-    ]);
   }
 
   // Pre-select the member passed via deep link once members are loaded.
@@ -229,22 +212,26 @@ export default function DisciplineLogScreen() {
                 3. {isBonus ? 'Quick Bonuses' : 'Your Penalties'}
               </Text>
               {isBonus ? (
-                <View style={styles.reasonGrid}>
-                  {QUICK_REASONS.map((preset) => {
-                    const title = preset.label.replace(/^[^\s]+\s/, '');
-                    const isSelected = reason === title;
-                    return (
-                      <TouchableOpacity
-                        key={preset.label}
-                        style={[styles.reasonChip, { backgroundColor: colors.surface, borderColor: isSelected ? colors.primary : colors.border }]}
-                        onPress={() => applyPreset(title, Math.abs(preset.delta), true)}
-                      >
-                        <Text style={[styles.reasonChipText, { color: colors.text }]}>{preset.label}</Text>
-                        <Text style={[styles.reasonChipPoints, { color: colors.success }]}>+{preset.delta} pts</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                <>
+                  <View style={styles.reasonGrid}>
+                    {bonusPresets.map((p) => {
+                      const isSelected = reason === p.title && isBonus;
+                      return (
+                        <TouchableOpacity
+                          key={p.id}
+                          style={[styles.reasonChip, { backgroundColor: colors.surface, borderColor: isSelected ? colors.primary : colors.border }]}
+                          onPress={() => applyPreset(p.title, p.points, true)}
+                          onLongPress={() => editPreset(p)}
+                          delayLongPress={350}
+                        >
+                          <Text style={[styles.reasonChipText, { color: colors.text }]}>{p.emoji} {p.title}</Text>
+                          <Text style={[styles.reasonChipPoints, { color: colors.success }]}>+{p.points} pts</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={[styles.penaltyHint, { color: colors.textMuted }]}>Long-press a bonus to edit it.</Text>
+                </>
               ) : (
                 <>
                   <View style={styles.reasonGrid}>
@@ -255,11 +242,11 @@ export default function DisciplineLogScreen() {
                           key={p.id}
                           style={[styles.reasonChip, { backgroundColor: colors.surface, borderColor: isSelected ? colors.primary : colors.border }]}
                           onPress={() => applyPreset(p.title, p.points, false)}
-                          onLongPress={() => p.custom && handleDeletePenalty(p)}
+                          onLongPress={() => editPreset(p)}
                           delayLongPress={350}
                         >
                           <Text style={[styles.reasonChipText, { color: colors.text }]}>{p.emoji} {p.title}</Text>
-                          <Text style={[styles.reasonChipPoints, { color: colors.danger }]}>-{p.points} pts</Text>
+                          <Text style={[styles.reasonChipPoints, { color: colors.textDanger }]}>-{p.points} pts</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -268,12 +255,10 @@ export default function DisciplineLogScreen() {
                       onPress={() => setShowAddPenalty(true)}
                     >
                       <Icon name="add-circle" size={18} color={colors.primary} />
-                      <Text style={[styles.reasonChipText, { color: colors.primary, marginTop: 2 }]}>Add penalty</Text>
+                      <Text style={[styles.reasonChipText, { color: colors.textAccent, marginTop: 2 }]}>Add penalty</Text>
                     </TouchableOpacity>
                   </View>
-                  {penalties.length > 0 && (
-                    <Text style={[styles.penaltyHint, { color: colors.textMuted }]}>Long-press a penalty you added to remove it.</Text>
-                  )}
+                  <Text style={[styles.penaltyHint, { color: colors.textMuted }]}>Long-press a penalty to edit or remove it.</Text>
                 </>
               )}
             </View>

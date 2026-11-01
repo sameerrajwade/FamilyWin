@@ -94,7 +94,7 @@ export default function RewardPacksScreen() {
                     </View>
                     <Text style={styles.rewardIcon}>{r.icon}</Text>
                     <Text style={[styles.rewardTitle, { color: colors.text }, !on && { opacity: 0.4, textDecorationLine: 'line-through' }]} numberOfLines={1}>{r.title}</Text>
-                    <Text style={[styles.rewardCost, { color: colors.primary }]}>{r.pointCost} pts</Text>
+                    <Text style={[styles.rewardCost, { color: colors.textAccent }]}>{r.pointCost} pts</Text>
                   </TouchableOpacity>
                 );
               })}

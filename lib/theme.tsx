@@ -22,6 +22,12 @@ export interface ThemeColors {
   text: string;
   textSecondary: string;
   textMuted: string;
+  /** Brand-purple TEXT (links, numbers, labels). Same as `primary` in light
+   *  mode; a lighter tint in dark mode, where #6C63FF text measured 4.0:1 on
+   *  cards (below the 4.5:1 reading minimum). Fills keep using `primary`. */
+  textAccent: string;
+  /** Red TEXT. Same as `danger` in light mode; softened in dark mode. */
+  textDanger: string;
   border: string;
   borderLight: string;
   tabBar: string;
@@ -49,6 +55,8 @@ const lightColors: ThemeColors = {
   text: '#1A1830',
   textSecondary: '#6B7280',
   textMuted: '#9CA3AF',
+  textAccent: '#6C63FF',
+  textDanger: '#FF1744',
   border: '#E7E5F2',
   borderLight: '#F3F2FB',
   tabBar: '#FFFFFF',
@@ -75,7 +83,10 @@ const darkColors: ThemeColors = {
   card: '#242235',
   text: '#EDECF7',
   textSecondary: '#9CA3AF',
-  textMuted: '#6B7280',
+  // Dark-mode text tones (user-approved 2026-10-31): all ≥ 6:1 on dark cards.
+  textMuted: '#A1A7B3',
+  textAccent: '#9D97FF',
+  textDanger: '#FF8A8A',
   border: '#2E2B40',
   borderLight: '#242235',
   tabBar: '#1A1826',
@@ -95,6 +106,7 @@ const childColors: ThemeColors = {
   primaryLight: '#FFB088',
   primaryDark: '#CC4F1A',
   accent: '#6C63FF',
+  textAccent: '#FF6B2C',
   background: '#FFF5FF',
   surface: '#FFFFFF',
 };
@@ -105,6 +117,7 @@ const childDarkColors: ThemeColors = {
   primaryLight: '#FFB088',
   primaryDark: '#CC4F1A',
   accent: '#6C63FF',
+  textAccent: '#FF6B2C', // orange text already passes on dark (6.2:1)
 };
 
 // ─── THEME CONTEXT ────────────────────────────────────────────────────────────

@@ -31,7 +31,8 @@ export default function LeaderboardScreen() {
   const [shareOpen, setShareOpen] = useState(false);
   const [coachRows, setCoachRows] = useState<{ id: string; name: string; avatarEmoji?: string; photoURL?: string; points: number }[]>([]);
   const { colors, isDark } = useTheme();
-  const iAmPlayer = competitors(members as any[]).some((m: any) => m.id === currentMember?.id);
+  const competitionMode = family?.competitionMode ?? 'everyone';
+  const iAmPlayer = competitors(members as any[], competitionMode).some((m: any) => m.id === currentMember?.id);
 
   const weekId = getCurrentWeekId();
   const { start } = getCurrentWeekRange(family?.weekStartDay ?? 1);
@@ -67,12 +68,13 @@ export default function LeaderboardScreen() {
         if (!c.wasAutoFailed) taskStats[c.memberId].completed++;
       }
 
-      // Bet 3: kids are the players — parents coach (their points still count
+      // Who ranks follows the family's choice: everyone (default — parents
+      // compete too) or kids only (parents coach; their points still count
       // toward the family co-op goal, shown in the Coaches strip below).
-      const players = competitors(membersList as any[]);
+      const players = competitors(membersList as any[], competitionMode);
       const board = buildLeaderboard(totals, players as any, currentMember.id, taskStats, {});
       setLeaderboard(board);
-      setCoachRows(coaches(membersList as any[]).map((m: any) => ({
+      setCoachRows(coaches(membersList as any[], competitionMode).map((m: any) => ({
         id: m.id, name: (m.displayName ?? '').split(' ')[0], avatarEmoji: m.avatarEmoji, photoURL: m.photoURL,
         points: totals[m.id] ?? 0,
       })));
@@ -122,7 +124,7 @@ export default function LeaderboardScreen() {
     }
     // `members` is in deps so a rebuild uses the shared cache once it populates
     // (onSnapshot only changes its identity when members actually change).
-  }, [family?.id, currentMember?.id, weekId, members]);
+  }, [family?.id, currentMember?.id, weekId, members, competitionMode]);
 
   useEffect(() => {
     loadLeaderboard();
@@ -182,7 +184,7 @@ export default function LeaderboardScreen() {
               accessibilityRole="button"
               accessibilityLabel="Share this week's standings"
             >
-              <Text style={[styles.shareStandingsText, { color: colors.primary }]}>Share ↗</Text>
+              <Text style={[styles.shareStandingsText, { color: colors.textAccent }]}>Share ↗</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -202,7 +204,7 @@ export default function LeaderboardScreen() {
                 <Text style={styles.personalBestEmoji}>🏅</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.personalBestLabel, { color: colors.textSecondary }]}>Your Personal Best</Text>
-                  <Text style={[styles.personalBestValue, { color: colors.primary }]}>{personalBest} pts in a week</Text>
+                  <Text style={[styles.personalBestValue, { color: colors.textAccent }]}>{personalBest} pts in a week</Text>
                 </View>
               </View>
             )}
@@ -291,7 +293,7 @@ export default function LeaderboardScreen() {
                         </Text>
                       </View>
                       <View style={styles.rowPoints}>
-                        <CountUp value={entry.points} style={[styles.rowPointsValue, { color: colors.primary }]} />
+                        <CountUp value={entry.points} style={[styles.rowPointsValue, { color: colors.textAccent }]} />
                         <Text style={[styles.rowPointsLabel, { color: colors.textSecondary }]}>pts</Text>
                       </View>
                     </View>
@@ -308,7 +310,7 @@ export default function LeaderboardScreen() {
                     <View key={c.id} style={styles.coachItem}>
                       <Avatar emoji={c.avatarEmoji} photoURL={c.photoURL} size={32} />
                       <Text style={[styles.coachName, { color: colors.text }]}>{c.name}</Text>
-                      <Text style={[styles.coachPts, { color: colors.primary }]}>{c.points} pts</Text>
+                      <Text style={[styles.coachPts, { color: colors.textAccent }]}>{c.points} pts</Text>
                     </View>
                   ))}
                 </View>

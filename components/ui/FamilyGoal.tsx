@@ -52,15 +52,12 @@ export function useFamilyWeekTotals(familyId: string | undefined, weekStartDay: 
   return { thisWeek, lastWeekTotal };
 }
 
-export function FamilyGoalCard({ compact }: { compact?: boolean }) {
+/** Shared state for the goal card + bar: progress, parent check, celebration. */
+function useFamilyGoalState() {
   const { family, member } = useAuthStore();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
   const { thisWeek, lastWeekTotal } = useFamilyWeekTotals(family?.id, family?.weekStartDay ?? 1);
-  const [editing, setEditing] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
-
   const goal = family?.familyGoal ?? null;
   const p = goal ? familyGoalProgress(thisWeek, goal.target) : null;
 
@@ -76,6 +73,56 @@ export function FamilyGoalCard({ compact }: { compact?: boolean }) {
       setTimeout(() => setCelebrate(false), 3200);
     }).catch(() => {});
   }, [p?.reached, family?.id]);
+
+  return { goal, p, isParent, lastWeekTotal, celebrate };
+}
+
+/**
+ * The thin (~28dp) goal line for the top of Today — visible every day without
+ * pushing the task list down. Parents with no goal see a one-line "set one".
+ */
+export function FamilyGoalBar() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { goal, p, isParent, lastWeekTotal, celebrate } = useFamilyGoalState();
+  const [editing, setEditing] = useState(false);
+  if (!goal && !isParent) return null;
+
+  return (
+    <>
+      <Confetti visible={celebrate} count={90} />
+      <TouchableOpacity
+        style={[styles.bar, { borderBottomColor: colors.border }]}
+        onPress={() => isParent && setEditing(true)}
+        activeOpacity={isParent ? 0.7 : 1}
+        accessibilityRole={isParent ? 'button' : undefined}
+        accessibilityLabel={goal ? `Family goal: ${p!.total} of ${p!.target} points for ${goal.reward}` : 'Set a family goal'}
+      >
+        <EmojiIcon emoji={p?.reached ? '🎉' : '🎯'} size={18} />
+        {goal ? (
+          <>
+            <Text style={styles.barLabel} numberOfLines={1}>{goal.reward}</Text>
+            <View style={styles.barTrack}>
+              <View style={[styles.fill, { width: `${Math.round(p!.progress * 100)}%`, backgroundColor: p!.reached ? colors.success : colors.primary }]} />
+            </View>
+            <Text style={[styles.barNums, { color: p!.reached ? colors.success : colors.textAccent }]}>{p!.total}/{p!.target}</Text>
+          </>
+        ) : (
+          <Text style={[styles.barLabel, { color: colors.textAccent }]}>Set a family goal ›</Text>
+        )}
+      </TouchableOpacity>
+      {isParent && (
+        <FamilyGoalEditor visible={editing} onClose={() => setEditing(false)} suggested={suggestFamilyGoal(lastWeekTotal)} current={goal} />
+      )}
+    </>
+  );
+}
+
+export function FamilyGoalCard({ compact }: { compact?: boolean }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { goal, p, isParent, lastWeekTotal, celebrate } = useFamilyGoalState();
+  const [editing, setEditing] = useState(false);
 
   if (!goal) {
     if (!isParent) return null;
@@ -188,7 +235,7 @@ export function FamilyGoalEditor({ visible, onClose, suggested, current }: {
 
           <View style={styles.btns}>
             {current ? (
-              <TouchableOpacity style={styles.ghostBtn} onPress={() => save(null)} disabled={saving}><Text style={[styles.ghostText, { color: colors.danger }]}>Remove</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.ghostBtn} onPress={() => save(null)} disabled={saving}><Text style={[styles.ghostText, { color: colors.textDanger }]}>Remove</Text></TouchableOpacity>
             ) : (
               <TouchableOpacity style={styles.ghostBtn} onPress={onClose} disabled={saving}><Text style={styles.ghostText}>Cancel</Text></TouchableOpacity>
             )}
@@ -204,6 +251,10 @@ export function FamilyGoalEditor({ visible, onClose, suggested, current }: {
 
 function createStyles(colors: any) {
   return StyleSheet.create({
+    bar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Spacing.lg, paddingVertical: 6, borderBottomWidth: 1 },
+    barLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.extraBold, color: colors.text, maxWidth: '38%' },
+    barTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: 'hidden' },
+    barNums: { fontSize: FontSize.xs, fontFamily: FontFamily.extraBold },
     card: { backgroundColor: colors.surface, borderRadius: BorderRadius.lg, borderWidth: 1.5, borderColor: colors.primary + '33', padding: Spacing.md, gap: Spacing.sm, ...Shadow.sm },
     setupCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderStyle: 'dashed' },
     row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },

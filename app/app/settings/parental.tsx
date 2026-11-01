@@ -12,7 +12,7 @@ import { SettingsScaffold, SettingsGroup, NavRow, SettingsBlock } from '@/compon
 import { firestore } from '@/lib/fb';
 import { useAuthStore } from '@/store';
 import { useTheme, type ThemeColors } from '@/lib/theme';
-import { setMissedTaskPenalty, missedPenaltyMode, missedDeadlineHour, setMissedTaskDeadline, updateFamilyWeekStartDay, setFamilyPenaltyPause, PAUSE_INDEFINITE, setAllowanceSettings } from '@/lib/firebase';
+import { setMissedTaskPenalty, missedPenaltyMode, missedDeadlineHour, setMissedTaskDeadline, updateFamilyWeekStartDay, setFamilyPenaltyPause, PAUSE_INDEFINITE, setAllowanceSettings, setCompetitionMode } from '@/lib/firebase';
 import { FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
 
 const DAY_MS = 86_400_000;
@@ -59,6 +59,19 @@ export default function ParentalControlsScreen() {
     } catch {
       setFamily({ ...family, missedTaskPenalty: prev });
       Alert.alert('Error', 'Could not update the missed-task penalty setting.');
+    }
+  }
+
+  async function handleSetCompetition(mode: 'everyone' | 'kids') {
+    if (!family?.id || (family.competitionMode ?? 'everyone') === mode) return;
+    const prev = family.competitionMode;
+    Haptics.selectionAsync().catch(() => {});
+    setFamily({ ...family, competitionMode: mode });
+    try {
+      await setCompetitionMode(family.id, mode);
+    } catch {
+      setFamily({ ...family, competitionMode: prev });
+      Alert.alert('Error', 'Could not update who competes.');
     }
   }
 
@@ -110,7 +123,36 @@ export default function ParentalControlsScreen() {
     : familyPausedUntil ? `until ${familyPausedUntil.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : '';
 
   return (
-    <SettingsScaffold title="Parental Controls">
+    <SettingsScaffold title="Game rules">
+      {/* Who competes — default everyone (healthy family competition). */}
+      <SettingsGroup title="Who competes">
+        <SettingsBlock isLast>
+          {([
+            { mode: 'everyone', label: 'Everyone competes', hint: 'Parents and kids all rank, share the podium and can win crowns.' },
+            { mode: 'kids', label: 'Kids only', hint: 'Parents coach — not ranked, but their points still count toward the family goal.' },
+          ] as const).map((o) => {
+            const active = (family?.competitionMode ?? 'everyone') === o.mode;
+            return (
+              <TouchableOpacity
+                key={o.mode}
+                style={[styles.modeOption, { borderColor: active ? colors.primary : colors.border }, active && { backgroundColor: colors.primary + '10' }]}
+                onPress={() => handleSetCompetition(o.mode)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+              >
+                <View style={[styles.radio, { borderColor: active ? colors.primary : colors.border }]}>
+                  {active && <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.blockLabel, { color: colors.text, marginBottom: 2 }]}>{o.label}</Text>
+                  <Text style={[styles.blockHint, { color: colors.textSecondary, marginBottom: 0 }]}>{o.hint}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </SettingsBlock>
+      </SettingsGroup>
+
       <SettingsGroup title="Points">
         <NavRow
           icon="alert-circle-outline"
@@ -312,6 +354,9 @@ function createStyles(_colors: ThemeColors) {
     penaltyModeChip: { flex: 1, paddingVertical: 10, borderRadius: BorderRadius.md, borderWidth: 1.5, alignItems: 'center' },
     penaltyModeText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
     deadlineWrap: { marginTop: Spacing.lg },
+    modeOption: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1.5, borderRadius: BorderRadius.md, padding: Spacing.md, marginBottom: Spacing.sm },
+    radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+    radioDot: { width: 10, height: 10, borderRadius: 5 },
     hourRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
     hourChip: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: BorderRadius.md, borderWidth: 1.5, alignItems: 'center' },
     hourChipText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },

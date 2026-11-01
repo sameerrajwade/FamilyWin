@@ -106,9 +106,14 @@ describe('HomeScreen', () => {
     expect(await findByLabelText('Create new task')).toBeTruthy();
   });
 
-  it('renders progress bar section', async () => {
-    const { findByText } = render(<HomeScreen />);
-    expect(await findByText("Today's Tasks")).toBeTruthy();
+  // Compact Today layout: the hero banner and the duplicate "Today's Tasks"
+  // header are gone — progress lives in the greeting line and points/level in
+  // the score chip on the profile strip.
+  it('shows today progress and the profile score chip', async () => {
+    const { findByText, findByLabelText, queryByText } = render(<HomeScreen />);
+    expect(await findByText(/done today|Let's make today count|All done/)).toBeTruthy();
+    expect(await findByLabelText(/points to spend, level/)).toBeTruthy();
+    expect(queryByText("Today's Tasks")).toBeNull();
   });
 
   it('completes an incomplete task on tap (one-tap UX, no confirm alert)', async () => {

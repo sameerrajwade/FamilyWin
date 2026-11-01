@@ -29,7 +29,7 @@ import {
 import { findCompletionForPeriod } from '@/lib/completionMatch';
 import { effectiveAssignee, isDueToday } from '@/lib/rotation';
 import { getCurrentWeekRange, summarizeMemberPoints } from '@/lib/pointsEngine';
-import { competitors, makeGateQuestion } from '@/lib/familyGame';
+import { isKid, makeGateQuestion } from '@/lib/familyGame';
 import { resolveTaskEmoji } from '@/lib/taskEmoji';
 import { pickPhotoUri } from '@/lib/photoPicker';
 import { Sounds } from '@/lib/sounds';
@@ -49,7 +49,8 @@ export default function KidModeScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const kids = useMemo(() => competitors(members as any[]), [members]);
+  // Kids only — never parents, whatever the competition mode.
+  const kids = useMemo(() => (members as any[]).filter(isKid), [members]);
   const kid = kids.find((k: any) => k.id === kidId) ?? kids[0] ?? null;
 
   const [tasks, setTasks] = useState<TaskDoc[]>([]);
@@ -203,7 +204,7 @@ export default function KidModeScreen() {
             return (
               <TouchableOpacity key={k.id} onPress={() => { switchKid(k.id); Haptics.selectionAsync().catch(() => {}); }} style={[styles.kidChip, on && styles.kidChipOn]} accessibilityRole="button" accessibilityState={{ selected: on }}>
                 <Avatar emoji={k.avatarEmoji} photoURL={k.photoURL} size={34} showRing={on} ringColor={colors.primary} />
-                <Text style={[styles.kidChipText, on && { color: colors.primary }]}>{(k.displayName ?? '').split(' ')[0]}</Text>
+                <Text style={[styles.kidChipText, on && { color: colors.textAccent }]}>{(k.displayName ?? '').split(' ')[0]}</Text>
               </TouchableOpacity>
             );
           })}
@@ -377,7 +378,7 @@ function createStyles(colors: any) {
     cardDone: { backgroundColor: colors.success + '14' },
     cardIcon: { width: 60, height: 60, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary + '12' },
     cardTitle: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold, color: colors.text },
-    cardPts: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.primary, marginTop: 2 },
+    cardPts: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textAccent, marginTop: 2 },
     didItBtn: { backgroundColor: colors.success, borderRadius: BorderRadius.full, paddingHorizontal: 18, paddingVertical: 12, minWidth: 96, alignItems: 'center' },
     didItText: { fontSize: FontSize.md, fontFamily: FontFamily.extraBold, color: '#FFFFFF' },
     waitingPill: { backgroundColor: colors.warning + '22', borderRadius: BorderRadius.full, paddingHorizontal: 14, paddingVertical: 10 },
@@ -394,9 +395,9 @@ function createStyles(colors: any) {
     gateCard: { width: '100%', maxWidth: 360, backgroundColor: colors.surface, borderRadius: 24, padding: Spacing.lg, alignItems: 'center' },
     gateTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, color: colors.text },
     gateSub: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 4 },
-    gateQ: { fontSize: 34, fontFamily: FontFamily.black ?? FontFamily.extraBold, color: colors.primary, marginVertical: Spacing.md },
+    gateQ: { fontSize: 34, fontFamily: FontFamily.black ?? FontFamily.extraBold, color: colors.textAccent, marginVertical: Spacing.md },
     gateInput: { width: 120, borderWidth: 2, borderColor: colors.border, borderRadius: BorderRadius.md, fontSize: 26, fontFamily: FontFamily.extraBold, textAlign: 'center', paddingVertical: 8, color: colors.text },
-    gateWrong: { color: colors.danger, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, marginTop: Spacing.sm },
+    gateWrong: { color: colors.textDanger, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, marginTop: Spacing.sm },
     gateBtns: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg, width: '100%' },
     gateCancel: { flex: 1, borderWidth: 1.5, borderColor: colors.border, borderRadius: BorderRadius.md, paddingVertical: 12, alignItems: 'center' },
     gateCancelText: { fontFamily: FontFamily.bold, color: colors.textSecondary, fontSize: FontSize.md },

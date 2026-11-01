@@ -67,7 +67,7 @@ export default function AboutScreen() {
         <View style={styles.legalBlock}>
           {PRIVACY_POINTS.map((p, i) => (
             <View key={i} style={styles.bulletRow}>
-              <Text style={[styles.bulletDot, { color: colors.primary }]}>•</Text>
+              <Text style={[styles.bulletDot, { color: colors.textAccent }]}>•</Text>
               <Text style={[styles.bulletText, { color: colors.textSecondary }]}>{p}</Text>
             </View>
           ))}
@@ -78,7 +78,7 @@ export default function AboutScreen() {
         <View style={styles.legalBlock}>
           {TERMS_POINTS.map((p, i) => (
             <View key={i} style={styles.bulletRow}>
-              <Text style={[styles.bulletDot, { color: colors.primary }]}>•</Text>
+              <Text style={[styles.bulletDot, { color: colors.textAccent }]}>•</Text>
               <Text style={[styles.bulletText, { color: colors.textSecondary }]}>{p}</Text>
             </View>
           ))}
