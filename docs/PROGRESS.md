@@ -19,7 +19,9 @@ Client-only (no deploy). User: "Start Phase E". Did E1 → E5 → E2 (E3 level u
 - **E5 crowning ceremony:** tabs/_layout launch hook → `familyGame.shouldShowCrowning` → auto-opens `/app/winner` once per device per week (AsyncStorage `crowning_seen_<fam>`), only days 0–2 of the week, only if a competitor earned >0 last week, never over Kid Mode.
 - **E2 save for a reward:** `MemberDoc.savingForRewardId` + `setSavingFor` (member-doc update; rules already allow owner/parent). Rewards: 📌 Save / Saving toggle on each card + `SavingGoalCard` ring under the vault. Today + Kid Mode: `SavingGoalRow` (live reward doc listener; one-time confetti per device when affordable; Kid Mode row doesn't navigate). `familyGame.savingProgress` (pct floored; negative = 0). Kids in Kid Mode can't pin — a grown-up pins on Rewards with the kid's profile selected.
 - **Wrapper fix (gotcha #13):** `lib/fb.ts` DocRef had NO `onSnapshot` → added (would have crashed on device). v26 `.exists()` is a method.
-- **Tests:** tsc app-src 0; **26 suites / 415** (+quest, +crowning, +savingProgress, +Rewards pin test). arm64 build started.
+- **Tests:** tsc app-src 0; **26 suites / 415** (+quest, +crowning, +savingProgress, +Rewards pin test). Committed `3e4a419`.
+- **Device:** arm64 APK built (1m28s) + INSTALLED 22:54, process up, no FATAL/JS errors. Phone was LOCKED (charging AOD) → screens NOT eyeballed; user to check ring, 📌 Save, Kid Mode row.
+- **Next Up:** (1) user device-check E1/E2 (E5 only fires Mon–Wed of a new week). (2) E4 bounties (M). (3) E3 level unlocks (L). (4) backlog: firebase-functions 5→latest.
 
 ## Iteration 56 (2026-10-31) — Phase C committed + Phase D server batch (built, NOT deployed)
 User confirmed Phase C looks good on the Pixel → **committed `291345d`** (tsc app-src 0; 26 suites/403 green). Then built the whole **Phase D server batch** (all server-side; `firebase deploy --only firestore:rules,functions` is user-gated). User confirmed D4 event-push list = **"overtaken" only** (dropped approved/streak/parent-activity).
