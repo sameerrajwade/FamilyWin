@@ -164,6 +164,32 @@ service cloud.firestore {
         allow create, update, delete: if isFamilyMember(familyId) && isParent(familyId);
       }
 
+      // ── Bounties subcollection (Phase E4) ─────────────────────────────────
+      // A parent posts "first to wash the car +100". Parents run the bounty
+      // (post, approve, reject, award, delete). A NON-PARENT may only:
+      //   • CLAIM an open bounty for THEMSELVES (open → claimed, claimedBy = me)
+      //   • WITHDRAW their own claim (claimed-by-me → open, claimedBy = null)
+      // touching nothing but status/claimedBy/claimedAt. They can never mark a
+      // bounty done; the points are a parent-written source:'bonus' transaction.
+      match /bounties/{bountyId} {
+        allow read: if isFamilyMember(familyId);
+        allow create, delete: if isFamilyMember(familyId) && isParent(familyId);
+        allow update: if isFamilyMember(familyId) && (
+          isParent(familyId)
+          || (request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'claimedBy', 'claimedAt'])
+              && (
+                (resource.data.status == 'open'
+                  && request.resource.data.status == 'claimed'
+                  && request.resource.data.claimedBy == userDoc().memberId)
+                || (resource.data.status == 'claimed'
+                  && resource.data.claimedBy == userDoc().memberId
+                  && request.resource.data.status == 'open'
+                  && request.resource.data.claimedBy == null)
+              ))
+        );
+      }
+
       // ── Redemptions subcollection ─────────────────────────────────────────
       match /redemptions/{redemptionId} {
         allow read: if isFamilyMember(familyId);

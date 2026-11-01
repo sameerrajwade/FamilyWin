@@ -32,6 +32,7 @@ import { checkSurprisePacks } from '@/lib/surprise';
 import { SurprisePackReveal } from '@/components/ui/SurprisePack';
 import { DailyQuestRing } from '@/components/ui/DailyQuestRing';
 import { SavingGoalRow } from '@/components/ui/SavingGoal';
+import { BountyBoard } from '@/components/ui/BountyBoard';
 import { questProgress, questLabel } from '@/lib/surprisePacks';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
@@ -779,6 +780,17 @@ export default function HomeScreen() {
               })
             )}
         </View>
+
+        {/* E4 bounties: "first to wash the car +100" — under today's tasks. */}
+        <BountyBoard
+          familyId={family?.id}
+          actor={isReadOnly ? null : effectiveMember}
+          viewerId={member?.id}
+          canManage={isParent}
+          needsOk={!isParent}
+          members={members as any[]}
+          style={styles.section}
+        />
 
         {/* Secondary actions live BELOW the tasks as small side-by-side tiles,
             so they never push today's list off-screen. */}

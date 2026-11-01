@@ -59,6 +59,8 @@ export const Col = {
     firestore().collection('families').doc(familyId).collection('redemptions'),
   penalties: (familyId: string) =>
     firestore().collection('families').doc(familyId).collection('penalties'),
+  bounties: (familyId: string) =>
+    firestore().collection('families').doc(familyId).collection('bounties'),
   weeklyScores: (familyId: string) =>
     firestore().collection('families').doc(familyId).collection('weeklyScores'),
   notifConfigs: (familyId: string) =>

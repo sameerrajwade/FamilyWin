@@ -1,6 +1,6 @@
 import {
   isKid, competitors, coaches, familyGoalProgress, suggestFamilyGoal,
-  buildParentReport, choreMinutes, formatMinutes, makeGateQuestion, weeklyTrend, shouldShowCrowning, savingProgress, type GameMember, type ReportTx,
+  buildParentReport, choreMinutes, formatMinutes, makeGateQuestion, weeklyTrend, shouldShowCrowning, savingProgress, visibleBounties, canClaimBounty, bountyTxId, type GameMember, type ReportTx,
 } from '@/lib/familyGame';
 
 const dad: GameMember = { id: 'dad', displayName: 'Sameer R', role: 'admin_parent' };
@@ -179,5 +179,35 @@ describe('savingProgress (E2 save for a reward)', () => {
   });
   it('a free reward is always affordable', () => {
     expect(savingProgress(0, 0).affordable).toBe(true);
+  });
+});
+
+
+describe('bounties (E4)', () => {
+  const now = new Date('2026-11-02T18:00:00');
+  const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600_000);
+  const b = (id: string, status: any, extra: any = {}) => ({ id, title: id, points: 50, status, createdBy: 'dad', ...extra });
+
+  it('orders claimed first, then open newest first, then recently won', () => {
+    const list = [
+      b('openOld', 'open', { createdAt: hoursAgo(10) }),
+      b('won', 'done', { createdAt: hoursAgo(30), completedAt: hoursAgo(2) }),
+      b('claimed', 'claimed', { createdAt: hoursAgo(20) }),
+      b('openNew', 'open', { createdAt: hoursAgo(1) }),
+    ];
+    expect(visibleBounties(list, now).map((x) => x.id)).toEqual(['claimed', 'openNew', 'openOld', 'won']);
+  });
+  it('hides bounties won more than a day ago', () => {
+    const list = [b('old', 'done', { completedAt: hoursAgo(25) }), b('fresh', 'done', { completedAt: hoursAgo(23) })];
+    expect(visibleBounties(list, now).map((x) => x.id)).toEqual(['fresh']);
+  });
+  it('only open bounties can be claimed, and never by the poster', () => {
+    expect(canClaimBounty(b('x', 'open'), 'vian')).toBe(true);
+    expect(canClaimBounty(b('x', 'open'), 'dad')).toBe(false);
+    expect(canClaimBounty(b('x', 'claimed'), 'vian')).toBe(false);
+    expect(canClaimBounty(b('x', 'done'), 'vian')).toBe(false);
+  });
+  it('uses a fixed award transaction id per bounty', () => {
+    expect(bountyTxId('abc')).toBe('bounty_abc');
   });
 });

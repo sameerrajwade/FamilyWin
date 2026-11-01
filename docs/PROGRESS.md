@@ -13,6 +13,13 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 58 (2026-10-31) — E4 Bounties (built; RULES DEPLOY PENDING — user)
+- **Data:** `/families/{id}/bounties/{id}` {title, points, emoji, status open|claimed|done, createdBy, claimedBy, claimedAt, completedAt, approvedBy}. `lib/bounties.ts`: watch/post/claim (txn, first wins → `BountyTakenError`)/release/award (txn: fixed-id `bounty_<id>` source:'bonus' tx + status done)/delete. Pure: `familyGame.visibleBounties` (claimed → open newest → won <24h), `canClaimBounty` (open, not the poster), `bountyTxId`.
+- **Rules:** new `bounties` match — parents do everything; a non-parent may ONLY claim an open bounty for themselves or withdraw their own claim (status/claimedBy/claimedAt only). Emulator **rules 50/50** (+11).
+- **UI:** `components/ui/BountyBoard` under today's tasks (Today + Kid Mode). Parent: "＋ Post a bounty" composer (auto 3D emoji, +25/50/100/200/custom), ✓ OK / Not yet on claims, long-press remove. Kid: "I did it!" → claimed, "Undo" while waiting. Parent on a kid profile → "Vian did it" awards directly. Kid Mode: claims always wait. Bounty points are a `bonus` tx → count this week + trigger the overtaken push.
+- **Tests:** tsc 0; app **27 suites / 425** (+familyGame bounties, +BountyBoard 5, +Home board).
+- **⚠️ DEPLOY BLOCKED for me** (auto-mode classifier: production deploy). Until the user runs `firebase deploy --only firestore:rules --project familywin-35a97`, the board loads empty (permission-denied handled) and Post shows "Could not post".
+
 ## Iteration 57 (2026-10-31) — Phase E part 1: quest ring, crowning ceremony, save-for-a-reward
 Client-only (no deploy). User: "Start Phase E". Did E1 → E5 → E2 (E3 level unlocks, E4 bounties still to do).
 - **E1 daily quest ring:** `components/ui/ProgressRing` (shared SVG ring) + `DailyQuestRing` beside the Today greeting. `surprisePacks.questProgress/questLabel` count like `isDayComplete` (approved purple, pending amber, 🎁→💰 when earned). Subtitle e.g. "1 of 2 done today · finish all for a surprise pack" / "…1 waiting for an OK, then your pack".

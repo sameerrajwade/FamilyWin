@@ -221,3 +221,55 @@ describe('Point integrity (Phase 1.8 — task points are Cloud-Function-only)', 
     await assertFails(addDoc(collection(childA(), 'families/famA/transactions'), { memberId: 'mChildA', delta: 9999, source: 'redemption' }));
   });
 });
+
+describe('Bounties (Phase E4)', () => {
+  const B = 'families/famA/bounties/b1';
+  const seed = (data) => testEnv.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), B), {
+    title: 'Wash the car', points: 100, createdBy: 'mAdminA', status: 'open', claimedBy: null, ...data,
+  }));
+
+  test('a parent can post a bounty', async () => {
+    await assertSucceeds(setDoc(doc(adminA(), 'families/famA/bounties/new'), { title: 'Mow', points: 50, status: 'open', claimedBy: null }));
+  });
+  test('a child cannot post a bounty', async () => {
+    await assertFails(setDoc(doc(childA(), 'families/famA/bounties/new'), { title: 'Mow', points: 50, status: 'open', claimedBy: null }));
+  });
+  test('family members can read bounties; other families cannot', async () => {
+    await seed({});
+    await assertSucceeds(getDoc(doc(childA(), B)));
+    await assertFails(getDoc(doc(adminB(), B)));
+  });
+  test('a child can claim an open bounty for themselves', async () => {
+    await seed({});
+    await assertSucceeds(updateDoc(doc(childA(), B), { status: 'claimed', claimedBy: 'mChildA', claimedAt: new Date() }));
+  });
+  test('a child cannot claim a bounty for someone else', async () => {
+    await seed({});
+    await assertFails(updateDoc(doc(childA(), B), { status: 'claimed', claimedBy: 'mAdminA' }));
+  });
+  test('a child cannot steal a bounty already claimed by someone else', async () => {
+    await seed({ status: 'claimed', claimedBy: 'mOther' });
+    await assertFails(updateDoc(doc(childA(), B), { status: 'claimed', claimedBy: 'mChildA' }));
+  });
+  test('a child cannot mark a bounty done (self-award)', async () => {
+    await seed({ status: 'claimed', claimedBy: 'mChildA' });
+    await assertFails(updateDoc(doc(childA(), B), { status: 'done' }));
+  });
+  test('a child cannot change the points while claiming', async () => {
+    await seed({});
+    await assertFails(updateDoc(doc(childA(), B), { status: 'claimed', claimedBy: 'mChildA', points: 9999 }));
+  });
+  test('a child can withdraw their own claim', async () => {
+    await seed({ status: 'claimed', claimedBy: 'mChildA' });
+    await assertSucceeds(updateDoc(doc(childA(), B), { status: 'open', claimedBy: null, claimedAt: null }));
+  });
+  test('a parent can approve (mark done) and delete a bounty', async () => {
+    await seed({ status: 'claimed', claimedBy: 'mChildA' });
+    await assertSucceeds(updateDoc(doc(adminA(), B), { status: 'done', approvedBy: 'mAdminA' }));
+    await assertSucceeds(deleteDoc(doc(adminA(), B)));
+  });
+  test('a child cannot delete a bounty', async () => {
+    await seed({});
+    await assertFails(deleteDoc(doc(childA(), B)));
+  });
+});

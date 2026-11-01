@@ -39,13 +39,14 @@ import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { Confetti } from '@/components/ui/Animations';
 import { SurprisePackReveal } from '@/components/ui/SurprisePack';
 import { SavingGoalRow } from '@/components/ui/SavingGoal';
+import { BountyBoard } from '@/components/ui/BountyBoard';
 import { BrandLogo } from '@/components/ui/BrandIcons';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 
 type KidTask = TaskDoc & { completion: CompletionDoc | null };
 
 export default function KidModeScreen() {
-  const { family } = useAuthStore();
+  const { family, member } = useAuthStore();
   const { members, setMembers } = useFamilyStore();
   const { kidId, switchKid, exit } = useKidMode();
   const { colors } = useTheme();
@@ -300,6 +301,17 @@ export default function KidModeScreen() {
             );
           })
         )}
+
+        {/* E4: bounties — a kid's claim always waits for a grown-up's OK here. */}
+        <BountyBoard
+          familyId={family?.id}
+          actor={kid}
+          viewerId={member?.id}
+          canManage={false}
+          needsOk
+          members={members as any[]}
+          style={{ marginTop: Spacing.lg }}
+        />
       </ScrollView>
 
       {cheer && (

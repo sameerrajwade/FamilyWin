@@ -251,6 +251,47 @@ export function savingProgress(spendable: number, cost: number): SavingProgress 
   };
 }
 
+// ─── Bounties (Phase E4) ─────────────────────────────────────────────────────
+// A parent posts "first to wash the car +100"; the first person whose claim a
+// parent approves wins it. Firestore side lives in lib/bounties.
+
+export type BountyStatus = 'open' | 'claimed' | 'done';
+
+export interface Bounty {
+  id: string;
+  title: string;
+  points: number;
+  emoji?: string;
+  status: BountyStatus;
+  createdBy: string;
+  claimedBy?: string | null;
+  createdAt?: Date | null;
+  completedAt?: Date | null;
+}
+
+/** How long a won bounty stays on the board ("🏆 Vian won it"). */
+export const BOUNTY_WON_SHOW_MS = 24 * 60 * 60 * 1000;
+
+/** The fixed transaction id for a bounty's award — at most one, ever. */
+export const bountyTxId = (bountyId: string) => `bounty_${bountyId}`;
+
+/**
+ * What the board shows: claimed bounties first (they need a parent's eye),
+ * then open ones newest first, then ones won in the last 24h.
+ */
+export function visibleBounties<T extends Bounty>(bounties: T[], now: Date = new Date()): T[] {
+  const t = (d?: Date | null) => (d ? d.getTime() : 0);
+  const order: Record<BountyStatus, number> = { claimed: 0, open: 1, done: 2 };
+  return bounties
+    .filter((b) => b.status !== 'done' || (b.completedAt && now.getTime() - b.completedAt.getTime() < BOUNTY_WON_SHOW_MS))
+    .sort((a, b) => order[a.status] - order[b.status] || t(b.createdAt) - t(a.createdAt));
+}
+
+/** Can this member claim it? Only an open bounty, and not one they posted. */
+export function canClaimBounty(b: Pick<Bounty, 'status' | 'createdBy'>, memberId: string): boolean {
+  return b.status === 'open' && b.createdBy !== memberId;
+}
+
 // ─── Sunday crowning ceremony (Phase E5) ─────────────────────────────────────
 
 /** How long into a new week the ceremony may still auto-open (days 0–2). */

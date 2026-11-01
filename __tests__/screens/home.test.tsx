@@ -42,6 +42,13 @@ jest.mock('@/lib/firebase', () => ({
       where: jest.fn().mockReturnThis(),
       onSnapshot: jest.fn(() => jest.fn()),
     })),
+    // E4: one open bounty on the board.
+    bounties: jest.fn(() => ({
+      onSnapshot: jest.fn((cb: any) => {
+        cb({ docs: [{ id: 'b1', data: () => ({ title: 'Wash the car', points: 100, status: 'open', createdBy: 'm2', emoji: '🚗' }) }] });
+        return jest.fn();
+      }),
+    })),
   },
 }));
 
@@ -99,6 +106,13 @@ describe('HomeScreen', () => {
   it('renders completed task with different style', async () => {
     const { findByText } = render(<HomeScreen />);
     expect(await findByText('Completed Task')).toBeTruthy();
+  });
+
+  it('shows the bounty board with an open bounty (E4)', async () => {
+    const { findByText } = render(<HomeScreen />);
+    expect(await findByText('Wash the car')).toBeTruthy();
+    expect(await findByText('+100 pts · first to finish wins')).toBeTruthy();
+    expect(await findByText('＋ Post a bounty')).toBeTruthy();
   });
 
   it('renders the task-create button for a parent', async () => {
