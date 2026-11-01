@@ -73,6 +73,15 @@ describe('isDayComplete', () => {
     expect(isDayComplete([tasks[0], tasks[1]], done(), 'vian', period)).toBe(false);
     expect(isDayComplete([], [], 'vian', period)).toBe(false);
   });
+  it('a pending or undone WEEKLY task does not block the daily pack', () => {
+    const weekly = { id: 'w1', recurrence: 'weekly', assignedTo: 'vian' };
+    expect(isDayComplete([tasks[0], weekly], done(), 'vian', period)).toBe(true);
+    expect(isDayComplete([tasks[0], weekly], [...done(), { taskId: 'w1', memberId: 'vian', weekId: '2026-W45', status: 'pending' }], 'vian', period)).toBe(true);
+  });
+  it('a day with only weekly/monthly tasks earns no daily pack', () => {
+    const weekly = { id: 'w1', recurrence: 'weekly', assignedTo: 'vian' };
+    expect(isDayComplete([weekly], [{ taskId: 'w1', memberId: 'vian', weekId: '2026-W45' }], 'vian', period)).toBe(false);
+  });
   it("another member's completion doesn't count", () => {
     expect(isDayComplete(due, [{ taskId: 't1', memberId: 'vayu', completedDate: '2026-11-02' }], 'vian', period)).toBe(false);
   });
@@ -88,7 +97,7 @@ describe('isPerfectWeek', () => {
 
 
 describe('questProgress / questLabel (E1 daily quest ring)', () => {
-  const T = (completion: any) => ({ completion });
+  const T = (completion: any, recurrence = 'daily') => ({ recurrence, completion });
   it('counts approved vs pending, ignores missed and rejected', () => {
     const p = questProgress([
       T({}), T({ status: 'approved' }), T({ status: 'pending' }),
@@ -101,9 +110,14 @@ describe('questProgress / questLabel (E1 daily quest ring)', () => {
     expect(questProgress([T({}), T({ status: 'pending' })]).complete).toBe(false);
     expect(questProgress([]).complete).toBe(false);
   });
+  it('ignores weekly and monthly tasks (user rule: only dailies earn the pack)', () => {
+    const p = questProgress([T({}), T({}), T(null, 'weekly'), T({ status: 'pending' }, 'monthly')]);
+    expect(p).toEqual({ total: 2, approved: 2, pending: 0, complete: true });
+    expect(questProgress([T(null, 'weekly')]).total).toBe(0);
+  });
   it('labels each state', () => {
     expect(questLabel(questProgress([]))).toMatch(/make today count/);
-    expect(questLabel(questProgress([T({}), T(null)]))).toBe('1 of 2 done today · finish all for a surprise pack');
+    expect(questLabel(questProgress([T({}), T(null)]))).toBe('1 of 2 daily done today · finish them for a surprise pack');
     expect(questLabel(questProgress([T({}), T({ status: 'pending' })]))).toMatch(/1 waiting for an OK/);
     expect(questLabel(questProgress([T({}), T({})]))).toMatch(/surprise pack earned/);
   });

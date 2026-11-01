@@ -32,7 +32,7 @@ async function awardOnce(familyId: string, memberId: string, id: string, kind: '
       familyId,
       memberId,
       delta: points,
-      reason: kind === 'daily' ? '🎁 Surprise pack — every task done today!' : '🏆 Perfect-week surprise pack!',
+      reason: kind === 'daily' ? '🎁 Surprise pack — every daily task done today!' : '🏆 Perfect-week surprise pack!',
       source: 'bonus',
       surprise: kind,
       referenceId: id,

@@ -92,7 +92,7 @@ function RevealModal({ pack, name, onDone }: { pack: Pack | null; name?: string;
       <View style={styles.overlay}>
         <Confetti visible={opened} count={weekly ? 140 : 90} />
         <View style={styles.card}>
-          <Text style={styles.eyebrow}>{weekly ? 'PERFECT WEEK' : 'ALL TASKS DONE'}</Text>
+          <Text style={styles.eyebrow}>{weekly ? 'PERFECT WEEK' : 'DAILY TASKS DONE'}</Text>
           <Text style={styles.title}>{opened ? `+${pack.points} points!` : `${name ? name + ', a' : 'A'} surprise pack!`}</Text>
           <TouchableOpacity onPress={opened ? undefined : open} activeOpacity={0.9} accessibilityRole="button" accessibilityLabel={opened ? `${pack.points} bonus points` : 'Open your surprise pack'}>
             <Animated.View style={giftStyle}>
@@ -101,7 +101,7 @@ function RevealModal({ pack, name, onDone }: { pack: Pack | null; name?: string;
           </TouchableOpacity>
           <Text style={styles.sub}>
             {opened
-              ? (weekly ? 'You finished every day this week. Legendary!' : 'You finished every task today. Keep the streak going!')
+              ? (weekly ? 'You finished every day this week. Legendary!' : 'You finished every daily task today. Keep the streak going!')
               : 'Tap the gift to open it'}
           </Text>
           {opened && (

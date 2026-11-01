@@ -1,7 +1,8 @@
 /**
  * lib/surprisePacks.ts — PURE rules for surprise packs (Phase C8)
  * ─────────────────────────────────────────────────────────────────────────────
- *   Daily pack  — every task due for a person on a day is done AND approved
+ *   Daily pack  — every DAILY task due for a person on a day is done AND
+ *                 approved (weekly/monthly tasks never block it)
  *                 → random 5–20 bonus points.
  *   Weekly pack — they earned the daily pack on all 7 days of the family week
  *                 → random 15–50 bonus points.
@@ -73,13 +74,22 @@ export function tasksDueFor<T extends PackTask>(
 }
 
 /**
- * Did this member finish EVERY task due on `day`? Each needs a completion in
- * its period that is approved/settled — not pending, rejected or auto-failed.
- * A day with no tasks never counts (nothing was "finished").
+ * Only DAILY tasks decide the daily pack (user rule, 2026-10-31): a weekly or
+ * monthly task still open must not block today's bonus. Day-specific tasks
+ * (e.g. Mon/Thu only) are daily tasks with scheduledDays, so they count on the
+ * days they're due.
+ */
+export const isDailyTask = (t: { recurrence?: string }) => t.recurrence === 'daily';
+
+/**
+ * Did this member finish EVERY daily task due on `day`? Each needs a completion
+ * in its period that is approved/settled — not pending, rejected or auto-failed.
+ * A day with no daily tasks never counts (nothing was "finished").
  */
 export function isDayComplete(dueTasks: PackTask[], completions: PackCompletion[], memberId: string, period: Period): boolean {
-  if (dueTasks.length === 0) return false;
-  return dueTasks.every((t) => {
+  const daily = dueTasks.filter(isDailyTask);
+  if (daily.length === 0) return false;
+  return daily.every((t) => {
     const c = findCompletionForPeriod(completions, t.id, memberId, t.recurrence, period);
     return !!c && !c.wasAutoFailed && c.status !== 'pending';
   });
@@ -87,33 +97,34 @@ export function isDayComplete(dueTasks: PackTask[], completions: PackCompletion[
 
 /**
  * Daily quest ring (Phase E1): progress toward today's surprise pack, from the
- * tasks Home shows. Counts the same way isDayComplete does: `approved` = done
- * and settled (not pending, not missed); `pending` = claimed, waiting for a
- * parent OK. `complete` means the pack is earned (or about to land).
+ * tasks Home shows. Counts the same way isDayComplete does — DAILY tasks only;
+ * `approved` = done and settled (not pending, not missed); `pending` = claimed,
+ * waiting for a parent OK. `complete` means the pack is earned (or about to land).
  */
 export interface QuestProgress { total: number; approved: number; pending: number; complete: boolean }
 
 export function questProgress(
-  tasks: { completion?: { wasAutoFailed?: boolean; status?: string } | null }[],
+  tasks: { recurrence?: string; completion?: { wasAutoFailed?: boolean; status?: string } | null }[],
 ): QuestProgress {
+  const daily = tasks.filter(isDailyTask);
   let approved = 0, pending = 0;
-  for (const t of tasks) {
+  for (const t of daily) {
     const c = t.completion;
     if (!c || c.wasAutoFailed || c.status === 'rejected') continue;
     if (c.status === 'pending') pending++; else approved++;
   }
-  const total = tasks.length;
+  const total = daily.length;
   return { total, approved, pending, complete: total > 0 && approved === total };
 }
 
 /** One line under the greeting that tells the player what the ring means. */
 export function questLabel(p: QuestProgress): string {
   if (p.total === 0) return "Let's make today count 💪";
-  if (p.complete) return 'All done today — surprise pack earned! 🎁';
+  if (p.complete) return 'Daily tasks done — surprise pack earned! 🎁';
   if (p.approved + p.pending === p.total) {
-    return `All done today — ${p.pending} waiting for an OK, then your pack 🎁`;
+    return `Daily tasks done — ${p.pending} waiting for an OK, then your pack 🎁`;
   }
-  return `${p.approved + p.pending} of ${p.total} done today · finish all for a surprise pack`;
+  return `${p.approved + p.pending} of ${p.total} daily done today · finish them for a surprise pack`;
 }
 
 /** Perfect week = a daily pack on every one of the week's 7 days. */

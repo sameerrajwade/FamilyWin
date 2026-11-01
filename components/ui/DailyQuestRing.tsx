@@ -4,8 +4,9 @@
  * A small progress ring beside the Today greeting: how close this person is to
  * today's surprise pack. Purple arc = done and approved; amber arc = claimed,
  * waiting for a parent OK; the gift in the middle turns into a coin bag once
- * every task is approved. Progress comes from lib/surprisePacks::questProgress
- * so the ring and the pack always agree on what "done" means.
+ * every daily task is approved (weekly/monthly tasks don't count). Progress
+ * comes from lib/surprisePacks::questProgress so the ring and the pack always
+ * agree on what "done" means.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { useTheme } from '@/lib/theme';
