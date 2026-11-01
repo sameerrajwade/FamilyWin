@@ -150,12 +150,6 @@ export interface FamilyDoc {
   // paused for the WHOLE family (and daily reminders are muted). Absent/past =
   // not paused. A member can also be paused individually (MemberDoc below).
   penaltyPausedUntil?: Timestamp | null;
-  // Monetization (Lootboard Plus). Absent = free tier. Server-validated later
-  // (RevenueCat webhook → Cloud Function); the client never trusts a
-  // client-written plan. While constants/plans.ts MONETIZATION_ENABLED is false,
-  // entitlement checks treat everyone as Plus (free-for-all) regardless of this.
-  plan?: 'free' | 'plus';
-  planExpiresAt?: Timestamp | null;
   // Phase 5 #3 — virtual allowance. When enabled, a member's spendable points
   // show a cash value and they can request a "cash out" (payout) that a parent
   // approves. `allowancePointsPerUnit` = points equal to one currency unit

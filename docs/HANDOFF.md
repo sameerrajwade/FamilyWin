@@ -105,14 +105,35 @@ deploy**, then device-verifies.
 | F2 | **Streak shield** — `lib/streakShield` + server `dailyStreakCheck` rewrite (deployed) | ✅ built (iter 60) |
 | F3 | Report "Is the game working?" — parent days, % kid-claimed, approval wait, last-place kid active | ✅ built (iter 60) |
 
-### Phase G — Play Store launch
+### Phase G — Launch (ONE checklist: product fixes → launch prep → test → iOS)
+User asked (2026-11-01) to keep G0 + G together so nothing is skipped. Work top to bottom; Android first, iOS last.
+
+**Part 1 — "make it easy" (product, Android)**
+| # | Task | Size | State |
+|---|---|---|---|
+| G1 | Remove **Lootboard Plus** entirely (no pricing at all) | S | ⏳ in progress |
+| G2 | Positive onboarding copy (drop "lose points automatically") | S | ⏳ |
+| G3 | Surprise packs → **"bonus chests"**, 5–20 range shown up front | S | ⏳ |
+| G4 | Reminders default ON, each type can be switched off in Settings | S–M | ⏳ |
+| G5 | Approval **trust levels**: auto-approve tasks under N pts | M | ⏳ |
+| G6 | Age-based starter setup + add-your-own; advanced features as "Discover more" cards with **Skip for now** → resurface week 2–3 | M–L | ⏳ |
+| G7 | **Family vs family** seasons (opt-in; only family names + season totals shared) | L | ⏳ after G6 |
+
+**Part 2 — launch prep**
 | # | Task | Notes |
 |---|---|---|
-| G1 | **Store review prompt** (user request): after the 3rd–5th app open, right after a happy moment (all done / reward approved); native in-app review sheet (`expo-store-review`, not yet installed → native rebuild) with fallback to the store URL; **max 3 asks, never after rated** (store policies forbid nagging). iOS URL is blank (Play-only) | M |
-| G2 | Package rename, strip unused permissions, versionCode scheme (`docs/PHASE0_CHECKLIST.md`) | M |
-| G3 | Privacy policy URL, Data Safety form, **COPPA decision** (invite-code self-join), advertising-ID decision (`docs/DATA_SAFETY.md`, `docs/TARGET_AUDIENCE_COPPA.md`) | M |
-| G4 | Store assets (icon 512, feature graphic, screenshots), internal testing track | M |
-| G5 | Release signing — **user does all signing** (never handle keystore passwords) | — |
+| G8 | **Name decision**: user likes "Chore League" (fits family-vs-family: a league of family teams). Check Play/App Store + USPTO availability; keep the chest mark; then rename app/wordmark/copy | before G12 |
+| G9 | **Store review prompt**: after 3rd–5th open, right after a happy moment; native sheet (`expo-store-review`, needs native rebuild) with store-URL fallback; **max 3 asks, never after rated** | M |
+| G10 | Package rename, strip unused permissions, versionCode scheme (`docs/PHASE0_CHECKLIST.md`) | M |
+| G11 | Privacy policy URL, Data Safety form, **COPPA / Designed-for-Families** decision (invite-code self-join), advertising-ID decision (`docs/DATA_SAFETY.md`, `docs/TARGET_AUDIENCE_COPPA.md`) — **review together with user before launch** | M |
+| G12 | Store assets (icon 512, feature graphic, screenshots in the agreed order: showdown+crowns, Kid Mode, saving up, Parent Report), Play internal testing track | M |
+| G13 | Release signing — **user does all signing** (never handle keystore passwords) | — |
+
+**Part 3 — test, then iOS**
+| # | Task | Notes |
+|---|---|---|
+| G14 | **Closed test with 10–20 outside families** (Play closed track); watch report health metrics (approval wait, kid-claimed %, last-place still playing) | before public launch |
+| G15 | **iOS** via Expo/EAS once Android is settled (Apple Developer $99/yr; EAS cloud build, no Mac needed; user signs) | after G14 |
 
 ### Known small issues / backlog
 - Monthly tasks completed in an earlier week of the month may show as not done (Home loads only this week's completions) — also affects surprise-pack "day complete".

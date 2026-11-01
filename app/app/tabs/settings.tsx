@@ -30,8 +30,7 @@ import { Icon } from '@/components/ui/Icon';
 import { BrandLogo } from '@/components/ui/BrandIcons';
 import { AvatarPicker } from '@/components/ui/AvatarPicker';
 import { SettingsGroup, NavRow } from '@/components/ui/SettingsUI';
-import { FreeForAllBanner } from '@/components/ui/Plus';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
+import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
 
 export default function SettingsScreen() {
@@ -243,9 +242,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* ── Lootboard Plus (free-for-all right now) ── */}
-        <FreeForAllBanner />
-
         {/* Family & Members and the game rules moved to the Family tab —
             Settings is now just you + the app. */}
 
@@ -268,13 +264,6 @@ export default function SettingsScreen() {
 
         {/* ── Support ── */}
         <SettingsGroup title="Support">
-          <NavRow
-            icon="star-outline"
-            iconColor={Colors.gold}
-            label="Lootboard Plus"
-            subtitle="Premium features — free for everyone right now"
-            onPress={() => router.push('/app/settings/plus' as any)}
-          />
           <NavRow
             icon="help-circle-outline"
             label="Help & Legal"
