@@ -59,7 +59,7 @@
 | # | Task | Size | State |
 |---|---|---|---|
 | G1–G7 | see §2 | — | ✅ |
-| **G8** | **Name** ⏳ **next**: user likes **"Chore League"** (a league of family teams — fits G7). Check Play Store, App Store, USPTO; keep the chest mark; then rename app name / wordmark / copy / store listing | S–M | before G12 |
+| **G8** | **Name** ⏳ **checked 2026-11-01, awaiting user go-ahead**: "Chore League" looks available — no Play Store app (exact search empty), no App Store/web hits, **no USPTO filing** (official tmsearch, verified by a CHORE WARS control search). Nearest marks: CHORE (Levy Inc., live, payroll services 35/42), CHORE WARS / CHORE BOY (cleaning products) — none in kids' apps/games. ⚠️ **choreleague.com is registered** (IONOS, created 2026-01-10, no site served). Free: **choreleague.app**, thechoreleague.com, choreleagueapp.com. Recommend: user buys choreleague.app (+ a .com variant), considers an intent-to-use trademark filing (classes 9/41/42) with a lawyer's clearance, then we rename app name / wordmark / copy / notifications / share text / store listing (package rename is G10). Keep the chest mark | S–M | before G12 |
 | G9 | **Store review prompt**: after 3rd–5th open, right after a happy moment; native sheet (`expo-store-review`, needs native rebuild) with store-URL fallback; **max 3 asks, never after rated** | M | |
 | G10 | Package rename, strip unused permissions, versionCode scheme (`docs/PHASE0_CHECKLIST.md`) | M | |
 | G11 | Privacy policy URL, Data Safety form, **COPPA / Designed-for-Families** (invite-code self-join), advertising-ID decision (`docs/DATA_SAFETY.md`, `docs/TARGET_AUDIENCE_COPPA.md`) — **review together with the user** | M | |

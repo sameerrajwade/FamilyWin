@@ -13,6 +13,12 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 65 (2026-11-01) — G8 name check: "Chore League" (research only, no code)
+- **Stores:** Play Store exact search "chore league" = no results; unquoted search shows only other chore apps (Chorsee, MyChoreBoard, Chorly, S'moresUp…). Apple search page unreachable from here; web search found no iOS "Chore League" either.
+- **USPTO (official tmsearch, in the built-in browser):** no CHORE LEAGUE filing. Method verified with a control (CHORE WARS ranks #1, live). The `?q=` URL form does NOT search — use the search box. Nearest live marks: CHORE (Levy Inc., payroll 35/42), CHORE WARS / CHORE BOY / CHORE SAVERS (cleaning) — none in kids' apps/games.
+- **Domains (RDAP):** choreleague.com **registered** 2026-01-10 via IONOS (no site). Free: choreleague.app, thechoreleague.com, choreleagueapp.com.
+- **Next Up:** user decides: buy choreleague.app (+ .com variant), optional trademark filing with a lawyer, then say go → rename in-app (name, wordmark, copy, notifications, share text). Then G9–G15 + quick fixes.
+
 ## Iteration 64 (2026-11-01) — G7 family vs family leagues (built, deployed, installed)
 - **User chose** the G7 recommendations: score = **average points per competing player**, **≤6 families**, others see **name + score only**.
 - **Built:** server `functions/league.js` (create/join/leave + `writeStandings`; season rollover keeps `lastSeason`) + 3 parent-only callables + standings refresh in `onTransactionCreated`; rules (member-family read only, no client writes); app `/app/league` screen, `LeagueCard` on Scores, "Family league" row on Family tab, `lib/leagues` ranking.
