@@ -13,6 +13,14 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 57 (2026-10-31) — Phase E part 1: quest ring, crowning ceremony, save-for-a-reward
+Client-only (no deploy). User: "Start Phase E". Did E1 → E5 → E2 (E3 level unlocks, E4 bounties still to do).
+- **E1 daily quest ring:** `components/ui/ProgressRing` (shared SVG ring) + `DailyQuestRing` beside the Today greeting. `surprisePacks.questProgress/questLabel` count like `isDayComplete` (approved purple, pending amber, 🎁→💰 when earned). Subtitle e.g. "1 of 2 done today · finish all for a surprise pack" / "…1 waiting for an OK, then your pack".
+- **E5 crowning ceremony:** tabs/_layout launch hook → `familyGame.shouldShowCrowning` → auto-opens `/app/winner` once per device per week (AsyncStorage `crowning_seen_<fam>`), only days 0–2 of the week, only if a competitor earned >0 last week, never over Kid Mode.
+- **E2 save for a reward:** `MemberDoc.savingForRewardId` + `setSavingFor` (member-doc update; rules already allow owner/parent). Rewards: 📌 Save / Saving toggle on each card + `SavingGoalCard` ring under the vault. Today + Kid Mode: `SavingGoalRow` (live reward doc listener; one-time confetti per device when affordable; Kid Mode row doesn't navigate). `familyGame.savingProgress` (pct floored; negative = 0). Kids in Kid Mode can't pin — a grown-up pins on Rewards with the kid's profile selected.
+- **Wrapper fix (gotcha #13):** `lib/fb.ts` DocRef had NO `onSnapshot` → added (would have crashed on device). v26 `.exists()` is a method.
+- **Tests:** tsc app-src 0; **26 suites / 415** (+quest, +crowning, +savingProgress, +Rewards pin test). arm64 build started.
+
 ## Iteration 56 (2026-10-31) — Phase C committed + Phase D server batch (built, NOT deployed)
 User confirmed Phase C looks good on the Pixel → **committed `291345d`** (tsc app-src 0; 26 suites/403 green). Then built the whole **Phase D server batch** (all server-side; `firebase deploy --only firestore:rules,functions` is user-gated). User confirmed D4 event-push list = **"overtaken" only** (dropped approved/streak/parent-activity).
 - **D1 rules:** a non-parent's completion `create` must be a PENDING award (`status=='pending'`) OR a negative penalty (`wasAutoFailed==true`) — rules-level backstop for C3 (kids can't self-grant). Parents unrestricted. Updated the one rules test that assumed a child could create a plain completion; +5 new cases.

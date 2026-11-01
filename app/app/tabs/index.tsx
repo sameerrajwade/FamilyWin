@@ -30,6 +30,9 @@ import { FamilyGoalBar } from '@/components/ui/FamilyGoal';
 import { openTaskEditor } from '@/lib/taskNav';
 import { checkSurprisePacks } from '@/lib/surprise';
 import { SurprisePackReveal } from '@/components/ui/SurprisePack';
+import { DailyQuestRing } from '@/components/ui/DailyQuestRing';
+import { SavingGoalRow } from '@/components/ui/SavingGoal';
+import { questProgress, questLabel } from '@/lib/surprisePacks';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
@@ -540,6 +543,17 @@ export default function HomeScreen() {
   const completedCount = (todaysTasks as any[]).filter((t) => t.completion && !t.completion.wasAutoFailed).length;
   const totalCount = todaysTasks.length;
   const allDone = completedCount === totalCount && totalCount > 0;
+  // E1 daily quest ring: progress toward today's surprise pack (approved only).
+  const quest = questProgress(todaysTasks as any[]);
+  // E2: the reward this profile is saving toward (live from the members cache).
+  const savingForId = ((members as any[]).find((m) => m.id === effectiveMember?.id)?.savingForRewardId
+    ?? (effectiveMember as any)?.savingForRewardId ?? null) as string | null;
+  function celebrateAffordable() {
+    setShowConfetti(true);
+    Sounds.allDone();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setTimeout(() => setShowConfetti(false), 2400);
+  }
   const level = getLevel(lifetimePoints);
 
   const getMascotMood = (): 'celebrating' | 'happy' | 'waiting' => {
@@ -632,14 +646,15 @@ export default function HomeScreen() {
       >
         <SlideIn delay={0}>
           <View style={styles.header}>
+            {quest.total > 0 && <DailyQuestRing progress={quest} />}
             <View style={styles.headerLeft}>
               <Text numberOfLines={1} style={[styles.greeting, { color: colors.text, fontSize: fontSize(FontSize.xxl) }]}>
                 {actingAsMember
                   ? `${effectiveMember?.displayName}'s tasks${isReadOnly ? ' 👁' : ''}`
                   : `Hey, ${member?.displayName?.split(' ')[0]}`}
               </Text>
-              <Text style={[styles.date, { color: colors.textSecondary }]}>
-                {allDone ? "All done — you're crushing it! 🎉" : totalCount > 0 ? `${completedCount} of ${totalCount} done today` : "Let's make today count 💪"}
+              <Text numberOfLines={2} style={[styles.date, { color: quest.complete ? colors.textAccent : colors.textSecondary }]}>
+                {questLabel(quest)}
               </Text>
             </View>
             <View style={styles.headerRight}>
@@ -671,6 +686,13 @@ export default function HomeScreen() {
             </View>
           </View>
         </SlideIn>
+        <SavingGoalRow
+          familyId={family?.id}
+          memberId={effectiveMember?.id}
+          rewardId={savingForId}
+          spendable={lifetimePoints}
+          onAffordable={celebrateAffordable}
+        />
         {isChildMode && (
           <SlideIn delay={100}>
             <View style={styles.mascotSection}>
@@ -1021,7 +1043,7 @@ const styles = StyleSheet.create({
   brandRow: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
   actionPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: BorderRadius.full, ...Shadow.sm },
   actionPillText: { color: '#FFFFFF', fontFamily: FontFamily.extraBold, fontSize: FontSize.xs },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   greeting: { fontFamily: FontFamily.extraBold },

@@ -1,12 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Tabs, router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Colors, FontFamily, FontSize } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
 import { Icon, IconName } from '@/components/ui/Icon';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { firestore } from '@/lib/fb';
-import { getNotifConfig, penaltyPauseActive } from '@/lib/firebase';
+import { Col, getNotifConfig, penaltyPauseActive } from '@/lib/firebase';
+import { getCurrentWeekRange } from '@/lib/pointsEngine';
+import { competitors, shouldShowCrowning } from '@/lib/familyGame';
+import { dateKeyOf } from '@/lib/surprisePacks';
 import { ensureReminders, pauseReminders } from '@/lib/notifications';
 import { useReminderStatus } from '@/lib/reminderStatus';
 import { useKidMode } from '@/lib/kidMode';
@@ -67,6 +71,46 @@ export default function AppTabsLayout() {
     // Only on mount — entering Kid Mode later navigates explicitly.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sunday crowning ceremony (E5): on the first launch of a new week, open last
+  // week's winner screen once per device — only early in the week, only if
+  // someone actually won, and never on top of Kid Mode.
+  const members = useFamilyStore((s) => s.members);
+  const crowningChecked = useRef(false);
+  useEffect(() => {
+    if (crowningChecked.current || kidModeActive || !family?.id || !members.length) return;
+    crowningChecked.current = true;
+    (async () => {
+      try {
+        const weekStartDay = family.weekStartDay ?? 1;
+        const { start } = getCurrentWeekRange(weekStartDay);
+        const thisWeekKey = dateKeyOf(start);
+        const key = `crowning_seen_${family.id}`;
+        const seenWeekKey = await AsyncStorage.getItem(key);
+        const daysIntoWeek = Math.floor((Date.now() - start.getTime()) / 86_400_000);
+        if (seenWeekKey === thisWeekKey || daysIntoWeek >= 3) return;
+
+        const lastStart = new Date(start); lastStart.setDate(lastStart.getDate() - 7);
+        const snap = await Col.transactions(family.id)
+          .where('createdAt', '>=', firestore.Timestamp.fromDate(lastStart))
+          .where('createdAt', '<', firestore.Timestamp.fromDate(start))
+          .get();
+        const players = new Set(competitors(members as any[], family.competitionMode).map((m: any) => m.id));
+        const totals: Record<string, number> = {};
+        for (const d of snap.docs) {
+          const t = d.data();
+          if (t.source === 'redemption' || !players.has(t.memberId)) continue;
+          totals[t.memberId] = (totals[t.memberId] ?? 0) + (t.delta ?? 0);
+        }
+        const lastWeekHadChampion = Object.values(totals).some((v) => v > 0);
+
+        if (shouldShowCrowning({ seenWeekKey, thisWeekKey, daysIntoWeek, lastWeekHadChampion })) {
+          await AsyncStorage.setItem(key, thisWeekKey);
+          router.push('/app/winner' as any);
+        }
+      } catch { /* best-effort: the Scores tab banner still links to it */ }
+    })();
+  }, [family?.id, family?.weekStartDay, family?.competitionMode, members, kidModeActive]);
 
   const setReminderPermission = useReminderStatus((s) => s.setPermission);
   useEffect(() => {

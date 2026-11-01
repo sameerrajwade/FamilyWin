@@ -85,6 +85,37 @@ export function isDayComplete(dueTasks: PackTask[], completions: PackCompletion[
   });
 }
 
+/**
+ * Daily quest ring (Phase E1): progress toward today's surprise pack, from the
+ * tasks Home shows. Counts the same way isDayComplete does: `approved` = done
+ * and settled (not pending, not missed); `pending` = claimed, waiting for a
+ * parent OK. `complete` means the pack is earned (or about to land).
+ */
+export interface QuestProgress { total: number; approved: number; pending: number; complete: boolean }
+
+export function questProgress(
+  tasks: { completion?: { wasAutoFailed?: boolean; status?: string } | null }[],
+): QuestProgress {
+  let approved = 0, pending = 0;
+  for (const t of tasks) {
+    const c = t.completion;
+    if (!c || c.wasAutoFailed || c.status === 'rejected') continue;
+    if (c.status === 'pending') pending++; else approved++;
+  }
+  const total = tasks.length;
+  return { total, approved, pending, complete: total > 0 && approved === total };
+}
+
+/** One line under the greeting that tells the player what the ring means. */
+export function questLabel(p: QuestProgress): string {
+  if (p.total === 0) return "Let's make today count 💪";
+  if (p.complete) return 'All done today — surprise pack earned! 🎁';
+  if (p.approved + p.pending === p.total) {
+    return `All done today — ${p.pending} waiting for an OK, then your pack 🎁`;
+  }
+  return `${p.approved + p.pending} of ${p.total} done today · finish all for a surprise pack`;
+}
+
 /** Perfect week = a daily pack on every one of the week's 7 days. */
 export function isPerfectWeek(dailyPackDays: Set<string>, weekKeys: string[]): boolean {
   return weekKeys.length === 7 && weekKeys.every((k) => dailyPackDays.has(k));

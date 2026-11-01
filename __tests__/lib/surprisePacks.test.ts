@@ -1,6 +1,7 @@
 import {
   rollPack, DAILY_PACK, WEEKLY_PACK, dailyPackId, weeklyPackId, revokedId,
   weekDateKeys, tasksDueFor, isDayComplete, isPerfectWeek, parseDateKey,
+  questProgress, questLabel,
 } from '@/lib/surprisePacks';
 
 describe('rollPack', () => {
@@ -82,5 +83,28 @@ describe('isPerfectWeek', () => {
   it('needs a daily pack on all 7 days', () => {
     expect(isPerfectWeek(new Set(keys), keys)).toBe(true);
     expect(isPerfectWeek(new Set(keys.slice(0, 6)), keys)).toBe(false);
+  });
+});
+
+
+describe('questProgress / questLabel (E1 daily quest ring)', () => {
+  const T = (completion: any) => ({ completion });
+  it('counts approved vs pending, ignores missed and rejected', () => {
+    const p = questProgress([
+      T({}), T({ status: 'approved' }), T({ status: 'pending' }),
+      T({ wasAutoFailed: true }), T({ status: 'rejected' }), T(null),
+    ]);
+    expect(p).toEqual({ total: 6, approved: 2, pending: 1, complete: false });
+  });
+  it('is complete only when every task is approved', () => {
+    expect(questProgress([T({}), T({ status: 'approved' })]).complete).toBe(true);
+    expect(questProgress([T({}), T({ status: 'pending' })]).complete).toBe(false);
+    expect(questProgress([]).complete).toBe(false);
+  });
+  it('labels each state', () => {
+    expect(questLabel(questProgress([]))).toMatch(/make today count/);
+    expect(questLabel(questProgress([T({}), T(null)]))).toBe('1 of 2 done today · finish all for a surprise pack');
+    expect(questLabel(questProgress([T({}), T({ status: 'pending' })]))).toMatch(/1 waiting for an OK/);
+    expect(questLabel(questProgress([T({}), T({})]))).toMatch(/surprise pack earned/);
   });
 });

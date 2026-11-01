@@ -1,6 +1,6 @@
 import {
   isKid, competitors, coaches, familyGoalProgress, suggestFamilyGoal,
-  buildParentReport, choreMinutes, formatMinutes, makeGateQuestion, weeklyTrend, type GameMember, type ReportTx,
+  buildParentReport, choreMinutes, formatMinutes, makeGateQuestion, weeklyTrend, shouldShowCrowning, savingProgress, type GameMember, type ReportTx,
 } from '@/lib/familyGame';
 
 const dad: GameMember = { id: 'dad', displayName: 'Sameer R', role: 'admin_parent' };
@@ -143,5 +143,41 @@ describe('helpers', () => {
     expect(q).toEqual({ a: 9, b: 9, answer: 81 });
     const q2 = makeGateQuestion(() => 0);
     expect(q2.answer).toBe(36);
+  });
+});
+
+
+describe('shouldShowCrowning (E5 Sunday ceremony)', () => {
+  const base = { seenWeekKey: '2026-10-19', thisWeekKey: '2026-10-26', daysIntoWeek: 0, lastWeekHadChampion: true };
+  it('opens on the first launch of a new week when last week had a champion', () => {
+    expect(shouldShowCrowning(base)).toBe(true);
+    expect(shouldShowCrowning({ ...base, seenWeekKey: null })).toBe(true);
+  });
+  it('opens only once per week on this device', () => {
+    expect(shouldShowCrowning({ ...base, seenWeekKey: '2026-10-26' })).toBe(false);
+  });
+  it('stays closed after the first 3 days of the week', () => {
+    expect(shouldShowCrowning({ ...base, daysIntoWeek: 2 })).toBe(true);
+    expect(shouldShowCrowning({ ...base, daysIntoWeek: 3 })).toBe(false);
+  });
+  it('stays closed when nobody earned points last week', () => {
+    expect(shouldShowCrowning({ ...base, lastWeekHadChampion: false })).toBe(false);
+  });
+});
+
+
+describe('savingProgress (E2 save for a reward)', () => {
+  it('reports progress, remaining and affordability', () => {
+    expect(savingProgress(70, 100)).toEqual({ progress: 0.7, pct: 70, remaining: 30, affordable: false });
+    expect(savingProgress(120, 100)).toEqual({ progress: 1, pct: 100, remaining: 0, affordable: true });
+  });
+  it('never reads 100% before it is affordable', () => {
+    expect(savingProgress(199, 200).pct).toBe(99);
+  });
+  it('treats a negative balance as no progress', () => {
+    expect(savingProgress(-40, 100)).toEqual({ progress: 0, pct: 0, remaining: 100, affordable: false });
+  });
+  it('a free reward is always affordable', () => {
+    expect(savingProgress(0, 0).affordable).toBe(true);
   });
 });

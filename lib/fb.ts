@@ -117,6 +117,7 @@ export interface DocRef {
   set(data: DocumentData, options?: { merge?: boolean }): Promise<void>;
   update(data: DocumentData): Promise<void>;
   delete(): Promise<void>;
+  onSnapshot(next: (snap: DocSnap) => void, error?: (e: Error) => void): () => void;
   _ref: any;
 }
 
@@ -141,6 +142,7 @@ function wrapDoc(ref: any): DocRef {
     set: (data, options) => setDoc(ref, data, options ?? {}),
     update: (data) => updateDoc(ref, data),
     delete: () => deleteDoc(ref),
+    onSnapshot: (next, error) => mOnSnapshot(ref, next as any, error as any),
   };
 }
 

@@ -38,6 +38,7 @@ import { Avatar } from '@/components/ui';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { Confetti } from '@/components/ui/Animations';
 import { SurprisePackReveal } from '@/components/ui/SurprisePack';
+import { SavingGoalRow } from '@/components/ui/SavingGoal';
 import { BrandLogo } from '@/components/ui/BrandIcons';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 
@@ -240,6 +241,21 @@ export default function KidModeScreen() {
             </View>
           </View>
         </LinearGradient>
+
+        {/* E2: what this kid is saving for (a grown-up pins it on Rewards). */}
+        <SavingGoalRow
+          familyId={family?.id}
+          memberId={kid.id}
+          rewardId={kid.savingForRewardId ?? null}
+          spendable={spendable}
+          navigate={false}
+          style={{ marginHorizontal: 0, marginTop: Spacing.md, marginBottom: 0 }}
+          onAffordable={() => {
+            setConfetti(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+            setTimeout(() => setConfetti(false), 1800);
+          }}
+        />
 
         {waitingPts > 0 && (
           <View style={styles.nudge}>

@@ -229,6 +229,50 @@ export function weeklyTrend(
   return bars;
 }
 
+// ─── Save for a reward (Phase E2) ────────────────────────────────────────────
+
+export interface SavingProgress {
+  progress: number;   // 0..1 (a negative balance never shows as progress)
+  pct: number;        // 0..100, floored so 99.6% never reads "100%" early
+  remaining: number;
+  affordable: boolean;
+}
+
+export function savingProgress(spendable: number, cost: number): SavingProgress {
+  const c = Math.max(0, Math.round(cost || 0));
+  const have = Math.max(0, spendable || 0);
+  if (c === 0) return { progress: 1, pct: 100, remaining: 0, affordable: true };
+  const progress = Math.min(1, have / c);
+  return {
+    progress,
+    pct: Math.floor(progress * 100),
+    remaining: Math.max(0, c - have),
+    affordable: have >= c,
+  };
+}
+
+// ─── Sunday crowning ceremony (Phase E5) ─────────────────────────────────────
+
+/** How long into a new week the ceremony may still auto-open (days 0–2). */
+export const CROWNING_WINDOW_DAYS = 3;
+
+/**
+ * Auto-open last week's winner screen on the first launch of a new week?
+ * Yes when this device hasn't shown it for `thisWeekKey` yet, we're still in
+ * the first few days of the week (a Thursday upgrade shouldn't replay last
+ * week), and last week actually had a champion (no "nobody won" screen).
+ */
+export function shouldShowCrowning(p: {
+  seenWeekKey: string | null;
+  thisWeekKey: string;
+  daysIntoWeek: number;
+  lastWeekHadChampion: boolean;
+}): boolean {
+  if (p.seenWeekKey === p.thisWeekKey) return false;
+  if (p.daysIntoWeek < 0 || p.daysIntoWeek >= CROWNING_WINDOW_DAYS) return false;
+  return p.lastWeekHadChampion;
+}
+
 // ─── Kid Mode parental gate ──────────────────────────────────────────────────
 
 export interface GateQuestion { a: number; b: number; answer: number; }

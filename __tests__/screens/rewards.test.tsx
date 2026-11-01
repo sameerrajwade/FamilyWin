@@ -21,6 +21,7 @@ jest.mock('@/lib/firebase', () => ({
   rejectRedemption: jest.fn().mockResolvedValue(undefined),
   createReward: jest.fn().mockResolvedValue(undefined),
   getFamilyMembers: jest.fn().mockResolvedValue([]),
+  setSavingFor: jest.fn().mockResolvedValue(undefined),
   Col: {
     redemptions: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),
@@ -80,6 +81,16 @@ describe('RewardsScreen — Parent view', () => {
   it('shows current points balance', async () => {
     const { findAllByText } = render(<RewardsScreen />);
     expect((await findAllByText(/pts/)).length).toBeGreaterThan(0);
+  });
+
+  it('pins a reward to save for (E2) and shows the saving card', async () => {
+    const { setSavingFor } = require('@/lib/firebase');
+    const { findByLabelText, findAllByLabelText, findByText } = render(<RewardsScreen />);
+    fireEvent.press(await findByLabelText('Save for Ice Cream Treat'));
+    await waitFor(() => expect(setSavingFor).toHaveBeenCalledWith('f1', 'm1', 'r2'));
+    expect(await findByText('SAVING FOR')).toBeTruthy();
+    // The pinned card's toggle and the saving card's ✕ both offer to unpin.
+    expect(await findAllByLabelText('Stop saving for Ice Cream Treat')).toHaveLength(2);
   });
 
   it('opens create reward modal when + Add is tapped', async () => {

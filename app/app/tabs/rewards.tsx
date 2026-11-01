@@ -24,7 +24,8 @@ import { useFocusEffect, router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Sounds } from '@/lib/sounds';
 import { SlideIn, ScalePress } from '@/components/ui/Animations';
-import { Col, getActiveRewards, requestRedemption, approveRedemption, rejectRedemption, createReward, deactivateReward, getFamilyMembers, requestPayout } from '@/lib/firebase';
+import { Col, getActiveRewards, requestRedemption, approveRedemption, rejectRedemption, createReward, deactivateReward, getFamilyMembers, requestPayout, setSavingFor } from '@/lib/firebase';
+import { SavingGoalCard } from '@/components/ui/SavingGoal';
 import { pointsToCash, formatCash, pointsForOneUnit, DEFAULT_ALLOWANCE_RATE } from '@/lib/pointsEngine';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
@@ -172,6 +173,28 @@ export default function RewardsScreen() {
   // Points to use for "can afford" check:
   // Prefer all-time bank balance; fall back to this week's points from Zustand
   const spendablePoints = bankBalance !== null ? bankBalance : weekPoints;
+
+  // E2 save for a reward: the pinned reward comes from the live members cache
+  // (so a pin made on another device shows here); local state makes taps instant.
+  const liveMember = members.find((m: any) => m.id === effectiveMember?.id) as any;
+  const [savingOverride, setSavingOverride] = useState<{ memberId: string; rewardId: string | null } | null>(null);
+  const savingForId = savingOverride && savingOverride.memberId === effectiveMember?.id
+    ? savingOverride.rewardId
+    : (liveMember?.savingForRewardId ?? (effectiveMember as any)?.savingForRewardId ?? null);
+  const savingReward = rewards.find((r) => r.id === savingForId) ?? null;
+
+  async function toggleSaving(reward: RewardDoc) {
+    if (!family?.id || !effectiveMember?.id) return;
+    const next = savingForId === reward.id ? null : reward.id;
+    setSavingOverride({ memberId: effectiveMember.id, rewardId: next });
+    Haptics.selectionAsync().catch(() => {});
+    try {
+      await setSavingFor(family.id, effectiveMember.id, next);
+    } catch {
+      setSavingOverride(null);
+      Alert.alert('Error', 'Could not save that. Please try again.');
+    }
+  }
 
   // Virtual allowance (Phase 5 #3)
   const allowanceOn = !!family?.allowanceEnabled;
@@ -402,6 +425,14 @@ export default function RewardsScreen() {
                 </View>
               )}
             </View>
+          {savingReward && (
+            <SavingGoalCard
+              reward={savingReward}
+              spendable={spendablePoints}
+              name={actingAsMember ? actingAsMember.displayName.split(' ')[0] : undefined}
+              onUnpin={() => toggleSaving(savingReward)}
+            />
+          )}
         </View>
 
         {isLoading ? (
@@ -446,6 +477,8 @@ export default function RewardsScreen() {
                           spendablePoints={spendablePoints}
                           isRedeeming={redeemingId === reward.id}
                           onRedeem={() => handleRedeem(reward)}
+                          isSaving={savingForId === reward.id}
+                          onToggleSave={() => toggleSaving(reward)}
                           isParent={isParent}
                           onRemove={() => router.push({ pathname: '/app/manage/[kind]' as any, params: { kind: 'rewards', edit: reward.id } })}
                           colors={colors}
@@ -625,9 +658,10 @@ const ptStyles = StyleSheet.create({
 
 
 
-function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, isParent, onRemove, colors }: {
+function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, isSaving, onToggleSave, isParent, onRemove, colors }: {
   reward: RewardDoc; spendablePoints: number; isRedeeming: boolean;
-  onRedeem: () => void; isParent?: boolean; onRemove?: () => void; colors: any;
+  onRedeem: () => void; isSaving?: boolean; onToggleSave?: () => void;
+  isParent?: boolean; onRemove?: () => void; colors: any;
 }) {
   const canAfford = spendablePoints >= reward.pointCost;
   const remaining = Math.max(0, reward.pointCost - spendablePoints);
@@ -675,6 +709,20 @@ function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, isParent, 
             }
           </View>
         </ScalePress>
+        {onToggleSave && (
+          <TouchableOpacity
+            style={[styles.removeBtn, isSaving
+              ? { backgroundColor: colors.primary + '18', borderColor: colors.primary }
+              : { borderColor: colors.primary + '55' }]}
+            onPress={onToggleSave}
+            accessibilityLabel={isSaving ? `Stop saving for ${reward.title}` : `Save for ${reward.title}`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: !!isSaving }}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Text style={[styles.removeBtnText, { color: colors.textAccent }]}>{isSaving ? '📌 Saving' : '📌 Save'}</Text>
+          </TouchableOpacity>
+        )}
         {isParent && onRemove && (
           <TouchableOpacity
             style={[styles.removeBtn, { borderColor: colors.primary + '55' }]}

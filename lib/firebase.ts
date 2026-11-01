@@ -182,6 +182,7 @@ export interface MemberDoc {
   age?: number;
   isManaged?: boolean;      // true = parent-created profile, no Firebase Auth account
   weeklyGoal?: number | null; // personal weekly points target (🎯 Goal Crusher crown); null/absent = none
+  savingForRewardId?: string | null; // E2: the reward this member is saving toward (pinned on Rewards)
   // Per-member vacation/sick "hold": while a future time, missed-task penalties
   // are paused for THIS member only. Absent/past = not paused. See FamilyDoc for
   // a whole-family pause. Either being active pauses the member.
@@ -608,6 +609,19 @@ export async function setMemberWeeklyGoal(
   goal: number | null,
 ): Promise<void> {
   await Col.members(familyId).doc(memberId).update({ weeklyGoal: goal });
+}
+
+/**
+ * E2 "save for a reward": pin (or clear with null) the reward a member is
+ * saving toward. Lives on the member doc so it follows them across devices;
+ * a member may edit their own doc and parents may edit anyone's (rules).
+ */
+export async function setSavingFor(
+  familyId: string,
+  memberId: string,
+  rewardId: string | null,
+): Promise<void> {
+  await Col.members(familyId).doc(memberId).update({ savingForRewardId: rewardId });
 }
 
 /**
