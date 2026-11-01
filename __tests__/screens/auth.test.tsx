@@ -218,6 +218,6 @@ describe('SplashScreen', () => {
     // The first slide now renders the Lootboard chest mark (react-native-svg)
     // instead of a 🏆 emoji, so assert the branded slide via its title/subtitle.
     const { getByText } = render(<SplashScreen />);
-    expect(getByText('Turn everyday tasks into an epic weekly showdown')).toBeTruthy();
+    expect(getByText('Your family’s weekly league — chores become a game everyone can win')).toBeTruthy();
   });
 });

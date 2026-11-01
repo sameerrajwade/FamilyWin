@@ -15,7 +15,7 @@ describe('WelcomeTour', () => {
   it('shows parent-oriented content for a parent', () => {
     const { getByText } = render(<WelcomeTour visible role="parent" onClose={jest.fn()} />);
     // A parent-only slide (penalties) is present in the full tour
-    expect(getByText('Add tasks & penalties')).toBeTruthy();
+    expect(getByText('Add tasks & rewards')).toBeTruthy();
   });
 
   it('shows the trimmed tour for a child (no parent-only slides)', () => {
