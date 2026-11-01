@@ -1,4 +1,4 @@
-| G6 | Age-based starter setup + add-your-own; advanced features as "Discover more" cards with **Skip for now** → resurface week 2–3 | M–L | ✅ `452172f` || G5 | Approval **trust levels**: auto-approve tasks under N pts | M | ✅ `8a177ef` (server auto-approve deployed) || G4 | Reminders default ON, each type can be switched off in Settings | S–M | ✅ `0fa6e7c` (server part deployed) || G3 | Surprise packs → **"bonus chests"**, 5–20 range shown up front | S | ✅ `1cc4e19` || G2 | Positive onboarding copy (drop "lose points automatically") | S | ✅ `05c666a` || G1 | Remove **Lootboard Plus** entirely (no pricing at all) | S | ✅ `37215f1` |# Lootboard (FamilyWin) — Session Handoff
+# Lootboard (FamilyWin) — Session Handoff
 
 > **New session? Start here.** Read this file, then `CLAUDE.md` (gotchas 9–16
 > matter), then the latest entries in `docs/PROGRESS.md`. Say:
@@ -111,12 +111,12 @@ User asked (2026-11-01) to keep G0 + G together so nothing is skipped. Work top 
 **Part 1 — "make it easy" (product, Android)**
 | # | Task | Size | State |
 |---|---|---|---|
-| G1 | Remove **Lootboard Plus** entirely (no pricing at all) | S | ⏳ in progress |
-| G2 | Positive onboarding copy (drop "lose points automatically") | S | ⏳ |
-| G3 | Surprise packs → **"bonus chests"**, 5–20 range shown up front | S | ⏳ |
-| G4 | Reminders default ON, each type can be switched off in Settings | S–M | ⏳ |
-| G5 | Approval **trust levels**: auto-approve tasks under N pts | M | ⏳ |
-| G6 | Age-based starter setup + add-your-own; advanced features as "Discover more" cards with **Skip for now** → resurface week 2–3 | M–L | ⏳ |
+| G1 | Remove **Lootboard Plus** entirely (no pricing at all) | S | ✅ `37215f1` |
+| G2 | Positive onboarding copy (drop "lose points automatically") | S | ✅ `05c666a` |
+| G3 | Surprise packs → **"bonus chests"**, 5–20 range shown up front | S | ✅ `1cc4e19` |
+| G4 | Reminders default ON, each type can be switched off in Settings | S–M | ✅ `0fa6e7c` (server part deployed) |
+| G5 | Approval **trust levels**: auto-approve tasks under N pts | M | ✅ `8a177ef` (server auto-approve deployed) |
+| G6 | Age-based starter setup + add-your-own; advanced features as "Discover more" cards with **Skip for now** → resurface week 2–3 | M–L | ✅ `452172f` |
 | G7 | **Family vs family** seasons (opt-in; only family names + season totals shared) | L | ⏳ after G6 |
 
 **Part 2 — launch prep**
