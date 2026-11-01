@@ -30,10 +30,11 @@ import {
 import { ensureReminders, DEFAULT_EVENING_REMINDER, DEFAULT_MORNING_REMINDER } from '@/lib/notifications';
 import { AvatarPicker } from '@/components/ui/AvatarPicker';
 import { useAuthStore, useFamilyStore } from '@/store';
+import { StarterSetup } from '@/components/ui/StarterSetup';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
 
-type OnboardStep = 'choice' | 'profile' | 'family_name' | 'join_code' | 'done' | 'add_children';
+type OnboardStep = 'choice' | 'profile' | 'family_name' | 'join_code' | 'done' | 'add_children' | 'starter';
 type FlowType = 'create' | 'join';
 
 export default function OnboardingScreen() {
@@ -60,7 +61,7 @@ export default function OnboardingScreen() {
   const [childName, setChildName] = useState('');
   const [childAge, setChildAge] = useState('');
   const [childEmoji, setChildEmoji] = useState('🐼');
-  const [addedChildren, setAddedChildren] = useState<{ name: string; emoji: string }[]>([]);
+  const [addedChildren, setAddedChildren] = useState<{ id: string; name: string; emoji: string; age?: number }[]>([]);
   const [isAddingChild, setIsAddingChild] = useState(false);
 
   const uid = user?.id ?? auth().currentUser?.uid ?? '';
@@ -218,7 +219,7 @@ export default function OnboardingScreen() {
       // Immediately update Zustand store so home screen sees the child without a refetch
       const updatedMembers = [...useFamilyStore.getState().members, newChild];
       setMembers(updatedMembers as any);
-      setAddedChildren((prev) => [...prev, { name: childName.trim(), emoji: childEmoji }]);
+      setAddedChildren((prev) => [...prev, { id: newChild.id, name: childName.trim(), emoji: childEmoji, age: childAge ? parseInt(childAge, 10) : undefined }]);
       setChildName('');
       setChildAge('');
       setChildEmoji('🐼');
@@ -474,7 +475,7 @@ export default function OnboardingScreen() {
             <Text style={{ fontSize: FontSize.lg, color: colors.textAccent }}>→</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.primaryBtn, { marginTop: Spacing.md }]} onPress={goToApp} activeOpacity={0.85}>
+          <TouchableOpacity style={[styles.primaryBtn, { marginTop: Spacing.md }]} onPress={() => setStep('starter')} activeOpacity={0.85}>
             <Text style={styles.primaryBtnText}>Skip — Go to App 🏆</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -540,11 +541,11 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
 
           {addedChildren.length > 0 && (
-            <TouchableOpacity style={[styles.primaryBtn, { marginTop: Spacing.sm }]} onPress={goToApp} activeOpacity={0.85}>
+            <TouchableOpacity style={[styles.primaryBtn, { marginTop: Spacing.sm }]} onPress={() => setStep('starter')} activeOpacity={0.85}>
               <Text style={styles.primaryBtnText}>Done — Go to App 🏆</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={{ marginTop: Spacing.md, alignItems: 'center' }} onPress={goToApp}>
+          <TouchableOpacity style={{ marginTop: Spacing.md, alignItems: 'center' }} onPress={() => setStep('starter')}>
             <Text style={{ fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textMuted }}>Skip — I'll add children later</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -552,6 +553,19 @@ export default function OnboardingScreen() {
     );
   }
 
+  // G6: one-screen starter kit + "Discover more", then into the app.
+  if (step === 'starter' && createdFamilyId) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <StarterSetup
+          familyId={createdFamilyId}
+          createdBy={useAuthStore.getState().member?.id ?? ''}
+          kids={addedChildren.map((c) => ({ id: c.id, name: c.name, age: c.age }))}
+          onDone={goToApp}
+        />
+      </SafeAreaView>
+    );
+  }
   return null;
 }
 

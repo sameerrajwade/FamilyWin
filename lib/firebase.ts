@@ -170,6 +170,9 @@ export interface FamilyDoc {
   // G5 approval trust levels: kids' claims on tasks worth ≤ this many points
   // are approved by the server automatically (Cloud Function). Absent/0 = off.
   autoApproveUnder?: number | null;
+  // G6: "Discover more" — advanced features skipped at setup resurface as a
+  // card on Today from week 2 (lib/starterKit DiscoverState).
+  discover?: Record<string, { status: 'later' | 'done' | 'no'; until?: number }> | null;
   createdAt: Timestamp;
 }
 
@@ -574,7 +577,7 @@ export async function createRewardsFromPack(
 export async function createTasksFromPack(
   familyId: string,
   createdBy: string,
-  rows: { title: string; category: string; difficulty: string; recurrence: string; pointValue: number; taskEmoji: string }[],
+  rows: { title: string; category: string; difficulty: string; recurrence: string; pointValue: number; taskEmoji: string; assignedTo?: string | null }[],
 ): Promise<number> {
   if (rows.length === 0) return 0;
   const batch = firestore().batch();
@@ -587,7 +590,9 @@ export async function createTasksFromPack(
       category: r.category,
       difficulty: r.difficulty,
       recurrence: r.recurrence,
-      assignedTo: null,          // pack tasks default to the whole family
+      // Whole family by default. NOTE: managed kids only see tasks assigned to
+      // THEM, so the starter kit (G6) assigns each kid their own copy.
+      assignedTo: r.assignedTo ?? null,
       pointValue: r.pointValue,
       autoFailHour: 20,
       taskEmoji: r.taskEmoji,
@@ -951,6 +956,28 @@ export async function approveCompletion(params: {
 /** E3: save the family's level perks (already cleaned by levelUnlocks.cleanPerks). */
 export async function setLevelPerks(familyId: string, perks: Record<string, string>): Promise<void> {
   await firestore().collection('families').doc(familyId).update({ levelPerks: perks });
+}
+
+/**
+ * G6: set up a new family's game in one go — the starter kit's tasks (each
+ * kid's assigned to them), its rewards and small-task auto-approval. The
+ * "Discover more" schedule is saved separately (setDiscoverState).
+ */
+export async function applyStarterKit(params: {
+  familyId: string;
+  createdBy: string;
+  tasks: { title: string; category: string; difficulty: string; recurrence: string; pointValue: number; assignedTo: string | null; taskEmoji: string }[];
+  rewards: { title: string; pointCost: number; icon: string }[];
+  autoApproveUnder: number;
+}): Promise<void> {
+  await createTasksFromPack(params.familyId, params.createdBy, params.tasks);
+  await createRewardsFromPack(params.familyId, params.createdBy, params.rewards);
+  await firestore().collection('families').doc(params.familyId).update({ autoApproveUnder: params.autoApproveUnder });
+}
+
+/** G6: save the "Discover more" schedule (set up / not now / not for us). */
+export async function setDiscoverState(familyId: string, state: Record<string, { status: 'later' | 'done' | 'no'; until?: number }>): Promise<void> {
+  await firestore().collection('families').doc(familyId).update({ discover: state });
 }
 
 /** G5: auto-approve kids' claims on tasks worth ≤ `points` (0 = off). Parents only, via rules. */

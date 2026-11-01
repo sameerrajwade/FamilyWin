@@ -34,6 +34,7 @@ import { DailyQuestRing } from '@/components/ui/DailyQuestRing';
 import { streakWithShields, activeDayKeys, STREAK_WINDOW_DAYS, SHIELD_MIN_ACTIVE_DAYS, SHIELD_CAP } from '@/lib/streakShield';
 import { SavingGoalRow } from '@/components/ui/SavingGoal';
 import { BountyBoard } from '@/components/ui/BountyBoard';
+import { DiscoverCard } from '@/components/ui/DiscoverCard';
 import { useMemberLevels } from '@/lib/memberLevels';
 import { LevelUpReveal } from '@/components/ui/LevelPerks';
 import { questProgress, questLabel } from '@/lib/surprisePacks';
@@ -805,6 +806,9 @@ export default function HomeScreen() {
               })
             )}
         </View>
+
+        {/* G6: a feature skipped at setup, back one at a time from week 2 (parents). */}
+        {isParent && !actingAsMember && <DiscoverCard style={styles.section} />}
 
         {/* E4 bounties: "first to wash the car +100" — under today's tasks. */}
         <BountyBoard
