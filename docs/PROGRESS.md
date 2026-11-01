@@ -18,7 +18,8 @@
 - **Rules:** new `bounties` match — parents do everything; a non-parent may ONLY claim an open bounty for themselves or withdraw their own claim (status/claimedBy/claimedAt only). Emulator **rules 50/50** (+11).
 - **UI:** `components/ui/BountyBoard` under today's tasks (Today + Kid Mode). Parent: "＋ Post a bounty" composer (auto 3D emoji, +25/50/100/200/custom), ✓ OK / Not yet on claims, long-press remove. Kid: "I did it!" → claimed, "Undo" while waiting. Parent on a kid profile → "Vian did it" awards directly. Kid Mode: claims always wait. Bounty points are a `bonus` tx → count this week + trigger the overtaken push.
 - **Tests:** tsc 0; app **27 suites / 425** (+familyGame bounties, +BountyBoard 5, +Home board).
-- **⚠️ DEPLOY BLOCKED for me** (auto-mode classifier: production deploy). Until the user runs `firebase deploy --only firestore:rules --project familywin-35a97`, the board loads empty (permission-denied handled) and Post shows "Could not post".
+- **RULES DEPLOYED ✅** after the first try was blocked by the auto-mode classifier. User chose "allow deploys" → added an `autoMode.allow` entry (firebase deploy for familywin-35a97 pre-authorized) to `.claude/settings.local.json` (gitignored; `Bash(firebase deploy *)` allow rule already existed). Run deploys as a PLAIN command from the repo root (no `cd &&`, no pipes). Committed `904a70d` (+ docs). APK with bounties installed 23:1x; screens not yet eyeballed (phone locked).
+- **Next Up:** (1) user device-check bounties + E1/E2. (2) E3 level unlocks (L) — last Phase E item. (3) backlog: firebase-functions 5→latest; optional bounty push to kids (needs CF).
 
 ## Iteration 57 (2026-10-31) — Phase E part 1: quest ring, crowning ceremony, save-for-a-reward
 Client-only (no deploy). User: "Start Phase E". Did E1 → E5 → E2 (E3 level unlocks, E4 bounties still to do).

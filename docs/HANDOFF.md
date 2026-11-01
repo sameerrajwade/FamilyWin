@@ -95,7 +95,7 @@ deploy**, then device-verifies.
 | E1 | **Daily quest ring** on Today (`DailyQuestRing` / `ProgressRing`, `questProgress`) | ✅ built (iter 57) |
 | E2 | **Save for a reward** — 📌 on Rewards, ring card, Today + Kid Mode row, once-per-device celebration (`member.savingForRewardId`) | ✅ built (iter 57) |
 | E3 | **Level unlocks**: avatar frames/titles shown in `<Avatar>` + parent-defined real-world perks per level | ⏳ next (L) |
-| E4 | **Bounties** — `BountyBoard` (Today + Kid Mode), `lib/bounties`, new `bounties` rules | ✅ built (iter 58) — **needs `firebase deploy --only firestore:rules`** |
+| E4 | **Bounties** — `BountyBoard` (Today + Kid Mode), `lib/bounties`, new `bounties` rules | ✅ built + rules deployed (iter 58) |
 | E5 | **Sunday crowning ceremony** — auto-opens winner screen days 0–2 of a new week, once per device | ✅ built (iter 57) |
 
 ### Phase F — long-term + measurement
