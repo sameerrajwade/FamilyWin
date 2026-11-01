@@ -1673,6 +1673,9 @@ export async function upsertNotifConfig(
     // Phase 5 #5 — quiet hours: a nightly window (member-local, "HH:MM") during
     // which local reminders are suppressed. Both absent = no quiet hours.
     quietStart?: string | null; quietEnd?: string | null;
+    // G4: per-type off switches (absent = on). See lib/notifications NOTIF_OFF_FIELD.
+    morningOff?: boolean; eveningOff?: boolean; reportOff?: boolean;
+    overtakenOff?: boolean; weeklyResultsOff?: boolean;
   },
 ) {
   await Col.notifConfigs(familyId).doc(memberId).set(data, { merge: true });

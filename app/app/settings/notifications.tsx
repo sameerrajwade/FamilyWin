@@ -1,8 +1,9 @@
 /**
  * app/app/settings/notifications.tsx
- * Sub-screen: reminder TIMES and quiet hours. Reminders themselves are always
- * on (no off switch) — a parent's morning "plan today" and everyone's evening
- * "check off what's done". If the OS has blocked notifications we say so and
+ * Sub-screen: which reminders you get, their TIMES, and quiet hours. Every type
+ * is ON by default (a parent's morning plan, everyone's evening check-in, the
+ * weekly Parent Report, "someone passed you", Sunday results) and each one can
+ * be switched off here (G4). If the OS has blocked notifications we say so and
  * link to system settings instead of pretending a toggle works.
  */
 import { useEffect, useMemo, useState } from 'react';
@@ -14,6 +15,7 @@ import { getNotifConfig, upsertNotifConfig } from '@/lib/firebase';
 import {
   ensureReminders, ensureNotificationPermission, placeOutsideQuiet,
   DEFAULT_EVENING_REMINDER, DEFAULT_MORNING_REMINDER,
+  notifPrefs, NOTIF_OFF_FIELD, type NotifType,
 } from '@/lib/notifications';
 import { useReminderStatus } from '@/lib/reminderStatus';
 import { FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
@@ -44,11 +46,14 @@ export default function NotificationsScreen() {
   const [quietEnabled, setQuietEnabled] = useState(false);
   const [quietStart, setQuietStart] = useState('22:00');
   const [quietEnd, setQuietEnd] = useState('07:00');
+  // G4: which reminder types are on (all on by default).
+  const [prefs, setPrefs] = useState<Record<NotifType, boolean>>(notifPrefs(null));
 
   useEffect(() => {
     if (!member?.id || !family?.id) return;
     getNotifConfig(family.id, member.id).then((cfg: any) => {
       if (!cfg) return;
+      setPrefs(notifPrefs(cfg));
       setEveningTime(cfg.dailyReminderTime ?? DEFAULT_EVENING_REMINDER);
       setMorningTime(cfg.morningReminderTime ?? DEFAULT_MORNING_REMINDER);
       if (cfg.quietStart && cfg.quietEnd) {
@@ -61,22 +66,39 @@ export default function NotificationsScreen() {
   }, [member?.id, family?.id, setPermission]);
 
   /** Persist + reschedule with the given values (any omitted = current state). */
-  async function apply(next: { morning?: string; evening?: string; quiet?: { start: string; end: string } | null }) {
+  async function apply(next: {
+    morning?: string; evening?: string; quiet?: { start: string; end: string } | null;
+    prefs?: Record<NotifType, boolean>;
+  }) {
     if (!member?.id || !family?.id) return;
     const morning = next.morning ?? morningTime;
     const evening = next.evening ?? eveningTime;
     const quiet = next.quiet === undefined ? (quietEnabled ? { start: quietStart, end: quietEnd } : null) : next.quiet;
+    const on = next.prefs ?? prefs;
+    const offFields: Record<string, boolean> = {};
+    (Object.keys(NOTIF_OFF_FIELD) as NotifType[]).forEach((t) => { offFields[NOTIF_OFF_FIELD[t]] = !on[t]; });
     await upsertNotifConfig(family.id, member.id, {
       dailyReminderTime: evening,
       morningReminderTime: morning,
       quietStart: quiet?.start ?? null,
       quietEnd: quiet?.end ?? null,
+      ...offFields,
     });
     const p = await ensureReminders({
       name: member.displayName, isParent, morning, evening,
       quiet: quiet ?? undefined, prompt: true, weekStartDay: family.weekStartDay ?? 1,
+      off: { morning: !on.morning, evening: !on.evening, report: !on.report },
     });
     setPermission(p);
+  }
+
+  function toggle(type: NotifType, value: boolean) {
+    const next = { ...prefs, [type]: value };
+    setPrefs(next);
+    apply({ prefs: next }).catch(() => {
+      setPrefs(prefs);
+      Alert.alert('Could not save', 'Please try again.');
+    });
   }
 
   async function pickTime(t: string) {
@@ -122,35 +144,47 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
       )}
 
-      <SettingsGroup title="Daily reminders · always on">
+      <SettingsGroup title="Reminders">
         {isParent && (
           <NavRow
             icon="sunny-outline"
             label="Morning plan"
-            subtitle={effMorning !== morningTime ? `Moved to ${formatTime(effMorning)} (quiet hours)` : "Nudge to add today's tasks"}
-            onPress={() => setEditing('morning')}
-            right={
-              <View style={[styles.timeBtn, { backgroundColor: colors.primary + '20' }]}>
-                <Text style={[styles.timeBtnText, { color: colors.textAccent }]}>{formatTime(morningTime)}</Text>
-              </View>
-            }
+            subtitle={!prefs.morning ? 'Off' : effMorning !== morningTime ? `Moved to ${formatTime(effMorning)} (quiet hours)` : "Nudge to add today's tasks"}
+            onPress={prefs.morning ? () => setEditing('morning') : undefined}
+            right={<TimeAndSwitch on={prefs.morning} time={morningTime} onToggle={(v) => toggle('morning', v)} label="Morning plan" styles={styles} colors={colors} />}
           />
         )}
         <NavRow
           icon="moon-outline"
           label="Evening check-in"
-          subtitle={effEvening !== eveningTime ? `Moved to ${formatTime(effEvening)} (quiet hours)` : "Nudge to check off what's done"}
+          subtitle={!prefs.evening ? 'Off' : effEvening !== eveningTime ? `Moved to ${formatTime(effEvening)} (quiet hours)` : "Nudge to check off what's done"}
+          onPress={prefs.evening ? () => setEditing('evening') : undefined}
+          right={<TimeAndSwitch on={prefs.evening} time={eveningTime} onToggle={(v) => toggle('evening', v)} label="Evening check-in" styles={styles} colors={colors} />}
+        />
+        {isParent && (
+          <NavRow
+            icon="stats-chart-outline"
+            label="Weekly Parent Report"
+            subtitle="Your family's week, on its last evening"
+            right={<TimeAndSwitch on={prefs.report} onToggle={(v) => toggle('report', v)} label="Weekly Parent Report" styles={styles} colors={colors} />}
+          />
+        )}
+        <NavRow
+          icon="trending-up-outline"
+          label="Someone passed you"
+          subtitle="When a family member overtakes you this week"
+          right={<TimeAndSwitch on={prefs.overtaken} onToggle={(v) => toggle('overtaken', v)} label="Someone passed you" styles={styles} colors={colors} />}
+        />
+        <NavRow
+          icon="trophy-outline"
+          label="Sunday results"
+          subtitle="Who won the week and every crown"
           isLast
-          onPress={() => setEditing('evening')}
-          right={
-            <View style={[styles.timeBtn, { backgroundColor: colors.primary + '20' }]}>
-              <Text style={[styles.timeBtnText, { color: colors.textAccent }]}>{formatTime(eveningTime)}</Text>
-            </View>
-          }
+          right={<TimeAndSwitch on={prefs.weekly} onToggle={(v) => toggle('weekly', v)} label="Sunday results" styles={styles} colors={colors} />}
         />
       </SettingsGroup>
       <Text style={[styles.caption, { color: colors.textMuted }]}>
-        Reminders keep the whole family on track, so they can't be switched off — just pick the times that suit you.
+        All on by default. Turn off any you don't want — the game still works, you'll just get fewer nudges.
       </Text>
 
       {/* Quiet hours (Phase 5 #5) — moves reminders out of the window, never cancels them */}
@@ -228,6 +262,29 @@ export default function NotificationsScreen() {
   );
 }
 
+/** A reminder row's right side: its time chip (when it has one and is on) + an on/off switch. */
+function TimeAndSwitch({ on, time, onToggle, label, styles, colors }: {
+  on: boolean; time?: string; onToggle: (v: boolean) => void; label: string;
+  styles: ReturnType<typeof createStyles>; colors: ThemeColors;
+}) {
+  return (
+    <View style={styles.rightRow}>
+      {time && on && (
+        <View style={[styles.timeBtn, { backgroundColor: colors.primary + '20' }]}>
+          <Text style={[styles.timeBtnText, { color: colors.textAccent }]}>{formatTime(time)}</Text>
+        </View>
+      )}
+      <Switch
+        value={on}
+        onValueChange={onToggle}
+        trackColor={{ false: colors.border, true: colors.primary }}
+        thumbColor="#FFFFFF"
+        accessibilityLabel={`${label} reminder`}
+      />
+    </View>
+  );
+}
+
 function createStyles(_colors: ThemeColors) {
   return StyleSheet.create({
     blockedCard: { borderWidth: 1.5, borderRadius: BorderRadius.lg, padding: Spacing.md, marginHorizontal: Spacing.lg, marginBottom: Spacing.md },
@@ -240,6 +297,7 @@ function createStyles(_colors: ThemeColors) {
     quietChip: { borderWidth: 1.5, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: 8 },
     quietChipText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
     timeBtn: { borderRadius: BorderRadius.md, paddingHorizontal: Spacing.sm, paddingVertical: 6 },
+    rightRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
     timeBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
     modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
     modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg, paddingBottom: 40 },

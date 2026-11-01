@@ -146,6 +146,8 @@ export default function AppTabsLayout() {
           quiet: { start: cfg?.quietStart, end: cfg?.quietEnd },
           prompt: true,
           weekStartDay: family.weekStartDay ?? 1,
+          // G4: each person can switch any reminder type off (default on).
+          off: { morning: cfg?.morningOff === true, evening: cfg?.eveningOff === true, report: cfg?.reportOff === true },
         });
         if (!cancelled) setReminderPermission(permission);
       } catch { /* best-effort */ }

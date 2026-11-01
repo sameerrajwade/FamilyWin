@@ -32,3 +32,34 @@ describe('placeOutsideQuiet (always-on reminders are moved, never cancelled)', (
     expect(placeOutsideQuiet('00:30', 'evening', '00:15', '06:00')).toBe('23:45');
   });
 });
+
+describe('G4: every reminder is on by default, each type can be switched off', () => {
+  const { notifPrefs, ensureReminders } = require('@/lib/notifications');
+  const Notifications = require('expo-notifications');
+
+  beforeEach(() => { Notifications.scheduleNotificationAsync.mockClear(); });
+  const scheduledTypes = () => Notifications.scheduleNotificationAsync.mock.calls.map((c: any[]) => c[0].content.data.type);
+
+  it('reads prefs: absent config or flag = on', () => {
+    expect(notifPrefs(null)).toEqual({ morning: true, evening: true, report: true, overtaken: true, weekly: true });
+    expect(notifPrefs({ eveningOff: true, overtakenOff: true })).toMatchObject({ evening: false, overtaken: false, morning: true });
+  });
+
+  it('a parent gets morning plan, evening check-in and the weekly report by default', async () => {
+    await ensureReminders({ name: 'Sameer', isParent: true });
+    expect(scheduledTypes().sort()).toEqual(['daily_reminder', 'morning_plan', 'parent_report']);
+  });
+
+  it('skips exactly the types switched off', async () => {
+    await ensureReminders({ name: 'Sameer', isParent: true, off: { morning: true, report: true } });
+    expect(scheduledTypes()).toEqual(['daily_reminder']);
+  });
+
+  it('a kid only ever gets the evening check-in, and can turn it off', async () => {
+    await ensureReminders({ name: 'Vian', isParent: false });
+    expect(scheduledTypes()).toEqual(['daily_reminder']);
+    Notifications.scheduleNotificationAsync.mockClear();
+    await ensureReminders({ name: 'Vian', isParent: false, off: { evening: true } });
+    expect(scheduledTypes()).toEqual([]);
+  });
+});

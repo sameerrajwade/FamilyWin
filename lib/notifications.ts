@@ -187,9 +187,33 @@ async function scheduleDaily(time: string, content: Notifications.NotificationCo
   });
 }
 
+// ─── Per-type on/off (G4) ────────────────────────────────────────────────────
+// Every reminder is ON by default; each person can switch any type off in
+// Settings → Notifications. Stored on their notificationConfigs doc as
+// "<type>Off: true" (absent = on). The two server pushes (overtaken, Sunday
+// results) read the same flags in the Cloud Functions.
+
+export type NotifType = 'morning' | 'evening' | 'report' | 'overtaken' | 'weekly';
+
+export const NOTIF_OFF_FIELD: Record<NotifType, string> = {
+  morning: 'morningOff',
+  evening: 'eveningOff',
+  report: 'reportOff',
+  overtaken: 'overtakenOff',
+  weekly: 'weeklyResultsOff',
+};
+
+/** Which types are ON for a stored config (absent config / flag = on). */
+export function notifPrefs(cfg: Record<string, any> | null | undefined): Record<NotifType, boolean> {
+  const out = {} as Record<NotifType, boolean>;
+  (Object.keys(NOTIF_OFF_FIELD) as NotifType[]).forEach((t) => { out[t] = cfg?.[NOTIF_OFF_FIELD[t]] !== true; });
+  return out;
+}
+
 /**
- * Schedule (or reschedule) the always-on reminders for this device's account
- * holder. Idempotent — cancels the previous reminders first — so it is safe to
+ * Schedule (or reschedule) the reminders for this device's account holder —
+ * every type on unless the person switched it off (G4). Idempotent — cancels
+ * the previous reminders first — so it is safe to
  * call on every launch and after any settings change. Returns the permission
  * state so the UI can surface "notifications are blocked" instead of failing
  * silently.
@@ -203,6 +227,8 @@ export async function ensureReminders(opts: {
   prompt?: boolean;
   /** Family week start (JS getDay) — the Parent Report fires on its last day. */
   weekStartDay?: number;
+  /** G4: types switched OFF by this person (default: all on). */
+  off?: Partial<Record<'morning' | 'evening' | 'report', boolean>>;
 }): Promise<ReminderPermission> {
   try {
     const permission = await ensureNotificationPermission(!!opts.prompt);
@@ -212,7 +238,7 @@ export async function ensureReminders(opts: {
     const first = opts.name?.split(' ')[0] || 'there';
     const qs = opts.quiet?.start, qe = opts.quiet?.end;
     const evening = placeOutsideQuiet(opts.evening || DEFAULT_EVENING_REMINDER, 'evening', qs, qe);
-    await scheduleDaily(evening, {
+    if (!opts.off?.evening) await scheduleDaily(evening, {
       title: `Lootboard time, ${first}! ✅`,
       body: "Check off what's done before the day ends — your points are waiting.",
       data: { type: 'daily_reminder', screen: 'tasks' },
@@ -221,7 +247,7 @@ export async function ensureReminders(opts: {
 
     if (opts.isParent) {
       const morning = placeOutsideQuiet(opts.morning || DEFAULT_MORNING_REMINDER, 'morning', qs, qe);
-      await scheduleDaily(morning, {
+      if (!opts.off?.morning) await scheduleDaily(morning, {
         title: `Plan today's quests, ${first} ☀️`,
         body: "Add or tweak today's tasks so everyone can start earning.",
         data: { type: 'morning_plan', screen: 'tasks' },
@@ -230,7 +256,7 @@ export async function ensureReminders(opts: {
 
       // Bet 2: the weekly payoff — "here's what the app did for you".
       const mins = toMinutes(placeOutsideQuiet(PARENT_REPORT_TIME, 'evening', qs, qe));
-      await Notifications.scheduleNotificationAsync({
+      if (!opts.off?.report) await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Your family’s week is in 📊',
           body: 'See how many chores the kids handled — and how much time it saved you.',

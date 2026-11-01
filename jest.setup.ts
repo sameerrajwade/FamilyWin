@@ -162,6 +162,8 @@ jest.mock('expo-notifications', () => ({
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
   setNotificationChannelAsync: jest.fn().mockResolvedValue(undefined),
   requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+  getPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, canAskAgain: true }),
+  SchedulableTriggerInputTypes: { DAILY: 'daily', WEEKLY: 'weekly', TIME_INTERVAL: 'timeInterval' },
   AndroidImportance: { HIGH: 4, MAX: 5, DEFAULT: 3 },
 }));
 

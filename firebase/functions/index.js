@@ -333,7 +333,8 @@ exports.onTransactionCreated = onDocumentCreated(
         .collection('notificationConfigs').doc(memberId).get();
       if (!cfg.exists) continue;
       const c = cfg.data();
-      if (c.enabled === false || !c.pushToken) continue;
+      // G4: each person can switch this push off in Settings → Notifications.
+      if (c.enabled === false || c.overtakenOff === true || !c.pushToken) continue;
       const theirPoints = totals[memberId] || 0;
       const gap = actorNow - theirPoints;
       try {
@@ -464,6 +465,7 @@ exports.weeklyReset = onSchedule('1 0 * * 1', async (event) => {
         .get();
 
       const tokens = configsSnap.docs
+        .filter((d) => d.data().weeklyResultsOff !== true) // G4: per-person off switch
         .map((d) => d.data().pushToken)
         .filter(Boolean);
 
