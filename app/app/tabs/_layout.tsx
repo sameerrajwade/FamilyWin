@@ -9,7 +9,8 @@ import { useAuthStore, useFamilyStore } from '@/store';
 import { firestore } from '@/lib/fb';
 import { Col, getNotifConfig, penaltyPauseActive } from '@/lib/firebase';
 import { getCurrentWeekRange } from '@/lib/pointsEngine';
-import { competitors, shouldShowCrowning } from '@/lib/familyGame';
+import { competitors, shouldShowCrowning, isKid } from '@/lib/familyGame';
+import { checkSurprisePacks } from '@/lib/surprise';
 import { dateKeyOf } from '@/lib/surprisePacks';
 import { useMemberLevels } from '@/lib/memberLevels';
 import { ensureReminders, pauseReminders } from '@/lib/notifications';
@@ -124,6 +125,29 @@ export default function AppTabsLayout() {
       } catch { /* best-effort: the Scores tab banner still links to it */ }
     })();
   }, [family?.id, family?.weekStartDay, family?.competitionMode, members, kidModeActive]);
+
+  // G5: claims the server auto-approves have no parent tap to trigger the
+  // bonus-chest check (chests are written from a parent's device — rules). So a
+  // parent's phone catches up on launch: every kid, today and yesterday. The
+  // chest ids are fixed per person+day, so re-checking never double-awards.
+  const chestSweepDone = useRef(false);
+  useEffect(() => {
+    const isParentUser = member?.role === 'parent' || member?.role === 'admin_parent';
+    if (chestSweepDone.current || !isParentUser || !family?.id || !members.length) return;
+    chestSweepDone.current = true;
+    const today = new Date();
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    for (const kid of (members as any[]).filter(isKid)) {
+      for (const day of [yesterday, today]) {
+        checkSurprisePacks({
+          familyId: family.id,
+          member: { id: kid.id, isManaged: kid.isManaged },
+          dateKey: dateKeyOf(day),
+          weekStartDay: family.weekStartDay ?? 1,
+        }).catch(() => {});
+      }
+    }
+  }, [member?.role, family?.id, family?.weekStartDay, members]);
 
   const setReminderPermission = useReminderStatus((s) => s.setPermission);
   useEffect(() => {

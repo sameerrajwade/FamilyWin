@@ -148,3 +148,26 @@ describe('streakWithShields — server port (F2), same scenarios as the app', ()
     expect(reachedMilestones(15, B)).toEqual([7, 14]);
   });
 });
+
+describe('shouldAutoApprove — approval trust levels (G5)', () => {
+  const { shouldAutoApprove } = require(path.join(__dirname, '../../firebase/functions/game'));
+  const fam = (n) => ({ autoApproveUnder: n });
+  test('off when the family has no limit', () => {
+    expect(shouldAutoApprove({ task: { pointValue: 5 }, family: {}, points: 5 })).toBe(false);
+    expect(shouldAutoApprove({ task: { pointValue: 5 }, family: fam(0), points: 5 })).toBe(false);
+  });
+  test('approves small tasks up to and including the limit', () => {
+    expect(shouldAutoApprove({ task: {}, family: fam(25), points: 10 })).toBe(true);
+    expect(shouldAutoApprove({ task: {}, family: fam(25), points: 25 })).toBe(true);
+    expect(shouldAutoApprove({ task: {}, family: fam(25), points: 26 })).toBe(false);
+  });
+  test('never auto-approves a task the parent wants to check', () => {
+    expect(shouldAutoApprove({ task: { requiresApproval: true }, family: fam(50), points: 10 })).toBe(false);
+    expect(shouldAutoApprove({ task: { requiresPhoto: true }, family: fam(50), points: 10 })).toBe(false);
+    expect(shouldAutoApprove({ task: {}, family: fam(50), points: 10, completion: { proofPhotoURL: 'x' } })).toBe(false);
+  });
+  test('needs a real task worth points', () => {
+    expect(shouldAutoApprove({ task: null, family: fam(50), points: 10 })).toBe(false);
+    expect(shouldAutoApprove({ task: {}, family: fam(50), points: 0 })).toBe(false);
+  });
+});

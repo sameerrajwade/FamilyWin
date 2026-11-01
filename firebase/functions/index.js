@@ -26,7 +26,7 @@ const { getStorage } = require('firebase-admin/storage');
 const { runMissedTaskSweep, localDateKey } = require('./sweep');
 const {
   competitors, buildRanked, computeCrowns, crownsSummary, detectOvertakes,
-  streakWithShields, reachedMilestones, STREAK_WINDOW_DAYS,
+  streakWithShields, reachedMilestones, STREAK_WINDOW_DAYS, shouldAutoApprove,
 } = require('./game');
 
 initializeApp();
@@ -185,12 +185,24 @@ function isAwardable(c) {
  * does not re-fire an award.
  */
 async function stampLockedPoints(familyId, completionId, c) {
-  const taskSnap = await db
-    .collection('families').doc(familyId).collection('tasks').doc(c.taskId).get();
-  const pointValue = taskSnap.exists ? (taskSnap.data().pointValue || 0) : 0;
-  await db
-    .collection('families').doc(familyId).collection('completions').doc(completionId)
-    .set({ lockedPoints: pointValue }, { merge: true });
+  const familyRef = db.collection('families').doc(familyId);
+  const [taskSnap, familySnap] = await Promise.all([
+    familyRef.collection('tasks').doc(c.taskId).get(),
+    familyRef.get(),
+  ]);
+  const task = taskSnap.exists ? taskSnap.data() : null;
+  const pointValue = task ? (task.pointValue || 0) : 0;
+  const update = { lockedPoints: pointValue };
+  // G5 — approval trust levels: a small task (≤ the family's auto-approve
+  // limit) that the parent hasn't marked "needs approval" / "photo proof" is
+  // approved here, by the server — kids still can't self-approve (rules). The
+  // status flip fires onCompletionUpdated, which pays the locked points.
+  if (shouldAutoApprove({ task, family: familySnap.exists ? familySnap.data() : null, points: pointValue, completion: c })) {
+    update.status = 'approved';
+    update.approvedBy = 'auto';
+    update.approvedAt = Timestamp.now();
+  }
+  await familyRef.collection('completions').doc(completionId).set(update, { merge: true });
 }
 
 // Award (or penalize) on completion create. Idempotent per completion id.

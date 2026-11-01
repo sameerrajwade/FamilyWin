@@ -176,7 +176,24 @@ function reachedMilestones(streak, bonuses) {
   return Object.keys(bonuses).map(Number).filter((m) => streak >= m).sort((a, b) => a - b);
 }
 
+// ─── Approval trust levels (G5) ──────────────────────────────────────────────
+/**
+ * Should the server approve a kid's pending claim by itself? Yes when the
+ * family set an auto-approve limit (family.autoApproveUnder, points) and the
+ * task is worth > 0 and ≤ that limit — unless the parent asked to check this
+ * task (requiresApproval / requiresPhoto) or the claim carries a proof photo.
+ */
+function shouldAutoApprove({ task, family, points, completion }) {
+  const limit = Number(family && family.autoApproveUnder) || 0;
+  if (limit <= 0 || !task) return false;
+  if (!(points > 0) || points > limit) return false;
+  if (task.requiresApproval === true || task.requiresPhoto === true) return false;
+  if (completion && completion.proofPhotoURL) return false;
+  return true;
+}
+
 module.exports = {
+  shouldAutoApprove,
   isKid,
   competitors,
   buildRanked,

@@ -167,6 +167,9 @@ export interface FamilyDoc {
   // E3: real-world perks a parent attaches to levels, e.g. { "4": "Pick the
   // Friday movie" }. Keys are level numbers 2..max (lib/levelUnlocks).
   levelPerks?: Record<string, string> | null;
+  // G5 approval trust levels: kids' claims on tasks worth ≤ this many points
+  // are approved by the server automatically (Cloud Function). Absent/0 = off.
+  autoApproveUnder?: number | null;
   createdAt: Timestamp;
 }
 
@@ -948,6 +951,11 @@ export async function approveCompletion(params: {
 /** E3: save the family's level perks (already cleaned by levelUnlocks.cleanPerks). */
 export async function setLevelPerks(familyId: string, perks: Record<string, string>): Promise<void> {
   await firestore().collection('families').doc(familyId).update({ levelPerks: perks });
+}
+
+/** G5: auto-approve kids' claims on tasks worth ≤ `points` (0 = off). Parents only, via rules. */
+export async function setAutoApproveUnder(familyId: string, points: number): Promise<void> {
+  await firestore().collection('families').doc(familyId).update({ autoApproveUnder: Math.max(0, Math.round(points)) });
 }
 
 /** Choose who competes: everyone (default) or kids only. Parents only, via rules. */

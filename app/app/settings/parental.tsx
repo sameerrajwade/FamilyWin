@@ -13,11 +13,13 @@ import { firestore } from '@/lib/fb';
 import { DEFAULT_ALLOWANCE_RATE } from '@/lib/pointsEngine';
 import { useAuthStore } from '@/store';
 import { useTheme, type ThemeColors } from '@/lib/theme';
-import { setMissedTaskPenalty, missedPenaltyMode, missedDeadlineHour, setMissedTaskDeadline, updateFamilyWeekStartDay, setFamilyPenaltyPause, PAUSE_INDEFINITE, setAllowanceSettings, setCompetitionMode, setLevelPerks } from '@/lib/firebase';
+import { setMissedTaskPenalty, missedPenaltyMode, missedDeadlineHour, setMissedTaskDeadline, updateFamilyWeekStartDay, setFamilyPenaltyPause, PAUSE_INDEFINITE, setAllowanceSettings, setCompetitionMode, setLevelPerks, setAutoApproveUnder } from '@/lib/firebase';
 import { LevelPerksEditor } from '@/components/ui/LevelPerks';
 import { FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
 
 const DAY_MS = 86_400_000;
+/** G5: auto-approve limits offered in Game rules (0 = parent approves everything). */
+const AUTO_APPROVE_CHOICES = [0, 10, 25, 50];
 function addDays(n: number): Date { return new Date(Date.now() + n * DAY_MS); }
 
 const WEEK_DAYS = [
@@ -75,6 +77,19 @@ export default function ParentalControlsScreen() {
     } catch {
       setFamily({ ...family, competitionMode: prev });
       Alert.alert('Error', 'Could not update who competes.');
+    }
+  }
+
+  async function handleSetAutoApprove(points: number) {
+    if (!family?.id || (family.autoApproveUnder ?? 0) === points) return;
+    const prev = family.autoApproveUnder;
+    Haptics.selectionAsync().catch(() => {});
+    setFamily({ ...family, autoApproveUnder: points });
+    try {
+      await setAutoApproveUnder(family.id, points);
+    } catch {
+      setFamily({ ...family, autoApproveUnder: prev });
+      Alert.alert('Error', 'Could not update approvals.');
     }
   }
 
@@ -165,6 +180,33 @@ export default function ParentalControlsScreen() {
               </TouchableOpacity>
             );
           })}
+        </SettingsBlock>
+      </SettingsGroup>
+
+      {/* G5 — approval trust levels: small claims don't need a parent's tap. */}
+      <SettingsGroup title="Approvals">
+        <SettingsBlock isLast>
+          <Text style={[styles.blockLabel, { color: colors.text }]}>Auto-approve small tasks</Text>
+          <Text style={[styles.blockHint, { color: colors.textSecondary }]}>
+            Kids' claims for tasks worth this much or less are approved straight away. Tasks you mark "needs approval" or "photo proof" always wait for you.
+          </Text>
+          <View style={styles.dayGrid}>
+            {AUTO_APPROVE_CHOICES.map((n) => {
+              const active = (family?.autoApproveUnder ?? 0) === n;
+              return (
+                <TouchableOpacity
+                  key={n}
+                  style={[styles.dayChip, { backgroundColor: colors.background, borderColor: colors.border }, active && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                  onPress={() => handleSetAutoApprove(n)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={n === 0 ? 'Approve every claim myself' : `Auto-approve tasks up to ${n} points`}
+                >
+                  <Text style={[styles.dayChipText, { color: active ? '#FFF' : colors.text }]}>{n === 0 ? 'Off' : `Up to ${n} pts`}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </SettingsBlock>
       </SettingsGroup>
 

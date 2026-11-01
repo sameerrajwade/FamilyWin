@@ -146,3 +146,48 @@ describe('Phase D2 — pending claims lock their points at claim time', () => {
     expect(txs[0].delta).toBe(15);
   });
 });
+
+describe('G5 — approval trust levels (server auto-approves small claims)', () => {
+  const autoRef = db.collection('families').doc('autoFam');
+  const autoComp = () => autoRef.collection('completions');
+  const autoTx = async (id) => (await autoRef.collection('transactions').where('referenceId', '==', id).get()).docs.map((d) => d.data());
+
+  beforeAll(async () => {
+    await autoRef.set({ name: 'Auto Family', autoApproveUnder: 25 });
+    await autoRef.collection('tasks').doc('small').set({ title: 'Make bed', pointValue: 10 });
+    await autoRef.collection('tasks').doc('big').set({ title: 'Mow lawn', pointValue: 50 });
+    await autoRef.collection('tasks').doc('checked').set({ title: 'Homework', pointValue: 10, requiresApproval: true });
+  });
+
+  it('a kid claim on a small task is approved by the server and paid', async () => {
+    await autoComp().doc('a_small').set({ taskId: 'small', memberId: 'kidA', wasAutoFailed: false, serverAward: true, status: 'pending' });
+    const doc = await eventually(async () => {
+      const d = (await autoComp().doc('a_small').get()).data();
+      return d && d.status === 'approved' ? d : null;
+    });
+    expect(doc.approvedBy).toBe('auto');
+    const txs = await eventually(async () => { const t = await autoTx('a_small'); return t.length ? t : null; });
+    expect(txs).toHaveLength(1);
+    expect(txs[0].delta).toBe(10);
+  });
+
+  it('a claim above the limit still waits for a parent', async () => {
+    await autoComp().doc('a_big').set({ taskId: 'big', memberId: 'kidA', wasAutoFailed: false, serverAward: true, status: 'pending' });
+    // lockedPoints is stamped, but the status stays pending
+    const doc = await eventually(async () => {
+      const d = (await autoComp().doc('a_big').get()).data();
+      return d && d.lockedPoints === 50 ? d : null;
+    });
+    expect(doc.status).toBe('pending');
+    expect(await autoTx('a_big')).toHaveLength(0);
+  });
+
+  it('a task the parent marked "needs approval" is never auto-approved', async () => {
+    await autoComp().doc('a_checked').set({ taskId: 'checked', memberId: 'kidA', wasAutoFailed: false, serverAward: true, status: 'pending' });
+    const doc = await eventually(async () => {
+      const d = (await autoComp().doc('a_checked').get()).data();
+      return d && d.lockedPoints === 10 ? d : null;
+    });
+    expect(doc.status).toBe('pending');
+  });
+});
