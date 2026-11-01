@@ -13,6 +13,12 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 64 (2026-11-01) — G7 family vs family leagues (built, deployed, installed)
+- **User chose** the G7 recommendations: score = **average points per competing player**, **≤6 families**, others see **name + score only**.
+- **Built:** server `functions/league.js` (create/join/leave + `writeStandings`; season rollover keeps `lastSeason`) + 3 parent-only callables + standings refresh in `onTransactionCreated`; rules (member-family read only, no client writes); app `/app/league` screen, `LeagueCard` on Scores, "Family league" row on Family tab, `lib/leagues` ranking.
+- **Tests:** league emulator 9, rules 54/54, functions **70/70**, app **34 suites / 479**, tsc 0. **Deployed** rules + createLeague/joinLeague/leaveLeague + onTransactionCreated. APK installed 14:04, launches clean. Commit `0d4c544`.
+- **Next Up:** (1) **G8** name check "Chore League" (Play/App Store/USPTO) → user confirms → rename. (2) Quick fixes (HANDOFF §4): quest-line truncation, packs "for whom". (3) User tries the league on device (needs a 2nd family/test account). (4) G9–G15.
+
 ## Iteration 63 (2026-11-01) — G1–G6 installed on the Pixel; handoff rewritten for G7+
 - **Current State:** G1–G6 APK INSTALLED 13:46, launches clean; Today screenshot ✓ (chest quest ring, "0 of 6 daily" — weekly tasks excluded, bounty board). Working tree clean; prod rules + 9 functions on Node 22.
 - **Last Session:** rewrote `docs/HANDOFF.md` top to bottom (it still described Phase C as uncommitted): current state, done table A→G6 with commit ids, the single Phase G checklist, a **G7 family-vs-family design** with 3 open questions, quick-fix backlog, exact build/test/deploy/install commands + editing gotchas (CRLF files, heredoc escapes, bare deploy command), and all user decisions.

@@ -2,11 +2,11 @@
 
 > **New session? Start here.** Read this file, then `CLAUDE.md` (gotchas 9–16
 > matter), then the top entries of `docs/PROGRESS.md`. Say:
-> *"Read docs/HANDOFF.md and continue with G7."*
+> *"Read docs/HANDOFF.md and continue with G8."*
 >
-> Last updated: **2026-11-01** — Phases A–F and G1–G6 done, committed, deployed
-> and installed on the Pixel. **Next: G7 family vs family** (design in §3 —
-> confirm the 3 open questions with the user before building).
+> Last updated: **2026-11-01** — Phases A–F and G1–G7 done, committed, deployed
+> and installed on the Pixel. **Next: G8 name check ("Chore League")**, then
+> the quick fixes in §4 and G9–G15.
 
 ---
 
@@ -15,19 +15,20 @@
 | Thing | State |
 |---|---|
 | Branch | `main`, local only — **nothing pushed** (ask before pushing) |
-| Working tree | clean (everything committed; last code commit `452172f` G6, docs after) |
-| App on phone | G1–G6 build **installed 2026-11-01 13:46**, launches clean; Today screenshot ✓ (chest quest ring, "0 of 6 daily" excludes weekly tasks, bounty board) |
-| Prod Firebase | `familywin-35a97`. Rules + all 9 functions deployed on **Node 22** (Node 20 was decommissioned 2026-10-30). Last deploy: `onCompletionCreated` (G5 auto-approve) |
-| Tests | app **32 suites / 470**; `tsc` 0 app-source errors; emulator: rules **50/50**, functions **61/61** |
+| Working tree | clean (everything committed; last code commit `0d4c544` G7, docs after) |
+| App on phone | G1–G7 build **installed 2026-11-01 14:04**, launches clean (league screens not yet opened on device) |
+| Prod Firebase | `familywin-35a97`. Rules + **12 functions** deployed on **Node 22** (Node 20 was decommissioned 2026-10-30). Last deploy: G7 rules + `createLeague`/`joinLeague`/`leaveLeague` + `onTransactionCreated` |
+| Tests | app **34 suites / 479**; `tsc` 0 app-source errors; emulator: rules **54/54**, functions **70/70** |
 | Phone | Pixel 10 Pro over wireless adb. If it drops off: user re-enables *Wireless debugging*; meanwhile copy the APK to `OneDrive\Desktop\Lootboard.apk` |
 | Family data | Rajwade family (Sameer, Asmita, Vian, Vayu). Ledger wiped 2026-10-31. Season 1 = Oct 26 → Nov 22 |
 | Pricing | **None.** Lootboard Plus was removed entirely (G1) |
 
 ### First thing to do in a new session
-1. Read §3 (G7 design) and **ask the user the 3 open questions** — then build.
-2. Optionally knock out the quick fixes in §4 first (quest-line truncation is visible on the phone).
-3. After tonight 01:00 UTC: `firebase functions:log --only dailyStreakCheck --project familywin-35a97` → confirm the F2 rewrite ran clean (it never paid bonuses before).
-4. **Never tap the phone UI while the user may be holding it** — screenshots only.
+1. **G8 name check**: search Play Store / App Store / USPTO for "Chore League" (+ close variants), report back, and only rename once the user confirms.
+2. Knock out the quick fixes in §4 (quest-line truncation is visible on the phone).
+3. Ask the user to try the league on device (Family → Family league → Start; needs a 2nd family/test account to see a real race).
+4. After 01:00 UTC each night: `firebase functions:log --only dailyStreakCheck --project familywin-35a97` → confirm the F2 rewrite ran clean (it never paid bonuses before).
+5. **Never tap the phone UI while the user may be holding it** — screenshots only.
 
 ---
 
@@ -49,6 +50,7 @@
 | G4 `0fa6e7c` | Every reminder type can be switched off (default on); server pushes honour it |
 | G5 `8a177ef` | Approval trust levels: `family.autoApproveUnder` (Off/10/25/50); **server** auto-approves (`approvedBy:'auto'`); parent phone catches up bonus chests on launch |
 | G6 `452172f` | Starter kit by kids' ages (per-kid **assigned** tasks + 2 shared + 4 rewards, untick / add your own) + "Discover more" (Skip for now → card on Today from week 2) |
+| G7 `0d4c544` | **Family vs family leagues** — see §3 "G7 as built" |
 
 ---
 
@@ -56,9 +58,8 @@
 
 | # | Task | Size | State |
 |---|---|---|---|
-| G1–G6 | see §2 | — | ✅ |
-| **G7** | **Family vs family** seasons (design below) | L | ⏳ **next** |
-| G8 | **Name**: user likes **"Chore League"** (a league of family teams — fits G7). Check Play Store, App Store, USPTO; keep the chest mark; then rename app name / wordmark / copy / store listing | S–M | before G12 |
+| G1–G7 | see §2 | — | ✅ |
+| **G8** | **Name** ⏳ **next**: user likes **"Chore League"** (a league of family teams — fits G7). Check Play Store, App Store, USPTO; keep the chest mark; then rename app name / wordmark / copy / store listing | S–M | before G12 |
 | G9 | **Store review prompt**: after 3rd–5th open, right after a happy moment; native sheet (`expo-store-review`, needs native rebuild) with store-URL fallback; **max 3 asks, never after rated** | M | |
 | G10 | Package rename, strip unused permissions, versionCode scheme (`docs/PHASE0_CHECKLIST.md`) | M | |
 | G11 | Privacy policy URL, Data Safety form, **COPPA / Designed-for-Families** (invite-code self-join), advertising-ID decision (`docs/DATA_SAFETY.md`, `docs/TARGET_AUDIENCE_COPPA.md`) — **review together with the user** | M | |
@@ -67,23 +68,14 @@
 | G14 | **Closed test with 10–20 outside families**; watch the report's health metrics (approval wait, kid-claimed %, last-place still playing) | — | before public launch |
 | G15 | **iOS** via Expo/EAS once Android is settled ($99/yr Apple account; EAS cloud build, no Mac; user signs) | — | after G14 |
 
-### G7 — family vs family: proposed design (confirm before building)
-**Why:** the growth loop — the only feature that brings in *new households* ("challenge your sister's family to a season").
-
-**Open questions for the user (ask first):**
-1. **Fair score:** a family of 6 beats a family of 3 on raw totals. Recommend **average points per competing player** for the season (raw total shown too).
-2. **League size:** recommend up to **6 families** per league.
-3. **What other families see:** recommend family name + family emoji/photo + score only — **no kids' names or tasks**.
-
-**Shape (recommended):**
-- Data: top-level `leagues/{leagueId}` `{ name, inviteCode, createdByFamily, familyIds[], seasonEpoch, createdAt }` and `leagues/{id}/standings/{familyId}` `{ familyName, emoji, players, points, avgPoints, updatedAt }`.
-- Standings are **written only by a Cloud Function** (families can't read each other's ledgers, and must not be able to fake a score): extend `onTransactionCreated` (or a light hourly job) to recompute the family's season total for every league it's in.
-- Join via code through a callable CF `joinLeague` (rate-limited like `joinFamily`, cap 6 families); `leaveLeague` anytime. Parents only.
-- Rules: a league doc + its standings readable by members of any family in `familyIds`; **no client writes** (CF only).
-- Seasons: same 4-week blocks as `lib/seasons` (`SEASON_EPOCH`, Monday start for the league).
-- UI: Scores tab "League" card (season standings across families, your family highlighted); Family tab "Start or join a league" (share code). Season end → league champion on the winner screen + push.
-- Tests: rules (cross-family read OK, no client writes), functions emulator (standings update, join cap, leave), pure scoring (avg per player).
-- Deploy: rules + functions (pre-authorized, §5).
+### G7 — family vs family: as built (`0d4c544`, deployed)
+User chose the recommendations: **score = average points per competing player** (raw total shown too), **max 6 families**, other families see **family name + score only** (no kids' names/tasks).
+- **Server** `firebase/functions/league.js` (pure-ish, takes `db`, emulator-tested): `createLeague` / `joinLeague` (code, rate-limited via `joinRateLimits/league_<uid>`, transactional cap 6) / `leaveLeague` (last family out deletes the league) — wrapped as **parent-only callables** in index.js (`requireParentFamily`). `onTransactionCreated` calls `league.writeStandings` on EVERY points change (before the overtaken logic; failures logged, never block it).
+- **Data:** `leagues/{id}` {name, inviteCode, createdByFamily, familyIds[]}; `leagues/{id}/standings/{familyId}` {familyName, emoji 🏠, season, points, players, avgPoints, lastSeason}; `families/{id}.leagueIds` (CF-written).
+- **Seasons:** UTC 4-week blocks from Mon 2026-10-26 (same numbering as `lib/seasons`). A row from an older season counts as 0 until that family scores again; on rollover the finished season moves to `lastSeason` → `seasonChampions` crowns last season's winner (shown in week 1).
+- **Rules:** league + standings readable only by members of a family in `familyIds`; **no client writes**.
+- **App:** `app/app/league.tsx` (start / join by code / table / share code / leave; kids see "ask a parent"), `components/ui/League.tsx` (`useFamilyLeague`, `LeagueTable`, `LeagueCard` on Scores — or "Challenge another family" for parents), "Family league" row on the Family tab, `lib/leagues.ts` (`rankLeague`, `seasonChampions`, callables, `watchLeague`).
+- **Not done (later):** season-end league push notification; app uses only the family's first league (`leagueIds[0]`) — one league per family is the expected case.
 
 ---
 
@@ -95,7 +87,7 @@
 - Level/season data reads the whole family ledger on the client (`lib/memberLevels`); fine for a household — move totals to a CF-maintained doc if ledgers get large.
 - `ChildMode.tsx` card backgrounds are hard-coded light pastels (not theme tokens).
 - Deferred: home-screen widget, web dashboard.
-- **Device checks not yet done by the user:** bounties end-to-end, savings ring, perks editor + level-up reveal, report "Is the game working?", streak 🛡 chip (after a 5-day week), Notifications switches, Game rules → Approvals, fresh-family onboarding (needs a test account).
+- **Device checks not yet done by the user:** family league (start/join/table — needs a 2nd family or test account), bounties end-to-end, savings ring, perks editor + level-up reveal, report "Is the game working?", streak 🛡 chip (after a 5-day week), Notifications switches, Game rules → Approvals, fresh-family onboarding (needs a test account).
 
 ---
 
