@@ -609,7 +609,7 @@ export default function CreateTaskScreen() {
 
             {/* Auto-fail time */}
             <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.text }]}>Auto-fail if not done by</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Daily deadline</Text>
               <View style={styles.timeRow}>
                 {[18, 19, 20, 21, 22].map((hour) => (
                   <TouchableOpacity

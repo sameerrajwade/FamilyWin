@@ -30,7 +30,7 @@ const PARENT_SLIDES: Slide[] = [
   { emoji: '✅', accent: 'success', title: 'Just tap to complete', body: 'Tap a task card to mark it done — points land instantly, with a little celebration. Tapped by mistake? Tap again to undo.', route: '/app/tabs', cta: 'Show me my tasks' },
   { emoji: '👨‍👩‍👧', accent: 'primary', title: 'One phone, whole family', body: 'No phone for the kids? Tap a family member at the top to switch into their profile and complete tasks for them.' },
   { emoji: '➕', accent: 'accent', title: 'Add tasks & penalties', body: 'Use Task to add chores and Rewards to add prizes. Log a slip-up with Penalty, and long-press any task to edit it.', route: '/app/task/create', cta: 'Add a task now' },
-  { emoji: '⏰', accent: 'warning', title: 'Missed a day?', body: 'In Parental Controls you choose whether missed chores lose points and set the daily deadline. There\'s a 2-day window to catch up and win them back.', route: '/app/settings/parental', cta: 'Open Parental Controls' },
+  { emoji: '⏰', accent: 'warning', title: 'Missed a day?', body: 'In Family → Game rules you choose whether unfinished chores cost points and set the daily deadline. There\'s a 2-day window to catch up and win them back.', route: '/app/settings/parental', cta: 'Open Game rules' },
   { emoji: '🎁', accent: 'primary', title: 'Scores, rewards & go', body: 'Crowns and standings update live on Scores, and kids spend points on prizes in Rewards. That\'s it — may the best win!', route: '/app/tabs/rewards', cta: 'Go to Rewards' },
 ];
 

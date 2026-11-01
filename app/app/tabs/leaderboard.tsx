@@ -288,7 +288,7 @@ export default function LeaderboardScreen() {
                           )}
                         </View>
                         <Text style={[styles.rowStats, { color: colors.textSecondary }]}>
-                          {entry.tasksCompleted}/{entry.tasksTotal} tasks
+                          {entry.tasksCompleted} done this week
                           {entry.streak > 0 ? ` · 🔥 ${entry.streak}d` : ''}
                         </Text>
                       </View>

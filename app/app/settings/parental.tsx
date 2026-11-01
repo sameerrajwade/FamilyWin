@@ -5,11 +5,12 @@
  * Settings > Parental Controls / Weekly Reset sections.
  */
 import { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, StyleSheet, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, StyleSheet, Switch, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { SettingsScaffold, SettingsGroup, NavRow, SettingsBlock } from '@/components/ui/SettingsUI';
 import { firestore } from '@/lib/fb';
+import { DEFAULT_ALLOWANCE_RATE } from '@/lib/pointsEngine';
 import { useAuthStore } from '@/store';
 import { useTheme, type ThemeColors } from '@/lib/theme';
 import { setMissedTaskPenalty, missedPenaltyMode, missedDeadlineHour, setMissedTaskDeadline, updateFamilyWeekStartDay, setFamilyPenaltyPause, PAUSE_INDEFINITE, setAllowanceSettings, setCompetitionMode } from '@/lib/firebase';
@@ -31,7 +32,8 @@ export default function ParentalControlsScreen() {
   const [weekStartDay, setWeekStartDay] = useState(family?.weekStartDay ?? 1);
   // Virtual allowance (Phase 5 #3)
   const [allowanceOn, setAllowanceOn] = useState(!!family?.allowanceEnabled);
-  const [rate, setRate] = useState(family?.allowancePointsPerUnit ?? 100);
+  const [rate, setRate] = useState(family?.allowancePointsPerUnit ?? DEFAULT_ALLOWANCE_RATE);
+  const [customRate, setCustomRate] = useState('');
   const [currency, setCurrency] = useState(family?.allowanceCurrency ?? '$');
 
   async function saveAllowance(next: { allowanceEnabled?: boolean; allowancePointsPerUnit?: number; allowanceCurrency?: string }) {
@@ -290,15 +292,35 @@ export default function ParentalControlsScreen() {
             <Text style={[styles.blockLabel, { color: colors.text }]}>Conversion rate</Text>
             <Text style={[styles.blockHint, { color: colors.textSecondary }]}>How many points equal one {currency}1.</Text>
             <View style={styles.dayGrid}>
-              {[50, 100, 200, 500].map((r) => (
+              {[100, 200, 300, 500].map((r) => (
                 <TouchableOpacity
                   key={r}
                   style={[styles.dayChip, { backgroundColor: colors.background, borderColor: colors.border }, rate === r && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-                  onPress={() => { setRate(r); saveAllowance({ allowancePointsPerUnit: r }); }}
+                  onPress={() => { setRate(r); setCustomRate(''); saveAllowance({ allowancePointsPerUnit: r }); }}
                 >
                   <Text style={[styles.dayChipText, { color: rate === r ? '#FFF' : colors.text }]}>{r} = {currency}1</Text>
                 </TouchableOpacity>
               ))}
+            </View>
+            {/* Any other rate — saved when the parent finishes typing. */}
+            <View style={styles.customRateRow}>
+              <Text style={[styles.blockHint, { color: colors.textSecondary, marginBottom: 0, marginTop: 0 }]}>Custom:</Text>
+              <TextInput
+                style={[styles.customRateInput, { color: colors.text, borderColor: ![100, 200, 300, 500].includes(rate) ? colors.primary : colors.border }]}
+                value={customRate || (![100, 200, 300, 500].includes(rate) ? String(rate) : '')}
+                onChangeText={(t) => setCustomRate(t.replace(/[^0-9]/g, ''))}
+                onEndEditing={() => {
+                  const n = parseInt(customRate, 10);
+                  if (n >= 10 && n <= 100000) { setRate(n); saveAllowance({ allowancePointsPerUnit: n }); }
+                  else if (customRate) Alert.alert('Pick a rate', 'Use between 10 and 100,000 points per 1.');
+                }}
+                keyboardType="number-pad"
+                maxLength={6}
+                placeholder="e.g. 250"
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel="Custom points per one currency unit"
+              />
+              <Text style={[styles.blockHint, { color: colors.textSecondary, marginBottom: 0, marginTop: 0 }]}>pts = {currency}1</Text>
             </View>
             <Text style={[styles.blockLabel, { color: colors.text, marginTop: Spacing.md }]}>Currency</Text>
             <View style={styles.dayGrid}>
@@ -357,6 +379,8 @@ function createStyles(_colors: ThemeColors) {
     modeOption: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1.5, borderRadius: BorderRadius.md, padding: Spacing.md, marginBottom: Spacing.sm },
     radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
     radioDot: { width: 10, height: 10, borderRadius: 5 },
+    customRateRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: Spacing.sm },
+    customRateInput: { borderWidth: 1.5, borderRadius: BorderRadius.md, paddingHorizontal: 10, paddingVertical: 6, minWidth: 90, fontSize: FontSize.sm, fontFamily: FontFamily.bold },
     hourRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
     hourChip: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: BorderRadius.md, borderWidth: 1.5, alignItems: 'center' },
     hourChipText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },

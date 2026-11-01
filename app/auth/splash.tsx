@@ -44,7 +44,7 @@ const SLIDES: Slide[] = [
     subtitle: 'Complete tasks to earn points. Miss them and lose points automatically.',
     bg: '#43D98F',
     accent: '#FFFFFF',
-    features: ['🔄 Daily & weekly tasks', '⚠️ Auto-fail at deadline', '🔥 Build streaks'],
+    features: ['🔄 Daily & weekly tasks', '⏰ Daily deadlines', '🔥 Build streaks'],
   },
   {
     emoji: '🥇',

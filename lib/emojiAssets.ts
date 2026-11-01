@@ -1,5 +1,5 @@
 /**
- * lib/emojiAssets.ts — GENERATED (scratchpad emoji3d/build.js). Do not hand-edit.
+ * lib/emojiAssets.ts — GENERATED (scripts/emoji3d — see its README). Do not hand-edit.
  * ─────────────────────────────────────────────────────────────────────────────
  * Bundled Microsoft Fluent 3D emoji (MIT, see assets/emoji3d/LICENSE) for every
  * emoji the app shows as an icon — task icons, avatars, rewards and game UI —

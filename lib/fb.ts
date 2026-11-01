@@ -30,6 +30,7 @@ import {
   addDoc,
   deleteDoc,
   writeBatch,
+  runTransaction as mRunTransaction,
   Timestamp,
   serverTimestamp,
   arrayUnion,
@@ -172,11 +173,30 @@ function wrapBatch(): Batch {
   return api;
 }
 
+/** Read-then-write atomically (e.g. "create only if it doesn't exist yet"). */
+export interface Txn {
+  get(doc: DocRef): Promise<DocSnap>;
+  set(doc: DocRef, data: DocumentData, options?: { merge?: boolean }): Txn;
+  update(doc: DocRef, data: DocumentData): Txn;
+  delete(doc: DocRef): Txn;
+}
+
+function wrapTxn(t: any): Txn {
+  const api: Txn = {
+    get: (doc) => t.get(doc._ref),
+    set(doc, data, options) { t.set(doc._ref, data, options ?? {}); return api; },
+    update(doc, data) { t.update(doc._ref, data); return api; },
+    delete(doc) { t.delete(doc._ref); return api; },
+  };
+  return api;
+}
+
 interface FirestoreFn {
   (): {
     collection(path: string): CollectionRef;
     doc(path: string): DocRef;
     batch(): Batch;
+    runTransaction<T>(fn: (txn: Txn) => Promise<T>): Promise<T>;
     settings(opts?: unknown): void;
   };
   Timestamp: typeof Timestamp;
@@ -193,6 +213,7 @@ const firestoreImpl = (() => ({
   collection: (path: string) => wrapCollection(mColl(db, path)),
   doc: (path: string) => wrapDoc(mDoc(db, path)),
   batch: () => wrapBatch(),
+  runTransaction: <T,>(fn: (txn: Txn) => Promise<T>) => mRunTransaction(db, (t: any) => fn(wrapTxn(t))) as Promise<T>,
   // Persistence is enabled by default on native in v26; keep as a no-op so the
   // old `firestore().settings({ persistence: true })` call still type-checks.
   settings: (_opts?: unknown) => {},

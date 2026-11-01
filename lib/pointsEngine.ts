@@ -300,6 +300,9 @@ const LEVEL_TIERS: { floor: number; title: string; emoji: string }[] = [
 // ─── Virtual allowance (Phase 5 #3) ────────────────────────────────────────────
 
 /** Cash value of `points` at `pointsPerUnit` points per one currency unit. */
+/** Default allowance rate: 300 points = 1 currency unit (user choice, 2026-10-31). */
+export const DEFAULT_ALLOWANCE_RATE = 300;
+
 export function pointsToCash(points: number, pointsPerUnit: number): number {
   if (!pointsPerUnit || pointsPerUnit <= 0) return 0;
   return Math.max(0, points) / pointsPerUnit;

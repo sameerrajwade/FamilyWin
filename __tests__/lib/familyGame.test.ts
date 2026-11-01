@@ -1,6 +1,6 @@
 import {
   isKid, competitors, coaches, familyGoalProgress, suggestFamilyGoal,
-  buildParentReport, choreMinutes, formatMinutes, makeGateQuestion, type GameMember, type ReportTx,
+  buildParentReport, choreMinutes, formatMinutes, makeGateQuestion, weeklyTrend, type GameMember, type ReportTx,
 } from '@/lib/familyGame';
 
 const dad: GameMember = { id: 'dad', displayName: 'Sameer R', role: 'admin_parent' };
@@ -103,6 +103,27 @@ describe('parent report', () => {
     );
     expect(close.needsCheer).toBeNull();
     expect(close.mostImproved?.memberId).toBe('vian');
+  });
+});
+
+describe('weeklyTrend', () => {
+  const now = new Date(2026, 10, 4, 12); // Wed 4 Nov 2026
+  const at = (m: number, d: number) => new Date(2026, m, d, 10);
+  const txns = [
+    { delta: 30, source: 'task', date: at(10, 2) },        // this week (Mon 2 Nov)
+    { delta: -20, source: 'redemption', date: at(10, 3) }, // spending: excluded
+    { delta: 50, source: 'task', date: at(9, 27) },        // last week
+    { delta: -5, source: 'discipline', date: at(9, 28) },  // penalties count
+    { delta: 99, source: 'task', date: at(8, 1) },         // too old
+    { delta: 10, source: 'task', date: null },
+  ];
+  it('returns 6 Monday-start weeks, oldest first, earned only', () => {
+    const bars = weeklyTrend(txns, 1, 6, now);
+    expect(bars).toHaveLength(6);
+    expect(bars[5].start.getDate()).toBe(2);   // this week starts Mon 2 Nov
+    expect(bars[5].points).toBe(30);
+    expect(bars[4].points).toBe(45);
+    expect(bars.slice(0, 4).every((b) => b.points === 0)).toBe(true);
   });
 });
 

@@ -12,8 +12,11 @@ daily/weekly tasks to earn points. The person with the most points at Sunday
 midnight wins the week. There is a live leaderboard, a rewards store, discipline
 event logging, and push notifications.
 
-**Status:** Codebase complete (Phases 1–4). Ready for Firebase setup and Android
-Studio build. Has NOT been run yet — no Firebase project exists yet.
+**Status (2026-10-31):** Live in daily use by the Rajwade family on a Pixel
+(Firebase project `familywin-35a97`, release APKs side-loaded). Brand name in
+the UI is **Lootboard**. Work is tracked in `docs/PROGRESS.md` (read it first);
+the remaining roadmap is Phases C–G (trust/clean-up → one server deploy batch →
+engagement loops → seasons/metrics → Play Store launch).
 
 ---
 
@@ -21,7 +24,7 @@ Studio build. Has NOT been run yet — no Firebase project exists yet.
 
 | Layer | Technology |
 |---|---|
-| Mobile framework | React Native + Expo SDK 51, TypeScript strict |
+| Mobile framework | React Native + **Expo SDK 57**, TypeScript strict |
 | Navigation | Expo Router v3 (file-based) |
 | State management | Zustand with AsyncStorage persistence |
 | Database | Firebase Cloud Firestore (NoSQL) |
@@ -47,16 +50,22 @@ FamilyWin/
 │   │   └── onboarding.tsx        # Create/join family flow
 │   └── app/
 │       ├── _layout.tsx
-│       ├── tabs/
-│       │   ├── _layout.tsx       # Bottom tab bar (5 tabs)
-│       │   ├── index.tsx         # Home — task list with animations
-│       │   ├── leaderboard.tsx   # Live leaderboard + podium
-│       │   ├── rewards.tsx       # Rewards store + approval flow
-│       │   ├── history.tsx       # 6-week chart + transaction log
-│       │   └── settings.tsx      # Profile, notifications, theme
-│       ├── task/create.tsx       # Create task modal
-│       ├── discipline/log.tsx    # Discipline events (parent only)
-│       └── member/[id].tsx       # Individual member profile
+│       ├── tabs/                 # Today · Scores · Rewards · Family · Settings
+│       │   ├── _layout.tsx       # Tab bar + members listener + always-on reminders
+│       │   ├── index.tsx         # Today — profile strip/score chip, goal bar, tasks
+│       │   ├── leaderboard.tsx   # Scores — podium, crowns, coaches (competitionMode)
+│       │   ├── rewards.tsx       # Rewards store + redemption approvals
+│       │   ├── family.tsx        # Family — approvals, report, Kid Mode, members, setup, rules
+│       │   ├── settings.tsx      # You + the app (profile, notifications, appearance)
+│       │   └── history.tsx       # Points history (no tab; opened from Family)
+│       ├── kid-mode.tsx          # Kid Mode: kids claim tasks on a parent's phone
+│       ├── approvals.tsx         # Pending claims + "Approve all"
+│       ├── report.tsx            # Weekly Parent Report
+│       ├── manage/[kind].tsx     # Edit tasks / rewards / penalties & bonuses
+│       ├── settings/parental.tsx # "Game rules" (who competes, penalties, pause, allowance)
+│       ├── task/create.tsx       # Create/edit task
+│       ├── discipline/log.tsx    # Penalties & bonuses (parent only)
+│       └── member/[id].tsx       # Profile (6-week trend, activity, pause, reset)
 │
 ├── lib/
 │   ├── firebase.ts               # ALL Firestore + Auth helpers (main data layer)
@@ -324,6 +333,12 @@ Access via `useTheme()` hook in any screen.
 8. **Don't `setTimeout` an image-picker launch from inside an Alert callback** — repeat taps queue up multiple delayed launches that all fire later, stacked. Guard with an in-flight lock (ref/module boolean) instead so repeat taps are simply ignored.
 9. **Firestore security rules can silently block writes that look correct client-side** — e.g. `undoTaskCompletion()` was fully correct in the app code, but `firestore.rules` had `allow delete: if false` on completions, so every undo attempt failed with no useful client error. Always check the rules first when a write "does nothing."
 10. **Always use `<Avatar emoji={...} photoURL={...}>`** (`components/ui/index.tsx`) instead of rendering `member.avatarEmoji` as raw text — it already handles the photo/emoji fallback. Several screens were found rendering the raw emoji and missing uploaded photos.
+11. **Icons are 3D images, not font emoji.** Render emoji through `<EmojiIcon>` (bundled Microsoft Fluent 3D PNGs, `lib/emojiAssets.ts`). A NEW emoji needs its image generated — see `scripts/emoji3d/README.md` — or it falls back to the phone's flat glyph. Task icons: use `resolveTaskEmoji(task)` (respects the saved emoji).
+12. **Expo SDK 53+ notification triggers need an explicit `type`** (`SchedulableTriggerInputTypes.DAILY/WEEKLY/TIME_INTERVAL`). An untyped `{hour, minute, repeats}` silently becomes an Android "channel" trigger that fires IMMEDIATELY — that's why the old daily reminder never repeated.
+13. **`lib/fb.ts` is a wrapper, not the raw SDK.** It only exposes what it wraps (collection/doc/batch/runTransaction…). If you need another Firestore API, add it to the wrapper — calling something it doesn't wrap type-errors at best and crashes at runtime at worst.
+14. **Points are server-authoritative.** Task points come only from the completion Cloud Functions; clients (parents only) may write discipline/manual/bonus/redemption transactions. Kids' completions are `status:'pending'` until a parent approves (enforced in the app; a rules-level check is Phase D).
+15. **Wireless adb on the Pixel:** after `adb connect`, two serials can appear for the same phone — pass `-s <ip:port>`. "offline" + not in `adb mdns services` = Wireless debugging was switched off (it turns off on sleep). Never drive the UI with taps while the user is holding the phone.
+16. **Release builds:** `cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a` (~6 min vs ~45 for all ABIs). The phone is arm64.
 
 > For a deeper architectural walkthrough (data model, security rules, state
 > management, business rules, and a longer gotchas list with code references),
@@ -356,7 +371,8 @@ Good prompts that work well for this project:
 
 ---
 
-*Last updated: First device builds underway — photo upload, undo, and family
-management refinements landed; see git log for the latest. Companion docs
+*Last updated: 2026-10-31 — UX redesign (Today/Family/Game rules/edit anything),
+Kid Mode, surprise packs, 3D icons, always-on reminders. See docs/PROGRESS.md
+and git log for the latest. Companion docs
 (README.md, ARCHITECTURE.md, ONBOARDING.md) cover product, architecture, and
 setup in depth — this file stays focused on AI-assistant working context.*

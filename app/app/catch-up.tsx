@@ -20,6 +20,7 @@ import { syncMissedPenalties, completeTaskForDate, undoTaskCompletion, missedPen
 import { missedTaskPenaltyAmount } from '@/lib/pointsEngine';
 import { useTheme, type ThemeColors } from '@/lib/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { checkSurprisePacks } from '@/lib/surprise';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 
@@ -74,18 +75,29 @@ export default function CatchUpScreen() {
         familyId: family.id, memberId: effectiveMember.id,
         taskId: item.task.id, pointValue: item.task.pointValue,
         taskTitle: item.task.title, dateKey: item.dateKey,
+        // Kid on their own phone → waits for a parent OK (same rule as Kid Mode).
+        requiresApproval: !(member?.role === 'parent' || member?.role === 'admin_parent'),
       });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       // Keep the row on screen in a "Done · Undo" state (don't remove it) so a
       // mistaken tap is recoverable right here.
       setDoneKeys((prev) => ({ ...prev, [key]: completionId }));
+      // A parent catching up a past day may have finished it → surprise pack.
+      if (member?.role === 'parent' || member?.role === 'admin_parent') {
+        checkSurprisePacks({
+          familyId: family.id,
+          member: { id: effectiveMember.id, isManaged: (effectiveMember as any).isManaged },
+          dateKey: item.dateKey,
+          weekStartDay: family.weekStartDay ?? 1,
+        }).catch(() => {});
+      }
     } catch (e) {
       if (__DEV__) console.error('catch-up mark done failed:', e);
       Alert.alert('Could not update', 'Please try again.');
     } finally {
       setBusyKey(null);
     }
-  }, [family?.id, effectiveMember?.id, busyKey]);
+  }, [family?.id, effectiveMember?.id, busyKey, member?.role]);
 
   const undoDone = useCallback(async (item: CatchUpItem) => {
     if (!family?.id || !effectiveMember?.id || busyKey) return;

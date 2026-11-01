@@ -25,7 +25,7 @@ import * as Haptics from 'expo-haptics';
 import { Sounds } from '@/lib/sounds';
 import { SlideIn, ScalePress } from '@/components/ui/Animations';
 import { Col, getActiveRewards, requestRedemption, approveRedemption, rejectRedemption, createReward, deactivateReward, getFamilyMembers, requestPayout } from '@/lib/firebase';
-import { pointsToCash, formatCash, pointsForOneUnit } from '@/lib/pointsEngine';
+import { pointsToCash, formatCash, pointsForOneUnit, DEFAULT_ALLOWANCE_RATE } from '@/lib/pointsEngine';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { rewardIcon } from '@/lib/rewardIcon';
@@ -175,7 +175,7 @@ export default function RewardsScreen() {
 
   // Virtual allowance (Phase 5 #3)
   const allowanceOn = !!family?.allowanceEnabled;
-  const rate = family?.allowancePointsPerUnit ?? 100;
+  const rate = family?.allowancePointsPerUnit ?? DEFAULT_ALLOWANCE_RATE;
   const currency = family?.allowanceCurrency ?? '$';
   const cashValue = pointsToCash(spendablePoints, rate);
   const canCashOut = allowanceOn && spendablePoints >= pointsForOneUnit(rate);

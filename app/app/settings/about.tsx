@@ -15,7 +15,7 @@ const SUPPORT_EMAIL = 'sameerrajwade@gmail.com';
 
 const FAQ: { q: string; a: string }[] = [
   { q: 'How do points work?', a: 'Each task is worth points by difficulty — Easy 10, Medium 25, Hard 50. Complete tasks to earn them. The member with the most points when the week resets wins the week.' },
-  { q: 'When does the week reset?', a: 'At midnight on your chosen reset day (Monday by default). A family admin can change it under Parental Controls.' },
+  { q: 'When does the week reset?', a: 'At midnight on your chosen reset day (Monday by default). Any parent can change it in Family → Game rules.' },
   { q: 'Do children need their own phone?', a: 'No. A parent adds a child profile and switches to it from the Tasks tab to complete tasks on the child\'s behalf. Older kids can also join with their own phone using the family invite code.' },
   { q: 'How do rewards work?', a: 'Parents add rewards with a point cost. A member requests one, a parent approves it, and the points are deducted on approval. Points saved in the Vault carry across weeks.' },
   { q: 'What is the missed-task penalty?', a: 'Optional. When on, points come off a daily task that isn\'t done that day — but you can mark it done up to 2 days later on the Catch-up screen to win them back.' },

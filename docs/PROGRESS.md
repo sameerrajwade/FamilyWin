@@ -10,6 +10,21 @@
 
 ---
 
+> **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
+> list, decisions already made, and how to resume (written 2026-10-31).
+
+## Iteration 55 (2026-10-31) — Phase C (trust + clean-up) + surprise packs
+Redesign committed `1a33f9d`. Plan C→D→E→F→G agreed (detailed task tables in chat). User decisions: C1 delete endpoint ✓, C3 kids' own phones need parent OK ✓, allowance default **300 pts = $1, changeable**, wallet keeps carrying over. User ADDED: C8 surprise packs; Phase G store-review prompt (3–5 opens; I pushed back on "keep asking" → max 3 asks after a happy moment, stop once rated; iOS store URL still blank).
+- **C1 DONE (prod):** `firebase functions:delete adminReversePenalties` ✓. 8 legit functions remain.
+- **C3:** Home/catch-up/recover → kid account (not parent) completions land `pending`. ⚠️ app-enforced only; rules-level "kids must be pending" = Phase D.
+- **C8 surprise packs:** `lib/surprisePacks.ts` (pure, 12 tests) + `lib/surprise.ts` (fixed-id tx `surprise_day_<m>_<date>` / `surprise_week_<m>_<weekStart>` via NEW `runTransaction` in lib/fb wrapper — it didn't exist; would've crashed). Daily 5–20 when every due task done+approved; weekly 15–50 when 7/7 daily packs. Awarded on PARENT devices only (Home complete/recover, Approvals single+all w/ summary alert, catch-up). `components/ui/SurprisePack` tap-to-open reveal (Home + Kid Mode), once per pack per device. NOT revoked on undo (told user).
+- **C2:** missed task card amber "↻ still open" (no red ✗/strike); Scores "N done this week" (was "0/42 tasks"); Child Mode "⏳ Not done yet"; splash/create/tour/FAQ copy → Game rules.
+- **C7:** `DEFAULT_ALLOWANCE_RATE=300`; chips 100/200/300/500 + custom field. User's family still saved at 500 → switch in Game rules.
+- **C4:** profile "Last 6 weeks" bars (`weeklyTrend`, tested). FIXED profile bug: tx `limit(30)` made all-time/level wrong + composite-index queries → single-field, client-sorted.
+- **C5/C6:** family-tab + manage screen tests; CLAUDE.md refreshed (status, SDK 57, structure, gotchas 11–16); emoji generator moved to `scripts/emoji3d/` (+README).
+- **Tests:** tsc 0; **26 suites / 403 green**. arm64 build running. Phase C UNCOMMITTED.
+- **Next Up:** (1) install + verify, commit Phase C. (2) Phase D deploy batch: rules (kids pending), server claim-points lock, Sunday multi-crown push, event pushes (overtaken/approved/streak-tonight — user to confirm list). (3) Phase E.
+
 ## Iteration 54 (2026-10-31) — UX redesign: compact Today, Family tab, edit anything, dark contrast
 User feedback: dark-mode text hard to read; screens tangled; Home 60% chrome; one-kid podium; packs/tasks/penalties not editable; Insights redundant. Mockups shown first (show_widget); user pushed back for real challenges → I flagged & they chose: family goal = thin bar, Family = people+game, commit checkpoint first; competition default = EVERYONE competes, option Kids only.
 - **Checkpoint commit `40393aa`** on main (local, NOT pushed): all Phase 1–5 + A + B. Removed temp `adminReversePenalties` endpoint + its hard-coded token from index.js BEFORE committing (never in git history). ⚠️ That endpoint is STILL DEPLOYED in prod until `firebase functions:delete adminReversePenalties` / functions deploy — needs user OK.

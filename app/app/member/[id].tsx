@@ -14,6 +14,7 @@ import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants
 import { useTheme, type ThemeColors } from '@/lib/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Avatar } from '@/components/ui';
+import { weeklyTrend } from '@/lib/familyGame';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
 import type { MemberDoc, TransactionDoc, CompletionDoc } from '@/lib/firebase';
 
@@ -120,25 +121,25 @@ export default function MemberProfileScreen() {
     if (!id || !family?.id) return;
     async function load() {
       try {
+        // Single-field queries, sorted on the device: no composite index to
+        // silently fail (CLAUDE.md gotcha #2), and ALL of the member's
+        // transactions — the old limit(30) made all-time points and level
+        // wrong for anyone with a longer history.
         const [memberSnap, txSnap, completionSnap] = await Promise.all([
           Col.members(family!.id).doc(id).get(),
-          Col.transactions(family!.id)
-            .where('memberId', '==', id)
-            .orderBy('createdAt', 'desc')
-            .limit(30)
-            .get(),
-          Col.completions(family!.id)
-            .where('memberId', '==', id)
-            .orderBy('completedAt', 'desc')
-            .get(),
+          Col.transactions(family!.id).where('memberId', '==', id).get(),
+          Col.completions(family!.id).where('memberId', '==', id).get(),
         ]);
 
         if (memberSnap.exists()) {
           setMember({ id: memberSnap.id, ...memberSnap.data() } as MemberDoc);
         }
 
-        const txList = txSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as TransactionDoc[];
-        const compList = completionSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as CompletionDoc[];
+        const ms = (ts: any) => ts?.toDate?.()?.getTime?.() ?? 0;
+        const txList = (txSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as TransactionDoc[])
+          .sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
+        const compList = (completionSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as CompletionDoc[])
+          .sort((a, b) => ms(b.completedAt) - ms(a.completedAt));
 
         setTransactions(txList);
         setCompletions(compList);
@@ -477,11 +478,39 @@ export default function MemberProfileScreen() {
               <View style={styles.weekCard}>
                 <WeekStat label="Completed" value={completed} color={colors.success} />
                 <View style={styles.weekDivider} />
-                <WeekStat label="Auto-Failed" value={failed} color={colors.danger} />
+                <WeekStat label="Not done" value={failed} color={colors.warning} />
                 <View style={styles.weekDivider} />
                 <WeekStat label="Points" value={weeklyPoints} color={colors.primary} showSign />
               </View>
             </View>
+
+            {/* Long-term progress (moved here from the old Insights tab). */}
+            {(() => {
+              const bars = weeklyTrend(
+                transactions.map((t) => ({ delta: t.delta, source: t.source, date: (t.createdAt as any)?.toDate?.() ?? null })),
+                family?.weekStartDay ?? 1,
+              );
+              const max = Math.max(1, ...bars.map((b) => Math.abs(b.points)));
+              return (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Last 6 weeks</Text>
+                  <View style={styles.trendCard}>
+                    {bars.map((b, i) => (
+                      <View key={i} style={styles.trendCol}>
+                        <Text style={styles.trendVal}>{b.points}</Text>
+                        <View style={styles.trendTrack}>
+                          <View style={[styles.trendBar, {
+                            height: `${Math.max(4, Math.round((Math.abs(b.points) / max) * 100))}%`,
+                            backgroundColor: b.points < 0 ? colors.warning : i === bars.length - 1 ? colors.primary : colors.primary + '66',
+                          }]} />
+                        </View>
+                        <Text style={styles.trendLabel}>{i === bars.length - 1 ? 'Now' : `${b.start.getMonth() + 1}/${b.start.getDate()}`}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              );
+            })()}
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -649,6 +678,12 @@ function createStyles(colors: ThemeColors) {
   modalBtnPrimary: { backgroundColor: colors.primary },
   modalBtnText: { fontSize: FontSize.md, fontFamily: FontFamily.bold },
   weekCard: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, ...Shadow.sm },
+  trendCard: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, gap: 8, ...Shadow.sm },
+  trendCol: { flex: 1, alignItems: 'center' },
+  trendVal: { fontSize: 11, fontFamily: FontFamily.bold, color: colors.textSecondary, marginBottom: 4 },
+  trendTrack: { height: 90, width: '70%', justifyContent: 'flex-end' },
+  trendBar: { width: '100%', borderRadius: 6 },
+  trendLabel: { fontSize: 11, fontFamily: FontFamily.semiBold, color: colors.textMuted, marginTop: 6 },
   weekStat: { flex: 1, alignItems: 'center' },
   weekStatValue: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold },
   weekStatLabel: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2 },

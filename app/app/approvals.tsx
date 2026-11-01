@@ -27,6 +27,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { Avatar } from '@/components/ui';
+import { checkSurprisePacks, type PackAward } from '@/lib/surprise';
 
 interface PendingRow {
   completion: CompletionDoc;
@@ -82,6 +83,7 @@ export default function ApprovalsScreen() {
       }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setRows((prev) => prev.filter((r) => r.completion.id !== id));
+      if (approve) grantPacks([row]);
     } catch (e) {
       if (__DEV__) console.error('approval decision failed:', e);
       Alert.alert('Could not update', 'Please try again.');
@@ -89,6 +91,36 @@ export default function ApprovalsScreen() {
       setBusyId(null);
     }
   }, [family?.id, member?.id, busyId]);
+
+  /**
+   * Surprise packs (C8): approving may finish someone's day. Check each
+   * (kid, day) once and tell the parent what landed; the kid gets the
+   * tap-to-open reveal on their own screen.
+   */
+  async function grantPacks(approvedRows: PendingRow[]) {
+    if (!family?.id) return;
+    const seen = new Set<string>();
+    const checks: Promise<PackAward[]>[] = [];
+    for (const r of approvedRows) {
+      const dateKey = r.completion.completedDate;
+      if (!dateKey || !r.member) continue;
+      const k = `${r.member.id}|${dateKey}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      checks.push(checkSurprisePacks({
+        familyId: family.id,
+        member: { id: r.member.id, isManaged: (r.member as any).isManaged },
+        dateKey,
+        weekStartDay: family.weekStartDay ?? 1,
+      }));
+    }
+    const awards = (await Promise.all(checks)).flat();
+    if (awards.length === 0) return;
+    const nameOf = (id: string) => (approvedRows.find((r) => r.member?.id === id)?.member?.displayName ?? 'Someone').split(' ')[0];
+    Alert.alert('🎁 Surprise packs!', awards
+      .map((a) => `${nameOf(a.memberId)} +${a.points}${a.kind === 'weekly' ? ' (perfect week!)' : ''}`)
+      .join('\n'));
+  }
 
   // Bet 1: kids claim through the day, a parent clears the queue in one tap.
   const [approvingAll, setApprovingAll] = useState(false);
@@ -116,7 +148,9 @@ export default function ApprovalsScreen() {
               });
               await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
               if (failed > 0) Alert.alert('Some didn’t go through', `${approved} approved, ${failed} failed. Pull down to retry.`);
+              const approvedRows = rows;
               await load();
+              await grantPacks(approvedRows);
             } finally {
               setApprovingAll(false);
             }

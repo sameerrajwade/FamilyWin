@@ -201,6 +201,34 @@ export function formatMinutes(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+// ─── 6-week trend (member profile) ───────────────────────────────────────────
+
+export interface WeekBar { start: Date; points: number }
+
+/**
+ * Earned points per family week for the last `weeks` weeks (oldest first),
+ * reward spending excluded — the same "earned" number the leaderboard uses.
+ */
+export function weeklyTrend(
+  txns: { delta: number; source?: string; date: Date | null }[],
+  weekStartDay: number = 1,
+  weeks: number = 6,
+  now: Date = new Date(),
+): WeekBar[] {
+  const thisStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  thisStart.setDate(thisStart.getDate() - ((thisStart.getDay() - weekStartDay + 7) % 7));
+  const bars: WeekBar[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const start = new Date(thisStart); start.setDate(thisStart.getDate() - i * 7);
+    const end = new Date(start); end.setDate(start.getDate() + 7);
+    const points = txns
+      .filter((t) => t.source !== 'redemption' && t.date && t.date >= start && t.date < end)
+      .reduce((s, t) => s + t.delta, 0);
+    bars.push({ start, points });
+  }
+  return bars;
+}
+
 // ─── Kid Mode parental gate ──────────────────────────────────────────────────
 
 export interface GateQuestion { a: number; b: number; answer: number; }

@@ -813,6 +813,8 @@ export async function recoverFailedTask(params: {
   /** The known failed completion id from the card — deleted even if it carries
    *  no completedDate (e.g. a legacy device auto-fail). */
   failedCompletionId?: string;
+  /** Kid on their own phone: the recovered completion waits for a parent OK. */
+  requiresApproval?: boolean;
 }): Promise<{ completionId: string }> {
   const { familyId, taskId, memberId, weekId, failedCompletionId } = params;
   const todayKey = getTodayDateString();
@@ -846,6 +848,7 @@ export async function recoverFailedTask(params: {
     wasAutoFailed: false,
     pointsAwarded: params.pointValue, // display hint; server recomputes the tx
     serverAward: true,
+    ...(params.requiresApproval ? { status: 'pending' as const } : {}),
   });
   await batch.commit();
   return { completionId: ref.id };
@@ -1212,6 +1215,8 @@ export async function completeTaskForDate(params: {
   pointValue: number;
   taskTitle: string;
   dateKey: string; // YYYY-MM-DD
+  /** Kid on their own phone: the catch-up waits for a parent OK. */
+  requiresApproval?: boolean;
 }): Promise<{ completionId: string }> {
   const { familyId, taskId, memberId, pointValue, dateKey } = params;
   const [y, m, d] = dateKey.split('-').map(Number);
@@ -1252,6 +1257,7 @@ export async function completeTaskForDate(params: {
     pointsAwarded: pointValue, // display hint; server recomputes the tx
     serverAward: true,
     completedLate: true,
+    ...(params.requiresApproval ? { status: 'pending' as const } : {}),
   });
 
   await batch.commit();

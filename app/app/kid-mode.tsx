@@ -37,6 +37,7 @@ import { useTheme } from '@/lib/theme';
 import { Avatar } from '@/components/ui';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { Confetti } from '@/components/ui/Animations';
+import { SurprisePackReveal } from '@/components/ui/SurprisePack';
 import { BrandLogo } from '@/components/ui/BrandIcons';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 
@@ -189,6 +190,8 @@ export default function KidModeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Confetti visible={confetti} count={70} />
+      {/* Packs land when a grown-up approves — the kid opens it right here. */}
+      <SurprisePackReveal familyId={family?.id} memberId={kid.id} name={first} />
 
       <View style={styles.topBar}>
         <BrandLogo size={16} tagline={false} />

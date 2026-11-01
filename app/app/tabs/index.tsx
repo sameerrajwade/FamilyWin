@@ -28,6 +28,8 @@ import { useKidMode } from '@/lib/kidMode';
 import { isKid } from '@/lib/familyGame';
 import { FamilyGoalBar } from '@/components/ui/FamilyGoal';
 import { openTaskEditor } from '@/lib/taskNav';
+import { checkSurprisePacks } from '@/lib/surprise';
+import { SurprisePackReveal } from '@/components/ui/SurprisePack';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
@@ -57,6 +59,10 @@ export default function HomeScreen() {
   const kidProfiles = (members as any[]).filter(isKid);
   const { addTransaction } = usePointsStore();
   const reminderPermission = useReminderStatus((s) => s.permission);
+  // One rule everywhere (Kid Mode, own phones): when the LOGGED-IN person is a
+  // kid, their completion waits for a parent's OK. A parent tapping on a kid's
+  // behalf is the parent doing it, so that stays instant.
+  const needsParentOk = (task: { requiresApproval?: boolean }) => !!task.requiresApproval || !isParent;
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
   const { colors, isDark, isChildMode, fontSize } = useTheme();
 
@@ -342,14 +348,15 @@ export default function HomeScreen() {
         weekId,
         pointValue: task.pointValue,
         taskTitle: task.title,
-        requiresApproval: task.requiresApproval,
+        requiresApproval: needsParentOk(task),
         proofPhotoURL,
       });
 
-      // Phase 4.3: an approval-required task is submitted, not awarded. No points
-      // burst / undo toast / confetti — the card flips to "Awaiting approval" and
-      // a parent settles the points from the approval queue.
-      if (task.requiresApproval) {
+      // An approval-required task — or ANY task a kid completes on their own
+      // phone (same rule as Kid Mode) — is submitted, not awarded. No points
+      // burst / undo toast / confetti; the card flips to "Awaiting approval"
+      // and a parent settles the points (one-tap Approve all).
+      if (needsParentOk(task)) {
         await loadTasks();
         return;
       }
@@ -383,12 +390,26 @@ export default function HomeScreen() {
         setShowConfetti(true);
         setTimeout(() => { setShowConfetti(false); if (isChildMode) setShowCelebration(true); }, 2400);
       }
+      // Surprise packs (C8): a parent's completion may have finished the day.
+      // The reveal itself plays from <SurprisePackReveal> when the pack lands.
+      grantSurprisePacks(todayStr);
     } catch (error) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', 'Could not complete task. Please try again.');
     } finally {
       setCompletingTaskId(null);
     }
+  }
+
+  /** Parents only (kids' completions wait for approval; packs land then). */
+  function grantSurprisePacks(dateKey: string) {
+    if (!isParent || !family?.id || !effectiveMember) return;
+    checkSurprisePacks({
+      familyId: family.id,
+      member: { id: effectiveMember.id, isManaged: (effectiveMember as any).isManaged },
+      dateKey,
+      weekStartDay: family.weekStartDay ?? 1,
+    }).catch(() => {});
   }
 
   // Recover a task that was marked missed/auto-failed for today: reverses the
@@ -408,12 +429,14 @@ export default function HomeScreen() {
         weekId,
         pointValue: task.pointValue,
         failedCompletionId: task.completion.id,
+        requiresApproval: !isParent,
       });
       setLastCompletedPoints(task.pointValue);
       setPointBurstKey((k) => k + 1);
       setPointBurstVisible(true);
       setTimeout(() => setPointBurstVisible(false), 1200);
       await loadTasks();
+      grantSurprisePacks(todayStr);
     } catch {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', 'Could not update this task. Please try again.');
@@ -571,6 +594,7 @@ export default function HomeScreen() {
         onDismiss={() => setShowCelebration(false)}
       />
       <WelcomeTour visible={showTour} role={member?.role} onClose={dismissTour} />
+      <SurprisePackReveal familyId={family?.id} memberId={effectiveMember?.id} name={effectiveMember?.displayName?.split(' ')[0]} />
       {/* Brand always sits on top, above the family profile switcher */}
       <BrandBar />
       {/* Profile strip: who we're looking at (parents switch here) + THAT
@@ -825,7 +849,8 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
           { backgroundColor: colors.surface },
           isDone && { backgroundColor: (colors.successLight ?? colors.surface) },
           isPending && { borderWidth: 1.5, borderColor: colors.warning, backgroundColor: (colors.warningLight ?? colors.surface) },
-          isFailed && { borderWidth: 1.5, borderColor: colors.danger, backgroundColor: (colors.dangerLight ?? colors.surface) },
+          // Missed-but-recoverable reads as 'still open' (amber), not a red failure.
+          isFailed && { borderWidth: 1.5, borderColor: colors.warning, backgroundColor: colors.warning + '12' },
           isReadOnly && { opacity: 0.8 },
           Shadow.sm,
         ]}
@@ -840,7 +865,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
         // Long-press opens the parent action sheet (Edit / Delete) — keeps the
         // card face a clean tap-to-complete bar, no pencil or "tap to undo" text.
         onLongPress={() => { if (isParent && !isReadOnly) { Haptics.selectionAsync(); setMenuOpen(true); } }}
-        accessibilityLabel={`${task.title}, ${task.difficulty}, ${task.pointValue} points, ${isDone ? (canTapToUndo ? 'completed, double tap to undo' : 'completed') : isFailed ? 'auto-failed, tap to complete' : 'tap to complete'}`}
+        accessibilityLabel={`${task.title}, ${task.difficulty}, ${task.pointValue} points, ${isDone ? (canTapToUndo ? 'completed, double tap to undo' : 'completed') : isFailed ? 'still open, tap to finish it' : 'tap to complete'}`}
         accessibilityRole="button"
         accessibilityState={{ disabled: isDisabled, checked: isDone }}
       >
@@ -849,7 +874,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
             <EmojiIcon emoji={resolveTaskEmoji(task)} size={30} />
           </View>
           <View style={styles.taskInfo}>
-            <Text numberOfLines={1} style={[styles.taskTitle, { color: colors.text, fontSize: fontSize(FontSize.md) }, (isDone || isFailed) && { opacity: 0.55, textDecorationLine: 'line-through' }]}>{task.title}</Text>
+            <Text numberOfLines={1} style={[styles.taskTitle, { color: colors.text, fontSize: fontSize(FontSize.md) }, isDone && { opacity: 0.55, textDecorationLine: 'line-through' }]}>{task.title}</Text>
             <View style={styles.taskMeta}>
               <View style={[styles.diffPill, { backgroundColor: diffColor + '20' }]}>
                 <View style={[styles.diffDot, { backgroundColor: diffColor }]} />
@@ -871,7 +896,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
             {isCompleting ? <ActivityIndicator color={colors.primary} size="small" /> :
               isDone ? <View style={[styles.statusIcon, { backgroundColor: colors.success }, Shadow.sm]}><Text style={styles.statusIconText}>✓</Text></View> :
               isPending ? <View style={[styles.pendingPill, { backgroundColor: colors.warning + '22', borderColor: colors.warning }]}><Text style={[styles.pendingPillText, { color: colors.warning }]}>⏳ Pending</Text></View> :
-              isFailed ? <View style={[styles.statusIcon, { backgroundColor: colors.danger }]}><Text style={styles.statusIconText}>✗</Text></View> :
+              isFailed ? <View style={[styles.statusIcon, { backgroundColor: colors.warning }]}><Text style={styles.statusIconText}>↻</Text></View> :
               isReadOnly ? <View style={[styles.statusIcon, { backgroundColor: colors.border }]}><Text style={{ fontSize: 16 }}>👁</Text></View> :
               <View style={[styles.rewardChip, { backgroundColor: colors.primary }, Shadow.sm]}>
                 <Text style={styles.rewardChipText}>+{task.pointValue}</Text>

@@ -163,7 +163,7 @@ export function ChildTaskCard({ task, onComplete, onUndo, isCompleting, index }:
             </Text>
             <View style={styles.childCardPoints}>
               <Text style={styles.childCardPointsText}>
-                {isDone ? '✅ Done! (tap to undo)' : isFailed ? '❌ Missed' : `🏅 +${(task as any).pointValue ?? (task as any).point_value ?? 0} pts`}
+                {isDone ? '✅ Done! (tap to undo)' : isFailed ? '⏳ Not done yet' : `🏅 +${(task as any).pointValue ?? (task as any).point_value ?? 0} pts`}
               </Text>
             </View>
           </View>
