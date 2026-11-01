@@ -13,6 +13,12 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 63 (2026-11-01) — G1–G6 installed on the Pixel; handoff rewritten for G7+
+- **Current State:** G1–G6 APK INSTALLED 13:46, launches clean; Today screenshot ✓ (chest quest ring, "0 of 6 daily" — weekly tasks excluded, bounty board). Working tree clean; prod rules + 9 functions on Node 22.
+- **Last Session:** rewrote `docs/HANDOFF.md` top to bottom (it still described Phase C as uncommitted): current state, done table A→G6 with commit ids, the single Phase G checklist, a **G7 family-vs-family design** with 3 open questions, quick-fix backlog, exact build/test/deploy/install commands + editing gotchas (CRLF files, heredoc escapes, bare deploy command), and all user decisions.
+- Spotted on device: the quest line truncates before "(+5–20)" → logged as a quick fix (HANDOFF §4).
+- **Next Up:** (1) ask the user the G7 questions (score = avg per player? cap 6 families? what other families see) → build G7 (rules + CFs + Scores/Family UI). (2) quick fixes: quest-line truncation, packs "for whom". (3) G8 name check → G9–G15. (4) check `dailyStreakCheck` log after 01:00 UTC.
+
 ## Iteration 62 (2026-11-01) — Phase G part 1 (G1–G6) built
 User merged G0 into ONE Phase G checklist G1–G15 (HANDOFF). Built G1–G6, one commit each:
 - **G1** `37215f1` Lootboard Plus removed everywhere (screen, row, banner, PlusBadge, plans, entitlements, plan fields).

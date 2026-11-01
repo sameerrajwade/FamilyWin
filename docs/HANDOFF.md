@@ -1,11 +1,12 @@
 # Lootboard (FamilyWin) — Session Handoff
 
 > **New session? Start here.** Read this file, then `CLAUDE.md` (gotchas 9–16
-> matter), then the latest entries in `docs/PROGRESS.md`. Say:
-> *"Read docs/HANDOFF.md and continue with the next pending item."*
+> matter), then the top entries of `docs/PROGRESS.md`. Say:
+> *"Read docs/HANDOFF.md and continue with G7."*
 >
-> Last updated: **2026-10-31** — Phase C committed; Phase D server batch built
-> (committed, **NOT deployed** — see §2/§3).
+> Last updated: **2026-11-01** — Phases A–F and G1–G6 done, committed, deployed
+> and installed on the Pixel. **Next: G7 family vs family** (design in §3 —
+> confirm the 3 open questions with the user before building).
 
 ---
 
@@ -13,157 +14,122 @@
 
 | Thing | State |
 |---|---|
-| Branch | `main` (local only — **nothing pushed**) |
-| Commits this session | `1a33f9d` redesign → `291345d` Phase C → Phase D (this session) |
-| **Uncommitted** | none expected (Phase C + Phase D committed) |
-| **Deploy** | Phase D **live in prod** (2026-10-31). Functions now on **Node 22**. Backlog: firebase-functions 5.1.1 → latest (breaking changes; CLI warns). |
-| Tests | app: **26 suites / 403**; `tsc` 0 app-src errors. Emulator (use `npx firebase-tools@13.35.1`, CLI 15 needs JDK21): rules **39/39**, functions **49/49** |
-| Last APK | Phase C arm64 build **installed on the Pixel 2026-10-31, launches clean (no crash)**; screens not yet eyeballed by the user |
-| Phone | Pixel 10 Pro, wireless adb (paired). If offline → user re-enables *Wireless debugging* |
-| Firebase | Project `familywin-35a97`; 8 functions deployed (temp admin endpoint deleted) |
-| Family data | Ledger wiped to 0 on 2026-10-31; family goal "Ice cream trip 500" set by user |
+| Branch | `main`, local only — **nothing pushed** (ask before pushing) |
+| Working tree | clean (everything committed; last code commit `452172f` G6, docs after) |
+| App on phone | G1–G6 build **installed 2026-11-01 13:46**, launches clean; Today screenshot ✓ (chest quest ring, "0 of 6 daily" excludes weekly tasks, bounty board) |
+| Prod Firebase | `familywin-35a97`. Rules + all 9 functions deployed on **Node 22** (Node 20 was decommissioned 2026-10-30). Last deploy: `onCompletionCreated` (G5 auto-approve) |
+| Tests | app **32 suites / 470**; `tsc` 0 app-source errors; emulator: rules **50/50**, functions **61/61** |
+| Phone | Pixel 10 Pro over wireless adb. If it drops off: user re-enables *Wireless debugging*; meanwhile copy the APK to `OneDrive\Desktop\Lootboard.apk` |
+| Family data | Rajwade family (Sameer, Asmita, Vian, Vayu). Ledger wiped 2026-10-31. Season 1 = Oct 26 → Nov 22 |
+| Pricing | **None.** Lootboard Plus was removed entirely (G1) |
 
-### First thing to do in the new session
-1. Phase C is **already installed and launch-checked**. Ask the user how it looks (surprise pack reveal, amber "still open" tasks, profile 6-week trend, allowance 300 + custom).
-2. If they're happy → **commit Phase C** (message in §5). If a rebuild is needed:
-   `cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a`, then
-   `adb mdns services` → `adb connect <ip:port>` → `adb -s <ip:port> install -r -d android/app/build/outputs/apk/release/app-release.apk` (two serials may show — always `-s`).
-3. **Don't tap the UI if the user is holding the phone.**
-4. Then start **Phase D** (§3).
-5. Ask the user to switch allowance from 500 → **300** in Family → Game rules (their saved value is still 500).
+### First thing to do in a new session
+1. Read §3 (G7 design) and **ask the user the 3 open questions** — then build.
+2. Optionally knock out the quick fixes in §4 first (quest-line truncation is visible on the phone).
+3. After tonight 01:00 UTC: `firebase functions:log --only dailyStreakCheck --project familywin-35a97` → confirm the F2 rewrite ran clean (it never paid bonuses before).
+4. **Never tap the phone UI while the user may be holding it** — screenshots only.
 
 ---
 
-## 2. DONE (this session)
+## 2. DONE (all committed)
 
-### Phase A — fixes (committed)
-- Microsoft **Fluent 3D emoji** for every task/avatar/reward icon (`assets/emoji3d/`, `lib/emojiAssets.ts`, `<EmojiIcon>`); generator in `scripts/emoji3d/` (README).
-- Smarter task emoji detector (`lib/taskEmoji.ts`, `resolveTaskEmoji`), meditation→🧘 etc.
-- One avatar set / `AvatarPicker` / `<Avatar>` container for parents and kids.
-- **Always-on reminders**: morning plan (parents) + evening check-in (all) + weekly Parent Report notification. Root cause fixed: SDK 57 needs typed triggers.
-- Shared `ScreenHeader` (back / close) across screens.
-
-### Phase B — Bets 1–3 (committed)
-- **Kid Mode** (`app/app/kid-mode.tsx`): kid claims → pending → parent **Approve all**; grown-up math gate to exit.
-- **Weekly Parent Report** (`app/app/report.tsx`).
-- **Crowns** (Top / Most improved / Goal crusher) on Scores + Sunday winner screen; **family co-op goal** (`FamilyGoal.tsx`).
-
-### Redesign (committed `1a33f9d`)
-- Tabs: **Today · Scores · Rewards · Family · Settings** (Insights → hidden "Points history").
-- Today: no hero banner; profile strip with points/level chip; thin goal bar; catch-up + Kid Mode tiles below tasks.
-- Family tab: approvals, report, Kid Mode, members, **Set up the game**, **Game rules**.
-- **Who competes**: everyone (default) or kids only (`FamilyDoc.competitionMode`).
-- **Edit anything** (`app/app/manage/[kind].tsx`): tasks, rewards, penalties **and bonuses**; long-press shortcuts.
-- Reward requests **lock their price**; warning when editing task points with claims waiting.
-- **Dark mode contrast**: `textAccent`/`textDanger` tokens (recorded as an approved exception in CLAUDE.md).
-
-### Phase C — trust + clean-up (**UNCOMMITTED**, tests green)
-- **C1** ✅ Deleted the live `adminReversePenalties` endpoint (prod) + removed its token from code (never in git).
-- **C3** ✅ Kids on their **own phones** → every completion (incl. catch-up/recover) waits for a parent OK.
-- **C8** ✅ **Surprise packs** (user request): daily **5–20** when every due task is done+approved; weekly **15–50** for a 7/7 week. Parent-device award, fixed-id transactions (`lib/surprise.ts`, `lib/surprisePacks.ts`), tap-to-open reveal (`components/ui/SurprisePack.tsx`). Not revoked on undo (by design, told user). Added `runTransaction` to the `lib/fb.ts` wrapper.
-- **C2** ✅ Loss reframing: missed task = amber "↻ still open" (no red ✗/strike); Scores "N done this week"; copy updated.
-- **C7** ✅ Allowance default **300 pts = $1** + custom rate field. Wallet keeps carrying over (user choice).
-- **C4** ✅ Profile "Last 6 weeks" trend; **fixed bug**: profile all-time/level used only the last 30 transactions.
-- **C5** ✅ Tests for Family tab + Manage screen. **C6** ✅ CLAUDE.md refreshed.
+| Phase | What shipped (one line each) |
+|---|---|
+| A | Fluent 3D emoji everywhere (`<EmojiIcon>`), smarter task-emoji detector, one avatar set, reminders fixed (SDK 57 typed triggers), shared `ScreenHeader` |
+| B | Kid Mode (claims → parent "Approve all"), weekly Parent Report, crowns (Top / Most improved / Goal crusher), family co-op goal |
+| Redesign | Tabs Today · Scores · Rewards · Family · Settings; "edit anything"; who competes (everyone / kids only); dark-mode text tokens |
+| C `291345d` | Kids' own-phone claims wait for OK, surprise packs (now bonus chests), "still open" loss reframing, allowance 300 = $1, profile 6-week trend |
+| D `07feb4f` | Rules: kid completions must be pending or a penalty; server points-lock on pending claims; Sunday push names every crown; "someone passed you" push |
+| E `3e4a419`, `904a70d`, `a2a10ab` | Daily quest ring, crowning screen auto-opens Mon–Wed, save-for-a-reward ring, **bounties** (new `bounties` rules), **level unlocks** (avatar frames, titles, parent perks, level-up reveal; levels from lifetime EARNED) |
+| fix `f2381ae` | Daily bonus chest counts **daily tasks only** (weekly/monthly never block it) |
+| F `077d5e4` | 4-week **seasons** + badges, **streak shield**, report "Is the game working?"; `dailyStreakCheck` rewritten (member timezone, shields) |
+| G1 `37215f1` | Lootboard Plus removed everywhere |
+| G2 `05c666a` | Positive onboarding copy (penalties described as optional) |
+| G3 `1cc4e19` | Surprise packs → **bonus chests** (chest mark, +5–20 / 15–50 shown up front) |
+| G4 `0fa6e7c` | Every reminder type can be switched off (default on); server pushes honour it |
+| G5 `8a177ef` | Approval trust levels: `family.autoApproveUnder` (Off/10/25/50); **server** auto-approves (`approvedBy:'auto'`); parent phone catches up bonus chests on launch |
+| G6 `452172f` | Starter kit by kids' ages (per-kid **assigned** tasks + 2 shared + 4 rewards, untick / add your own) + "Discover more" (Skip for now → card on Today from week 2) |
 
 ---
 
-## 3. PENDING — in agreed order (C → D → E → F, G when ready)
+## 3. PENDING — Phase G (ONE launch checklist; work top to bottom)
 
-Size: **S** < 1h · **M** few hours · **L** a day+. "Deploy" = `firebase deploy`, user runs/approves.
-
-### Phase C — remaining
-| # | Task | Notes |
-|---|---|---|
-| C-final | Install, device-verify, **commit Phase C** | See §1 |
-
-### Phase D — one server deploy batch — **BUILT + committed, NOT deployed**
-All code + emulator tests done this session. **Only step left: the user runs the
-deploy**, then device-verifies.
-| # | Task | State |
-|---|---|---|
-| D1 | **Rules**: non-parent completion must be a pending award OR a `wasAutoFailed` penalty (C3 backstop) | ✅ built; rules 39/39 |
-| D2 | **Server points-lock**: `onCompletionCreated` stamps `lockedPoints` on a pending claim; award pays the locked value (server-stamped, not client) | ✅ built; functions 49/49 |
-| D3 | **Sunday push** names every crown + respects `competitionMode` (`weeklyReset` + new `game.js`) | ✅ built; game 20/20 |
-| D4 | **Overtaken push** — `onTransactionCreated` → `detectOvertakes` (user chose this ONE event; dropped approved/streak/parent-activity) | ✅ built |
-| D-deploy | `firebase deploy --only firestore:rules,functions` — needed runtime bump Node 20→22 (20 decommissioned 2026-10-30) | ✅ **deployed 2026-10-31** |
-| D-verify | device: kid self-grant blocked, edited pending claim pays locked value, overtaken push arrives | ⏳ after deploy |
-
-### Phase E — engagement loops (client-only)
-| # | Task | State |
-|---|---|---|
-| E1 | **Daily quest ring** on Today (`DailyQuestRing` / `ProgressRing`, `questProgress`) | ✅ built (iter 57) |
-| E2 | **Save for a reward** — 📌 on Rewards, ring card, Today + Kid Mode row, once-per-device celebration (`member.savingForRewardId`) | ✅ built (iter 57) |
-| E3 | **Level unlocks** — `<Avatar memberId>` frames, titles on Scores/Family, Game rules perks, profile ladder, level-up reveal; levels now from lifetime EARNED | ✅ built (iter 59) |
-| E4 | **Bounties** — `BountyBoard` (Today + Kid Mode), `lib/bounties`, new `bounties` rules | ✅ built + rules deployed (iter 58) |
-| E5 | **Sunday crowning ceremony** — auto-opens winner screen days 0–2 of a new week, once per device | ✅ built (iter 57) |
-
-### Phase F — long-term + measurement
-| # | Task | Size |
-|---|---|---|
-| F1 | 4-week **seasons** + season badges — `lib/seasons`, SeasonCard/Badges/EndCard | ✅ built (iter 60) |
-| F2 | **Streak shield** — `lib/streakShield` + server `dailyStreakCheck` rewrite (deployed) | ✅ built (iter 60) |
-| F3 | Report "Is the game working?" — parent days, % kid-claimed, approval wait, last-place kid active | ✅ built (iter 60) |
-
-### Phase G — Launch (ONE checklist: product fixes → launch prep → test → iOS)
-User asked (2026-11-01) to keep G0 + G together so nothing is skipped. Work top to bottom; Android first, iOS last.
-
-**Part 1 — "make it easy" (product, Android)**
 | # | Task | Size | State |
 |---|---|---|---|
-| G1 | Remove **Lootboard Plus** entirely (no pricing at all) | S | ✅ `37215f1` |
-| G2 | Positive onboarding copy (drop "lose points automatically") | S | ✅ `05c666a` |
-| G3 | Surprise packs → **"bonus chests"**, 5–20 range shown up front | S | ✅ `1cc4e19` |
-| G4 | Reminders default ON, each type can be switched off in Settings | S–M | ✅ `0fa6e7c` (server part deployed) |
-| G5 | Approval **trust levels**: auto-approve tasks under N pts | M | ✅ `8a177ef` (server auto-approve deployed) |
-| G6 | Age-based starter setup + add-your-own; advanced features as "Discover more" cards with **Skip for now** → resurface week 2–3 | M–L | ✅ `452172f` |
-| G7 | **Family vs family** seasons (opt-in; only family names + season totals shared) | L | ⏳ after G6 |
+| G1–G6 | see §2 | — | ✅ |
+| **G7** | **Family vs family** seasons (design below) | L | ⏳ **next** |
+| G8 | **Name**: user likes **"Chore League"** (a league of family teams — fits G7). Check Play Store, App Store, USPTO; keep the chest mark; then rename app name / wordmark / copy / store listing | S–M | before G12 |
+| G9 | **Store review prompt**: after 3rd–5th open, right after a happy moment; native sheet (`expo-store-review`, needs native rebuild) with store-URL fallback; **max 3 asks, never after rated** | M | |
+| G10 | Package rename, strip unused permissions, versionCode scheme (`docs/PHASE0_CHECKLIST.md`) | M | |
+| G11 | Privacy policy URL, Data Safety form, **COPPA / Designed-for-Families** (invite-code self-join), advertising-ID decision (`docs/DATA_SAFETY.md`, `docs/TARGET_AUDIENCE_COPPA.md`) — **review together with the user** | M | |
+| G12 | Store assets: icon 512, feature graphic, screenshots in this order: weekly showdown + crowns, Kid Mode, saving up, Parent Report; Play internal testing track | M | |
+| G13 | Release signing — **user does all signing** (never handle keystore passwords) | — | |
+| G14 | **Closed test with 10–20 outside families**; watch the report's health metrics (approval wait, kid-claimed %, last-place still playing) | — | before public launch |
+| G15 | **iOS** via Expo/EAS once Android is settled ($99/yr Apple account; EAS cloud build, no Mac; user signs) | — | after G14 |
 
-**Part 2 — launch prep**
-| # | Task | Notes |
-|---|---|---|
-| G8 | **Name decision**: user likes "Chore League" (fits family-vs-family: a league of family teams). Check Play/App Store + USPTO availability; keep the chest mark; then rename app/wordmark/copy | before G12 |
-| G9 | **Store review prompt**: after 3rd–5th open, right after a happy moment; native sheet (`expo-store-review`, needs native rebuild) with store-URL fallback; **max 3 asks, never after rated** | M |
-| G10 | Package rename, strip unused permissions, versionCode scheme (`docs/PHASE0_CHECKLIST.md`) | M |
-| G11 | Privacy policy URL, Data Safety form, **COPPA / Designed-for-Families** decision (invite-code self-join), advertising-ID decision (`docs/DATA_SAFETY.md`, `docs/TARGET_AUDIENCE_COPPA.md`) — **review together with user before launch** | M |
-| G12 | Store assets (icon 512, feature graphic, screenshots in the agreed order: showdown+crowns, Kid Mode, saving up, Parent Report), Play internal testing track | M |
-| G13 | Release signing — **user does all signing** (never handle keystore passwords) | — |
+### G7 — family vs family: proposed design (confirm before building)
+**Why:** the growth loop — the only feature that brings in *new households* ("challenge your sister's family to a season").
 
-**Part 3 — test, then iOS**
-| # | Task | Notes |
-|---|---|---|
-| G14 | **Closed test with 10–20 outside families** (Play closed track); watch report health metrics (approval wait, kid-claimed %, last-place still playing) | before public launch |
-| G15 | **iOS** via Expo/EAS once Android is settled (Apple Developer $99/yr; EAS cloud build, no Mac needed; user signs) | after G14 |
+**Open questions for the user (ask first):**
+1. **Fair score:** a family of 6 beats a family of 3 on raw totals. Recommend **average points per competing player** for the season (raw total shown too).
+2. **League size:** recommend up to **6 families** per league.
+3. **What other families see:** recommend family name + family emoji/photo + score only — **no kids' names or tasks**.
 
-### Known small issues / backlog
-- **Task packs screen assigns pack tasks to "whole family" (assignedTo null) → managed kids never see them.** The G6 starter kit assigns per kid; the standalone Packs screen still needs a "for whom" picker.
-- Monthly tasks completed in an earlier week of the month may show as not done (Home loads only this week's completions) — also affects surprise-pack "day complete".
-- `ChildMode.tsx` card backgrounds are hard-coded light pastels (fine in dark mode, but not theme tokens).
-- Deferred from August: home-screen **widget**, **web dashboard**.
+**Shape (recommended):**
+- Data: top-level `leagues/{leagueId}` `{ name, inviteCode, createdByFamily, familyIds[], seasonEpoch, createdAt }` and `leagues/{id}/standings/{familyId}` `{ familyName, emoji, players, points, avgPoints, updatedAt }`.
+- Standings are **written only by a Cloud Function** (families can't read each other's ledgers, and must not be able to fake a score): extend `onTransactionCreated` (or a light hourly job) to recompute the family's season total for every league it's in.
+- Join via code through a callable CF `joinLeague` (rate-limited like `joinFamily`, cap 6 families); `leaveLeague` anytime. Parents only.
+- Rules: a league doc + its standings readable by members of any family in `familyIds`; **no client writes** (CF only).
+- Seasons: same 4-week blocks as `lib/seasons` (`SEASON_EPOCH`, Monday start for the league).
+- UI: Scores tab "League" card (season standings across families, your family highlighted); Family tab "Start or join a league" (share code). Season end → league champion on the winner screen + push.
+- Tests: rules (cross-family read OK, no client writes), functions emulator (standings update, join cap, leave), pure scoring (avg per player).
+- Deploy: rules + functions (pre-authorized, §5).
 
 ---
 
-## 4. Decisions already made (don't re-ask)
-- Icons: Fluent 3D. Reminders: always on (morning parents + evening all), only times adjustable; quiet hours move, never cancel.
-- Kid Mode on parent's phone; every kid claim needs a parent OK (Kid Mode **and** own phones).
-- Who competes: **everyone by default**, "Kids only" optional. Multiple Sunday crowns.
-- Family goal: thin bar on Today. Family tab = people + game; Settings = you + app (Settings tab stays).
-- Dark mode: lighter **text** tokens only; fills keep brand purple.
-- Surprise packs: daily 5–20, weekly 15–50 (floors are mine — user may change).
-- Allowance default 300 = $1, custom allowed. Spendable points carry over weekly.
-- Commit locally on `main` only when the user approves; never push without asking.
+## 4. Quick fixes / backlog (small, do anytime)
+- **Quest line truncates on the phone**: "0 of 6 daily done today · finish them for a bonus chest …" cuts off before "(+5–20)". Shorten in `lib/surprisePacks.questLabel` (e.g. "0 of 6 daily done · bonus chest +5–20") and update its test.
+- **Task packs screen assigns "whole family" (`assignedTo: null`) → managed kids never see pack tasks.** Add a "for whom" picker (each kid / everyone) to `app/app/task/packs.tsx` (`createTasksFromPack` already accepts `assignedTo`).
+- Monthly tasks completed in an earlier week of the month may show as not done (Home loads only this week's completions) — also affects the bonus-chest "day complete".
+- `firebase-functions` 5.1.1 → latest (CLI warns; breaking changes — separate task, run the emulator suites after).
+- Level/season data reads the whole family ledger on the client (`lib/memberLevels`); fine for a household — move totals to a CF-maintained doc if ledgers get large.
+- `ChildMode.tsx` card backgrounds are hard-coded light pastels (not theme tokens).
+- Deferred: home-screen widget, web dashboard.
+- **Device checks not yet done by the user:** bounties end-to-end, savings ring, perks editor + level-up reveal, report "Is the game working?", streak 🛡 chip (after a 5-day week), Notifications switches, Game rules → Approvals, fresh-family onboarding (needs a test account).
 
-## 5. Phase C commit message (when verified)
-```
-feat: Phase C — kid approvals everywhere, surprise packs, loss reframing
+---
 
-- Kids' own-phone completions (incl. catch-up/recover) wait for a parent OK
-- Surprise packs: daily 5–20 / perfect-week 15–50, parent-device award,
-  fixed-id transactions (adds runTransaction to the lib/fb wrapper),
-  tap-to-open reveal on Today and in Kid Mode
-- Missed tasks read as "still open" (amber), Scores shows "N done this week"
-- Allowance default 300 pts = $1 + custom rate
-- Profile: 6-week trend; fix all-time/level computed from only 30 tx
-- Tests for Family tab + Manage; CLAUDE.md refresh; emoji generator in scripts/
-- Prod: deleted the temporary adminReversePenalties endpoint
-```
+## 5. How to work on this project (commands that work here)
+- **App tests:** `npx jest --testPathIgnorePatterns="functions|rules|emulator"`
+- **Type check (app sources only):** `npx tsc --noEmit -p . 2>&1 | grep -E "^(app|lib|components|store|constants|types)/"` — `jest.setup.ts` / `scripts/` errors are pre-existing noise.
+- **Emulator suites** (machine has JDK 17; CLI 15 needs JDK 21, so pin CLI 13):
+  `npx -y firebase-tools@13.35.1 emulators:exec --project demo-lootboard --only firestore "npx jest --config jest.rules.config.js"`
+  `npx -y firebase-tools@13.35.1 emulators:exec --project demo-lootboard --only firestore,functions "npx jest --config jest.functions.config.js"` (a first-run cold-start flake can happen — re-run once)
+- **Deploy (pre-authorized by the user, after tests pass):** run as a **bare command** from the repo root — `firebase deploy --only firestore:rules --project familywin-35a97` / `--only functions[:name]`. Wrapping it in `cd … &&` or pipes trips the auto-mode classifier (an `autoMode.allow` entry lives in `.claude/settings.local.json`).
+- **Build:** `cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a` (~1–2.5 min incremental).
+- **Install:** adb is `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`; serial `adb-57150DLCH002E1-swDe4l._adb-tls-connect._tcp` (if missing: `adb mdns services`, wait, retry). `adb -s <serial> install -r -d android/app/build/outputs/apk/release/app-release.apk`, then launch + `logcat -d | grep FATAL`.
+- **Editing gotchas found this session:**
+  - Many source files are **CRLF** — multi-line scripted replacements silently don't match. Use the Edit tool, or normalise `\r\n` in the script and restore on write.
+  - Bash heredocs / `sed` eat escapes (`\d`, `\'`, backticks in double-quoted bash run as commands). Prefer the Edit tool for anything with quotes, regexes or template strings, and grep the result.
+  - `lib/fb.ts` wraps Firestore: DocRef now has `onSnapshot`; `snapshot.exists()` is a **method** (v26).
+  - Kids can't write approved completions (rules) — anything that auto-awards must run on the server or a parent's device.
+  - Managed kids only see tasks **assigned to them**; `assignedTo: null` tasks are for account holders.
+
+---
+
+## 6. Decisions already made (don't re-ask)
+- **Positioning:** "the family league where parents play too". Target: parents of 2+ kids aged 6–12. Pitch: "Stop nagging. Start a family league."
+- **Android first**; iOS once the product is settled (G15).
+- **No pricing at all** (Plus removed).
+- **Name:** user likes "Chore League" — pending availability check (G8). Chest mark stays.
+- Icons: Fluent 3D. Dark mode: lighter **text** tokens only; fills keep brand purple. Never change brand colours/fonts.
+- **Reminders:** all on by default; each type can be switched off (morning plan, evening check-in, weekly report, someone passed you, Sunday results). Quiet hours move reminders, never cancel.
+- **Approvals:** every kid claim goes through approval, but families can auto-approve small tasks (Off/10/25/50; starter families get 10). "Needs approval"/"photo proof" tasks always wait for a parent.
+- Kid Mode on a parent's phone; kids on their own phones claim → pending.
+- Who competes: **everyone by default**, "Kids only" optional. Multiple crowns.
+- **Bonus chests** (was "surprise packs"): daily +5–20 when every **daily** task is done and approved; perfect week +15–50. Range shown before opening.
+- Event pushes: only "someone passed you" (user chose).
+- Seasons: 4 weeks from 2026-10-26. Streak shield: 1 per 5-active-day week, hold 2.
+- Allowance default 300 = $1, custom allowed; spendable points carry over.
+- Easy setup: starter kit by age + add your own; advanced features "Skip for now" → back from week 2.
+- Commit locally on `main` per finished item; **never push without asking**. User does **all** signing.
