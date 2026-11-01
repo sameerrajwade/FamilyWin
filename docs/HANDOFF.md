@@ -1,4 +1,4 @@
-# Lootboard (FamilyWin) — Session Handoff
+| G6 | Age-based starter setup + add-your-own; advanced features as "Discover more" cards with **Skip for now** → resurface week 2–3 | M–L | ✅ `452172f` || G5 | Approval **trust levels**: auto-approve tasks under N pts | M | ✅ `8a177ef` (server auto-approve deployed) || G4 | Reminders default ON, each type can be switched off in Settings | S–M | ✅ `0fa6e7c` (server part deployed) || G3 | Surprise packs → **"bonus chests"**, 5–20 range shown up front | S | ✅ `1cc4e19` || G2 | Positive onboarding copy (drop "lose points automatically") | S | ✅ `05c666a` || G1 | Remove **Lootboard Plus** entirely (no pricing at all) | S | ✅ `37215f1` |# Lootboard (FamilyWin) — Session Handoff
 
 > **New session? Start here.** Read this file, then `CLAUDE.md` (gotchas 9–16
 > matter), then the latest entries in `docs/PROGRESS.md`. Say:
@@ -136,6 +136,7 @@ User asked (2026-11-01) to keep G0 + G together so nothing is skipped. Work top 
 | G15 | **iOS** via Expo/EAS once Android is settled (Apple Developer $99/yr; EAS cloud build, no Mac needed; user signs) | after G14 |
 
 ### Known small issues / backlog
+- **Task packs screen assigns pack tasks to "whole family" (assignedTo null) → managed kids never see them.** The G6 starter kit assigns per kid; the standalone Packs screen still needs a "for whom" picker.
 - Monthly tasks completed in an earlier week of the month may show as not done (Home loads only this week's completions) — also affects surprise-pack "day complete".
 - `ChildMode.tsx` card backgrounds are hard-coded light pastels (fine in dark mode, but not theme tokens).
 - Deferred from August: home-screen **widget**, **web dashboard**.
