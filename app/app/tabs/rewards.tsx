@@ -305,7 +305,7 @@ export default function RewardsScreen() {
                       title: `${who} unlocked "${rewardTitle}"!`,
                       subtitle: 'Points well spent.',
                       stats: [{ value: `${pointCost}`, label: 'points spent' }],
-                      shareMessage: `${who} just redeemed "${rewardTitle}" on Lootboard! 🎁`,
+                      shareMessage: `${who} just redeemed "${rewardTitle}" on Chore League! 🎁`,
                     }),
                   },
                 ]);

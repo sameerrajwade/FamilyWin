@@ -763,7 +763,7 @@ export default function HomeScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.catchUpTitle, { color: colors.text }]}>Reminders can't reach you</Text>
                   <Text style={[styles.catchUpSub, { color: colors.textSecondary }]}>
-                    Notifications are off for Lootboard. Tap to turn them on.
+                    Notifications are off for Chore League. Tap to turn them on.
                   </Text>
                 </View>
                 <Icon name="chevron-forward" size={20} color={colors.textMuted} />

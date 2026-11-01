@@ -260,7 +260,7 @@ export default function MemberProfileScreen() {
   function shareRecap() {
     setShareData({
       icon: 'coin',
-      eyebrow: 'MY WEEK ON LOOTBOARD',
+      eyebrow: 'MY WEEK ON CHORE LEAGUE',
       title: `${firstName}'s week`,
       subtitle: 'Chores done, points earned.',
       stats: [
@@ -268,7 +268,7 @@ export default function MemberProfileScreen() {
         { value: `${completionRate}%`, label: 'done' },
         ...(streak > 0 ? [{ value: `${streak}`, label: 'day streak' }] : []),
       ],
-      shareMessage: `${firstName} earned ${weeklyPoints} points this week on Lootboard! 🏆`,
+      shareMessage: `${firstName} earned ${weeklyPoints} points this week on Chore League! 🏆`,
     });
   }
   function shareStreak() {
@@ -278,7 +278,7 @@ export default function MemberProfileScreen() {
       title: `${firstName} is on a ${streak}-day streak!`,
       subtitle: 'One task at a time.',
       stats: [{ value: `${streak}`, label: 'days in a row' }],
-      shareMessage: `${firstName} is on a ${streak}-day streak on Lootboard! 🔥`,
+      shareMessage: `${firstName} is on a ${streak}-day streak on Chore League! 🔥`,
     });
   }
   function shareLevel() {
@@ -289,7 +289,7 @@ export default function MemberProfileScreen() {
       title: `${firstName} reached Level ${lv.level}!`,
       subtitle: lv.title,
       stats: [{ value: `${allTimePoints}`, label: 'all-time pts' }],
-      shareMessage: `${firstName} just hit Level ${lv.level} (${lv.title}) on Lootboard! ⭐`,
+      shareMessage: `${firstName} just hit Level ${lv.level} (${lv.title}) on Chore League! ⭐`,
     });
   }
 

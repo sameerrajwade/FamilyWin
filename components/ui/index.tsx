@@ -298,7 +298,7 @@ export function Avatar({ emoji, size = 44, showRing, ringColor, photoURL, member
 
 interface EmptyStateProps {
   emoji?: string;
-  /** Optional Lootboard brand mark shown in a tinted circle instead of an emoji. */
+  /** Optional Chore League brand mark shown in a tinted circle instead of an emoji. */
   brandIcon?: BrandIconName;
   title: string;
   subtitle?: string;

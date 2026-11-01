@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name">Lootboard</string>
+  <string name="app_name">Chore League</string>
   <!-- Overrides expo-system-ui's default of "light", which was forcing the whole
        app to light mode (Auto never followed system dark). "automatic" =>
        AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM. NOTE: generated file — a future

@@ -1,12 +1,12 @@
 /**
- * Brand.tsx — Lootboard brand identity (Treasure-chest direction).
+ * Brand.tsx — Chore League brand identity (Treasure-chest direction).
  *
  * `LootboardMark`  — the standalone brand glyph. Now the gold TREASURE CHEST
  *                    (see components/ui/BrandIcons.tsx — the single source of
  *                    truth for the icon family). Kept as a thin alias so the
  *                    existing `BrandBar` / `BrandLockup` call sites across the
  *                    tab screens pick up the approved mark with no edits.
- * `BrandLockup`    — mark + two-tone "Lootboard" wordmark, themed. Screen headers.
+ * `BrandLockup`    — mark + two-tone "Chore League" wordmark, themed. Screen headers.
  *
  * The mark is pure vector (react-native-svg) so it is razor-sharp from a 24px
  * header glyph up to the 512px Play Store icon.
@@ -37,11 +37,11 @@ export function BrandLockup({ size = 'md', style }: { size?: LockupSize; style?:
     <View
       style={[styles.row, style]}
       accessibilityRole="header"
-      accessibilityLabel="Lootboard"
+      accessibilityLabel="Chore League"
     >
       <LootboardMark size={mark} />
       <Text style={[styles.word, { fontSize: font }]}>
-        <Text style={{ color: loot }}>Loot</Text><Text style={{ color: board }}>board</Text>
+        <Text style={{ color: loot }}>Chore</Text><Text style={{ color: board }}> League</Text>
       </Text>
     </View>
   );

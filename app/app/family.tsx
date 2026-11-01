@@ -72,10 +72,10 @@ export default function FamilyScreen() {
   const inviteCard: ShareCardData | null = family?.inviteCode ? {
     icon: 'chest',
     eyebrow: 'JOIN OUR FAMILY',
-    title: `Join ${family.name} on Lootboard`,
+    title: `Join ${family.name} on Chore League`,
     subtitle: 'Download the app and enter this code',
     stats: [{ value: family.inviteCode, label: 'invite code' }],
-    shareMessage: `Join our family on Lootboard! 🏆\n\nInvite code: ${family.inviteCode}\n\nGet the app: ${APP_STORE_URL}\n\nComplete tasks, earn points, and win the week!`,
+    shareMessage: `Join our family on Chore League! 🏆\n\nInvite code: ${family.inviteCode}\n\nGet the app: ${APP_STORE_URL}\n\nComplete tasks, earn points, and win the week!`,
   } : null;
 
   async function handleShareInvite() {

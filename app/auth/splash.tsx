@@ -19,7 +19,7 @@ const { width: W } = Dimensions.get('window');
 
 interface Slide {
   emoji: string;
-  /** First slide: render the Lootboard chest mark instead of an emoji. */
+  /** First slide: render the Chore League chest mark instead of an emoji. */
   brand?: boolean;
   title: string;
   subtitle: string;
@@ -32,7 +32,7 @@ const SLIDES: Slide[] = [
   {
     emoji: '🏆',
     brand: true,
-    title: 'Welcome to\nLootboard!',
+    title: 'Welcome to\nChore League!',
     subtitle: 'Your family’s weekly league — chores become a game everyone can win',
     bg: '#6C63FF',
     accent: '#FFFFFF',

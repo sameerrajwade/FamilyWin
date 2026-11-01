@@ -312,7 +312,7 @@ export default function OnboardingScreen() {
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.centered}>
           <Text style={styles.stepEmoji}>👨‍👩‍👧‍👦</Text>
-          <Text style={styles.stepTitle}>Welcome to Lootboard!</Text>
+          <Text style={styles.stepTitle}>Welcome to Chore League!</Text>
           <Text style={styles.stepSubtitle}>Set up your family to get started</Text>
           <TouchableOpacity style={styles.choiceCard} onPress={handleChoiceCreate} activeOpacity={0.85}>
             <Text style={styles.choiceEmoji}>🏠</Text>
@@ -454,7 +454,7 @@ export default function OnboardingScreen() {
             <TouchableOpacity
               style={[styles.primaryBtn, { backgroundColor: colors.accent, marginTop: Spacing.md }]}
               onPress={() => Share.share({
-                message: `Join our family on Lootboard! 🏆\n\nDownload Lootboard and enter invite code: ${generatedCode}\n\nComplete tasks, earn points, and win the week!`,
+                message: `Join our family on Chore League! 🏆\n\nDownload Chore League and enter invite code: ${generatedCode}\n\nComplete tasks, earn points, and win the week!`,
               })}
             >
               <Text style={styles.primaryBtnText}>📤 Share Invite Code</Text>

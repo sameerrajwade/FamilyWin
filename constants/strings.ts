@@ -15,7 +15,7 @@ export const bestStoreUrl = (): string => APP_STORE_URL || IOS_STORE_URL;
 
 export const Strings = {
   app: {
-    name: 'Lootboard',
+    name: 'Chore League',
     tagline: 'Your family\'s weekly showdown.',
   },
 

@@ -33,7 +33,7 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
     return { hasError: true, error };
   }
   componentDidCatch(error: Error, info: { componentStack: string }) {
-    if (__DEV__) console.error('[Lootboard ErrorBoundary]', error);
+    if (__DEV__) console.error('[Chore League ErrorBoundary]', error);
     // Report to Crashlytics so we're not launching blind. Non-fatal record +
     // the React component stack as context. Guarded so a missing native module
     // (e.g. Expo Go / dev) never turns the error screen into a second crash.
@@ -48,7 +48,7 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
         <View style={ebStyles.container}>
           <Text style={ebStyles.emoji}>😕</Text>
           <Text style={ebStyles.title}>Something went wrong</Text>
-          <Text style={ebStyles.msg}>Lootboard ran into an unexpected error. Please restart the app.</Text>
+          <Text style={ebStyles.msg}>Chore League ran into an unexpected error. Please restart the app.</Text>
           <TouchableOpacity style={ebStyles.btn} onPress={() => this.setState({ hasError: false })}>
             <Text style={ebStyles.btnText}>Try Again</Text>
           </TouchableOpacity>
@@ -278,9 +278,9 @@ function AnimatedSplash({ isExiting }: { isExiting: boolean }) {
         <Animated.View style={trophyStyle}><ChestMark size={104} /></Animated.View>
       </View>
 
-      {/* Lootboard title */}
+      {/* Chore League title */}
       <Animated.View style={titleStyle}>
-        <Text style={splashStyles.title}>Lootboard</Text>
+        <Text style={splashStyles.title}>Chore League</Text>
       </Animated.View>
 
       {/* Accent line */}

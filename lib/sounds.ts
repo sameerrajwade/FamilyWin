@@ -1,5 +1,5 @@
 /**
- * lib/sounds.ts — Sound effects for Lootboard
+ * lib/sounds.ts — Sound effects for Chore League
  * Tones generated with Python / sine waves; royalty-free.
  *
  * Usage:  import { Sounds } from '@/lib/sounds';

@@ -124,7 +124,8 @@ export function questLabel(p: QuestProgress): string {
   if (p.approved + p.pending === p.total) {
     return `Daily tasks done — ${p.pending} waiting for an OK, then your bonus chest`;
   }
-  return `${p.approved + p.pending} of ${p.total} daily done today · finish them for a bonus chest (+${DAILY_PACK.min}–${DAILY_PACK.max})`;
+  // Short enough to fit two lines beside the ring (the longer wording cut off the range on a Pixel).
+  return `${p.approved + p.pending} of ${p.total} daily done today · bonus chest +${DAILY_PACK.min}–${DAILY_PACK.max}`;
 }
 
 /** Perfect week = a daily pack on every one of the week's 7 days. */

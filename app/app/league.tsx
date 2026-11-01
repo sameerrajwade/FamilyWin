@@ -86,7 +86,7 @@ export default function LeagueScreen() {
   function onShare() {
     if (!league) return;
     Share.share({
-      message: `Join our family league "${league.name}" on Lootboard! 🏆\n\nIt's family vs family over a 4-week season — open Family → Family league and enter code: ${league.inviteCode}`,
+      message: `Join our family league "${league.name}" on Chore League! 🏆\n\nIt's family vs family over a 4-week season — open Family → Family league and enter code: ${league.inviteCode}`,
     }).catch(() => {});
   }
 

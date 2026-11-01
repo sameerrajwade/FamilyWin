@@ -26,7 +26,7 @@ import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants
 interface Slide { emoji: string; title: string; body: string; accent: string; route?: string; cta?: string }
 
 const PARENT_SLIDES: Slide[] = [
-  { emoji: '🏆', accent: 'gold', title: 'Welcome to Lootboard', body: 'Chores become a friendly competition. Everyone earns points for what they finish — and whoever\'s ahead when the week resets wins.' },
+  { emoji: '🏆', accent: 'gold', title: 'Welcome to Chore League', body: 'Chores become a friendly competition. Everyone earns points for what they finish — and whoever\'s ahead when the week resets wins.' },
   { emoji: '✅', accent: 'success', title: 'Just tap to complete', body: 'Tap a task card to mark it done — points land instantly, with a little celebration. Tapped by mistake? Tap again to undo.', route: '/app/tabs', cta: 'Show me my tasks' },
   { emoji: '👨‍👩‍👧', accent: 'primary', title: 'One phone, whole family', body: 'No phone for the kids? Tap a family member at the top to switch into their profile and complete tasks for them.' },
   { emoji: '➕', accent: 'accent', title: 'Add tasks & rewards', body: 'Use Task to add chores and Rewards to add prizes worth saving for. Long-press any task to edit it.', route: '/app/task/create', cta: 'Add a task now' },
@@ -35,7 +35,7 @@ const PARENT_SLIDES: Slide[] = [
 ];
 
 const CHILD_SLIDES: Slide[] = [
-  { emoji: '🏆', accent: 'gold', title: 'Welcome to Lootboard', body: 'This is where your chores earn points. Do tasks, stack up points, and try to win the week!' },
+  { emoji: '🏆', accent: 'gold', title: 'Welcome to Chore League', body: 'This is where your chores earn points. Do tasks, stack up points, and try to win the week!' },
   { emoji: '✅', accent: 'success', title: 'Tap to complete', body: 'Finished a task? Tap its card and the points are yours — watch the confetti fly!', route: '/app/tabs', cta: 'Show me my tasks' },
   { emoji: '🔥', accent: 'warning', title: 'Build a streak', body: 'Do something every day to grow your streak and earn bonus points along the way.' },
   { emoji: '🎁', accent: 'primary', title: 'Climb & win', body: 'Check Scores to see if you\'re in the lead, and Rewards for prizes you can unlock with your points.', route: '/app/tabs/rewards', cta: 'Go to Rewards' },

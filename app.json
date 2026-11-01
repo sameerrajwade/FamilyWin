@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Lootboard",
+    "name": "Chore League",
     "slug": "lootboard",
     "version": "1.0.0",
     "newArchEnabled": true,
@@ -60,8 +60,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Lootboard uses your photos to set profile pictures for family members.",
-          "cameraPermission": "Lootboard uses your camera to take profile photos.",
+          "photosPermission": "Chore League uses your photos to set profile pictures for family members.",
+          "cameraPermission": "Chore League uses your camera to take profile photos.",
           "microphonePermission": false
         }
       ],

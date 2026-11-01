@@ -118,7 +118,7 @@ export default function NotificationsScreen() {
     if (p === 'granted') { await apply({}); return; }
     Alert.alert(
       'Notifications are blocked',
-      'Turn on notifications for Lootboard in your phone settings so reminders can reach you.',
+      'Turn on notifications for Chore League in your phone settings so reminders can reach you.',
       [{ text: 'Not now', style: 'cancel' }, { text: 'Open Settings', onPress: () => Linking.openSettings() }],
     );
   }
@@ -139,7 +139,7 @@ export default function NotificationsScreen() {
         >
           <Text style={[styles.blockedTitle, { color: colors.textDanger }]}>🔕 Reminders can't reach you</Text>
           <Text style={[styles.blockedBody, { color: colors.text }]}>
-            Notifications are turned off for Lootboard on this phone. Tap to turn them on.
+            Notifications are turned off for Chore League on this phone. Tap to turn them on.
           </Text>
         </TouchableOpacity>
       )}

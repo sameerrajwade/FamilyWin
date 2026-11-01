@@ -72,9 +72,9 @@ describe('LoginScreen', () => {
     expect(getByText('Sign Up')).toBeTruthy();
   });
 
-  it('renders Lootboard branding', () => {
+  it('renders Chore League branding', () => {
     const { getByText } = render(<LoginScreen />);
-    expect(getByText('Lootboard')).toBeTruthy();
+    expect(getByText('Chore League')).toBeTruthy();
   });
 
   it('shows error alert when fields are empty', async () => {
@@ -194,7 +194,7 @@ describe('RegisterScreen', () => {
 describe('SplashScreen', () => {
   it('renders the first slide title', () => {
     const { getByText } = render(<SplashScreen />);
-    expect(getByText('Welcome to\nLootboard!')).toBeTruthy();
+    expect(getByText('Welcome to\nChore League!')).toBeTruthy();
   });
 
   it('renders feature chips on first slide', () => {
@@ -215,7 +215,7 @@ describe('SplashScreen', () => {
   });
 
   it('renders the branded first slide (chest mark replaces the old trophy emoji)', () => {
-    // The first slide now renders the Lootboard chest mark (react-native-svg)
+    // The first slide now renders the Chore League chest mark (react-native-svg)
     // instead of a 🏆 emoji, so assert the branded slide via its title/subtitle.
     const { getByText } = render(<SplashScreen />);
     expect(getByText('Your family’s weekly league — chores become a game everyone can win')).toBeTruthy();

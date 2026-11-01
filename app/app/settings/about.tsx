@@ -30,7 +30,7 @@ const PRIVACY_POINTS = [
 ];
 
 const TERMS_POINTS = [
-  'Lootboard is provided as-is to help families track chores and rewards for personal, non-commercial use.',
+  'Chore League is provided as-is to help families track chores and rewards for personal, non-commercial use.',
   'You are responsible for the accounts and profiles you create and for supervising children\'s use.',
   'Points and rewards have no monetary value and cannot be exchanged for cash.',
   'We may update the app and these terms over time; continued use means you accept the current version.',
@@ -90,24 +90,24 @@ export default function AboutScreen() {
           icon="mail-outline"
           label="Contact Support"
           subtitle={SUPPORT_EMAIL}
-          onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Lootboard%20Support`)}
+          onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Chore%20League%20Support`)}
         />
         <NavRow
           icon="share-social-outline"
-          label="Share Lootboard"
+          label="Share Chore League"
           subtitle="Invite friends & family to try it"
           isLast
           onPress={() =>
             Share.share({
               message:
-                '🏆 We use Lootboard to turn chores into a fun family competition!\n\nKids earn points for completing tasks and win rewards. Download it free:\n' + APP_STORE_URL,
-              title: 'Try Lootboard — Family Chore Tracker',
+                '🏆 We use Chore League to turn chores into a fun family competition!\n\nKids earn points for completing tasks and win rewards. Download it free:\n' + APP_STORE_URL,
+              title: 'Try Chore League — Family Chore Tracker',
             })
           }
         />
       </SettingsGroup>
 
-      <Text style={[styles.version, { color: colors.textMuted }]}>Lootboard v1.0.0 · Made with ❤️</Text>
+      <Text style={[styles.version, { color: colors.textMuted }]}>Chore League v1.0.0 · Made with ❤️</Text>
     </SettingsScaffold>
   );
 }

@@ -7,7 +7,7 @@
  * Each share MOMENT (win, streak, recap, level-up, reward, invite) passes a
  * `ShareCardData` with a CONTEXTUAL brand mark from the icon family; the card
  * chrome, gradient, wordmark and store footer stay identical so every share
- * reads as Lootboard.
+ * reads as Chore League.
  *
  * Pipeline: render the card in the preview modal → `captureRef` (react-native-
  * view-shot) snapshots that exact view to a temp PNG → `expo-sharing` opens the
@@ -79,8 +79,8 @@ function ShareCardBody({ data }: { data: ShareCardData }) {
         <View style={styles.footerBrand}>
           <BrandIcon name="chest" size={24} sparkle={false} />
           <Text style={styles.footerWord}>
-            <Text style={{ color: Brand.purpleLight }}>Loot</Text>
-            <Text style={{ color: Brand.orangeLight }}>board</Text>
+            <Text style={{ color: Brand.purpleLight }}>Chore</Text>
+            <Text style={{ color: Brand.orangeLight }}> League</Text>
           </Text>
         </View>
         <Text style={styles.footerStore}>{STORE_TAGLINE}</Text>
@@ -106,7 +106,7 @@ export function ShareCardModal({ visible, data, onClose }: {
       // Snapshot the exact previewed card at 3× for a crisp social image.
       const uri = await captureRef(cardRef, { format: 'png', quality: 1, result: 'tmpfile', ...( { pixelRatio: 3 } as any) });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share on Lootboard' });
+        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share on Chore League' });
       } else {
         await Share.share({ message: `${data.shareMessage ?? data.title}\n\n${STORE_TAGLINE}: ${APP_STORE_URL}` });
       }

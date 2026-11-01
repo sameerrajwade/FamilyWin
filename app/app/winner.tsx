@@ -117,7 +117,7 @@ export default function WinnerScreen() {
       { value: `${champions[0].points}`, label: 'points' },
       ...(margin > 0 ? [{ value: `+${margin}`, label: 'margin' }] : []),
     ],
-    shareMessage: `🏆 ${championNames} ${champions.length > 1 ? 'are' : 'is'} our family champion this week with ${champions[0].points} points on Lootboard! Chores in, champions out. 🎉`,
+    shareMessage: `🏆 ${championNames} ${champions.length > 1 ? 'are' : 'is'} our family champion this week with ${champions[0].points} points on Chore League! Chores in, champions out. 🎉`,
   } : null;
 
   function handleShare() {

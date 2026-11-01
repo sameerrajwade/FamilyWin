@@ -1,7 +1,7 @@
 /**
  * components/ui/BrandIcons.tsx
  * ─────────────────────────────────────────────────────────────────────────────
- * Lootboard brand icon FAMILY — one shared visual language (purple + gold),
+ * Chore League brand icon FAMILY — one shared visual language (purple + gold),
  * used two ways:
  *   • the master brand mark (treasure chest) for app identity, and
  *   • a set of contextual marks the share cards pick from by moment
@@ -10,7 +10,7 @@
  * All marks are vector (react-native-svg), draw gold-on-transparent in a
  * 120×120 viewBox, and size via a single `size` prop. `<AppIconTile>` wraps a
  * mark in the purple rounded-square app-icon lockup. `<Wordmark>` / `<BrandLogo>`
- * render the two-tone "Lootboard" wordmark + tagline.
+ * render the two-tone "Chore League" wordmark + tagline.
  *
  * Solid fills (not SVG gradients) are used deliberately — gradient ids collide
  * across multiple <Svg> instances in react-native-svg, and solids read just as
@@ -183,7 +183,7 @@ export function AppIconTile({ size = 88, name = 'chest', style }: {
   );
 }
 
-// ── Wordmark: "Loot"(purple) + "board"(orange), optional tagline ─────────────
+// ── Wordmark: "Chore"(purple) + " League"(orange), optional tagline ─────────────
 export function Wordmark({ size = 32, tagline = false, onDark = false }: {
   size?: number;
   tagline?: boolean;
@@ -195,8 +195,8 @@ export function Wordmark({ size = 32, tagline = false, onDark = false }: {
   return (
     <View>
       <Text style={{ fontFamily: FontFamily.black, fontSize: size, letterSpacing: -0.5 }}>
-        <Text style={{ color: loot }}>Loot</Text>
-        <Text style={{ color: board }}>board</Text>
+        <Text style={{ color: loot }}>Chore</Text>
+        <Text style={{ color: board }}> League</Text>
       </Text>
       {tagline && (
         <Text style={{ fontFamily: FontFamily.semiBold, fontSize: size * 0.4, color: tagColor, marginTop: 2 }}>

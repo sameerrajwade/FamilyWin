@@ -175,7 +175,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Compact brand row — keeps the Lootboard logo but reclaims the top
+        {/* Compact brand row — keeps the Chore League logo but reclaims the top
             space (no big stacked tile/tagline, and no redundant "Settings"
             title since we're already on the Settings tab). */}
         <View style={styles.brandHeader}>
@@ -301,7 +301,7 @@ export default function SettingsScreen() {
           />
         </SettingsGroup>
 
-        <Text style={[styles.version, { color: colors.textMuted }]}>Lootboard v1.0.0 · Made with ❤️</Text>
+        <Text style={[styles.version, { color: colors.textMuted }]}>Chore League v1.0.0 · Made with ❤️</Text>
       </ScrollView>
 
       {/* ── Avatar picker modal ── */}

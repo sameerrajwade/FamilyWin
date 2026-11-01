@@ -9,7 +9,7 @@ import { WelcomeTour } from '@/components/ui/WelcomeTour';
 describe('WelcomeTour', () => {
   it('renders the welcome slide when visible', () => {
     const { getByText } = render(<WelcomeTour visible role="admin_parent" onClose={jest.fn()} />);
-    expect(getByText('Welcome to Lootboard')).toBeTruthy();
+    expect(getByText('Welcome to Chore League')).toBeTruthy();
   });
 
   it('shows parent-oriented content for a parent', () => {
@@ -20,7 +20,7 @@ describe('WelcomeTour', () => {
 
   it('shows the trimmed tour for a child (no parent-only slides)', () => {
     const { queryByText, getByText } = render(<WelcomeTour visible role="child" onClose={jest.fn()} />);
-    expect(getByText('Welcome to Lootboard')).toBeTruthy();
+    expect(getByText('Welcome to Chore League')).toBeTruthy();
     expect(queryByText('Add tasks & penalties')).toBeNull();
   });
 
@@ -34,6 +34,6 @@ describe('WelcomeTour', () => {
   it('renders nothing interactive when not visible', () => {
     const { queryByText } = render(<WelcomeTour visible={false} role="parent" onClose={jest.fn()} />);
     // Modal with visible=false does not render its children
-    expect(queryByText('Welcome to Lootboard')).toBeNull();
+    expect(queryByText('Welcome to Chore League')).toBeNull();
   });
 });

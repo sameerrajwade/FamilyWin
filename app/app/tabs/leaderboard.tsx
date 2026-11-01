@@ -167,7 +167,7 @@ export default function LeaderboardScreen() {
       { value: `${leader.points}`, label: 'points' },
       ...(leaderboard[1] ? [{ value: `+${leader.points - leaderboard[1].points}`, label: 'ahead' }] : []),
     ],
-    shareMessage: `${leaderIsMe ? 'I am' : leader.displayName.split(' ')[0] + ' is'} leading our family week on Lootboard with ${leader.points} points! 🏆`,
+    shareMessage: `${leaderIsMe ? 'I am' : leader.displayName.split(' ')[0] + ' is'} leading our family week on Chore League with ${leader.points} points! 🏆`,
   } : null;
 
   return (

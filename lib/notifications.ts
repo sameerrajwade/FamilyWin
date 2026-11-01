@@ -239,7 +239,7 @@ export async function ensureReminders(opts: {
     const qs = opts.quiet?.start, qe = opts.quiet?.end;
     const evening = placeOutsideQuiet(opts.evening || DEFAULT_EVENING_REMINDER, 'evening', qs, qe);
     if (!opts.off?.evening) await scheduleDaily(evening, {
-      title: `Lootboard time, ${first}! ✅`,
+      title: `Chore League time, ${first}! ✅`,
       body: "Check off what's done before the day ends — your points are waiting.",
       data: { type: 'daily_reminder', screen: 'tasks' },
       sound: true,
