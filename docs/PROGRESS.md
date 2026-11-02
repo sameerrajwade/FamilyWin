@@ -13,6 +13,15 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 69 (2026-11-01) — User decisions applied + engagement features
+- **Mock page** (artifact https://claude.ai/artifact/8m6MPo96vZYYpXazkyHJd9): readability, tagline, League colour, glossy 3D icon options A/B/C + splash, engagement plan, all 8 share cards.
+- **User approved my colour picks** → built (`39221eb`): dark ink labels on green fills, `textSuccess`/`textWarning` tokens, light `textMuted` #6B7280, gold "League" wordmark.
+- **Engagement (user: "please include it"):** weekly twists (7, rotating; server-paid bonus tx in one batch with the award, same referenceId so undo reverses) + comeback boost (weeklyReset stores last place; +10% 1..5) + beat-your-best bar (`dd43123`, deployed onCompletionCreated/Updated + weeklyReset); kudos stickers (`5ff1bf5`, rules deployed); teen style (`f84a15b`).
+- **Share-card privacy (user report):** no family name on any card, standings top 3 only (`7284591`); "WEEK CHAMPION" chip + wordmark no-wrap (`6dfdf60`).
+- **Tests:** app 489/489, functions emulator 79/79, rules 58/58, tsc 0. APK installed 23:19, process up, no crash in logcat (user was using the phone → no screenshots).
+- **Waiting on user:** icon pick (A recommended), tagline (C recommended), package rename — NOTE the verification email's sender/name comes from Firebase Auth templates + project public name, not the package id.
+- **Next Up:** (1) icon + splash from the pick (render SVG → PNGs with headless Chrome) (2) email template/public name fix (3) package rename if still wanted (4) G10–G15.
+
 ## Iteration 68 (2026-11-01) — User bugs + review items done while the user was out
 - **User bugs:** Scores podium showed 0 until refresh — real cause was `CountUp` reading a Reanimated shared value in render (never re-renders); now React-state ticker (+tests). Quest line cut off → shorter labels + Task/Penalty header pills are round icon buttons.
 - **Review items built (no decisions needed):** analytics sends no names/titles; **advertising ID off** (firebase.json `react-native` flags; AD_ID + ADSERVICES permissions removed — verified with aapt); About contradictions fixed; policy/data-safety/site renamed to Chore League; stale "Settings" copy → Family tab; kinder copy (Penalty or bonus, Missed, reminder w/o threat, "Start our league"); Approvals live + pull-to-refresh; Today to-do first; Scores race first; Family tab badge (claims + reward requests) + TalkBack labels; **claim push to parents** (deployed `onCompletionCreated`, ≤1/10 min/family, "Kids' claims" switch).
