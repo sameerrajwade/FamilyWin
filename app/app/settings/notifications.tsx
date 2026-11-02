@@ -184,6 +184,12 @@ export default function NotificationsScreen() {
           right={<TimeAndSwitch on={prefs.overtaken} onToggle={(v) => toggle('overtaken', v)} label="Someone passed you" styles={styles} colors={colors} />}
         />
         <NavRow
+          icon="dice-outline"
+          label="Weekly twist"
+          subtitle="Once a week, the morning your family's week starts"
+          right={<TimeAndSwitch on={prefs.twists} onToggle={(v) => toggle('twists', v)} label="Weekly twist" styles={styles} colors={colors} />}
+        />
+        <NavRow
           icon="trophy-outline"
           label="Sunday results"
           subtitle="Who won the week and every crown"

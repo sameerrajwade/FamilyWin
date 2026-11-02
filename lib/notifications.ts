@@ -193,7 +193,7 @@ async function scheduleDaily(time: string, content: Notifications.NotificationCo
 // "<type>Off: true" (absent = on). The two server pushes (overtaken, Sunday
 // results) read the same flags in the Cloud Functions.
 
-export type NotifType = 'morning' | 'evening' | 'report' | 'overtaken' | 'weekly' | 'claims';
+export type NotifType = 'morning' | 'evening' | 'report' | 'overtaken' | 'weekly' | 'claims' | 'twists';
 
 export const NOTIF_OFF_FIELD: Record<NotifType, string> = {
   morning: 'morningOff',
@@ -202,6 +202,7 @@ export const NOTIF_OFF_FIELD: Record<NotifType, string> = {
   overtaken: 'overtakenOff',
   weekly: 'weeklyResultsOff',
   claims: 'claimsOff', // server push to parents when a kid's claim waits (onCompletionCreated)
+  twists: 'twistOff',  // weekly twist announcement, once on the family's week-start day (weeklyTwistNotice)
 };
 
 /** Which types are ON for a stored config (absent config / flag = on). */

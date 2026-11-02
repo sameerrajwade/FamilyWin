@@ -324,3 +324,27 @@ describe('kudos stickers (engagement 2026-11-01)', () => {
     await assertFails(getDoc(doc(adminB(), 'families/famA/kudos/k9')));
   });
 });
+
+describe('email verification gate (2026-11-01)', () => {
+  const pwUser = (uid, verified) => testEnv.authenticatedContext(uid, {
+    email: `${uid}@example.com`, email_verified: verified, firebase: { sign_in_provider: 'password' },
+  }).firestore();
+  test('a new, unverified email account cannot create its lookup doc, a family or a member', async () => {
+    const db = pwUser('uidNew', false);
+    await assertFails(setDoc(doc(db, 'users/uidNew'), { familyId: 'famN', memberId: 'mN' }));
+    await assertFails(setDoc(doc(db, 'families/famN'), { name: 'New' }));
+    await assertFails(setDoc(doc(db, 'families/famA/members/mN'), { userId: 'uidNew', displayName: 'N', role: 'parent' }));
+  });
+  test('once verified, it can', async () => {
+    const db = pwUser('uidNew', true);
+    await assertSucceeds(setDoc(doc(db, 'users/uidNew'), { familyId: 'famN', memberId: 'mN' }));
+    await assertSucceeds(setDoc(doc(db, 'families/famN'), { name: 'New' }));
+  });
+  test('Google sign-ins and accounts that already play are not locked out', async () => {
+    const g = testEnv.authenticatedContext('uidG', { email_verified: true, firebase: { sign_in_provider: 'google.com' } }).firestore();
+    await assertSucceeds(setDoc(doc(g, 'families/famG'), { name: 'G' }));
+    // uidAdminA already has a /users doc (seeded) — still unverified email login works
+    const old = testEnv.authenticatedContext('uidAdminA', { email_verified: false, firebase: { sign_in_provider: 'password' } }).firestore();
+    await assertSucceeds(setDoc(doc(old, 'families/famOld2'), { name: 'Second family' }));
+  });
+});

@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ChestMark } from '@/components/ui/BrandIcons';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 import { identifyUser } from '@/lib/analytics';
+import { needsEmailVerification } from '@/lib/emailVerification';
 import { crashlytics } from '@/lib/fb';
 
 // ── Error Boundary — catches any unhandled JS errors to prevent white/red crash ──
@@ -361,6 +362,13 @@ function InnerLayout() {
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
         });
+
+        if (needsEmailVerification(firebaseUser as any)) {
+          setLoading(false);
+          setHydrated(true);
+          setPendingRoute('/auth/verify-email');
+          return;
+        }
 
         try {
           const result = await getUserFamilyAndMember(firebaseUser.uid);

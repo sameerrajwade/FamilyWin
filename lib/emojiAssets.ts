@@ -198,6 +198,9 @@ const EMOJI_3D: Record<string, ImageSourcePropType> = {
   "🧙": require('../assets/emoji3d/u1f9d9.png'),
   "👨‍👩‍👧": require('../assets/emoji3d/u1f468_200d_1f469_200d_1f467.png'),
   "👨‍👩‍👧‍👦": require('../assets/emoji3d/u1f468_200d_1f469_200d_1f467_200d_1f466.png'),
+  "📬": require('../assets/emoji3d/u1f4ec.png'),
+  "🎲": require('../assets/emoji3d/u1f3b2.png'),
+  "🧢": require('../assets/emoji3d/u1f9e2.png'),
 };
 
 /** The bundled 3D image for an emoji, or null if we don't ship one. */

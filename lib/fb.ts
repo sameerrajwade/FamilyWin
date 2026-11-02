@@ -53,6 +53,9 @@ import {
   signOut as mSignOut,
   sendPasswordResetEmail as mSendReset,
   signInWithCredential as mSignInCred,
+  sendEmailVerification as mSendVerify,
+  reload as mReload,
+  getIdToken as mGetIdToken,
   GoogleAuthProvider,
 } from '@react-native-firebase/auth';
 import {
@@ -236,6 +239,10 @@ interface AuthFn {
     signInWithCredential(credential: any): Promise<any>;
     signOut(): Promise<void>;
     sendPasswordResetEmail(email: string): Promise<void>;
+    /** Email-verification link to the signed-in user (Firebase's own template). */
+    sendEmailVerification(): Promise<void>;
+    /** Re-read the signed-in user (e.g. emailVerified) and refresh its ID token. */
+    reloadCurrentUser(): Promise<any>;
     onAuthStateChanged(cb: (user: any) => void): () => void;
   };
   GoogleAuthProvider: typeof GoogleAuthProvider;
@@ -248,6 +255,17 @@ const authImpl = (() => ({
   signInWithCredential: (credential: any) => mSignInCred(authInstance, credential),
   signOut: () => mSignOut(authInstance),
   sendPasswordResetEmail: (email: string) => mSendReset(authInstance, email),
+  sendEmailVerification: async () => {
+    if (authInstance.currentUser) await mSendVerify(authInstance.currentUser);
+  },
+  reloadCurrentUser: async () => {
+    const u = authInstance.currentUser;
+    if (!u) return null;
+    await mReload(u);
+    const fresh = authInstance.currentUser;
+    if (fresh) await mGetIdToken(fresh, true); // so rules see email_verified right away
+    return fresh;
+  },
   onAuthStateChanged: (cb: (user: any) => void) => mOnAuthStateChanged(authInstance, cb),
 })) as AuthFn;
 authImpl.GoogleAuthProvider = GoogleAuthProvider;

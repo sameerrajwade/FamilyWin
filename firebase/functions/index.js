@@ -28,7 +28,7 @@ const {
   competitors, buildRanked, computeCrowns, crownsSummary, detectOvertakes,
   streakWithShields, reachedMilestones, STREAK_WINDOW_DAYS, shouldAutoApprove,
   shouldSendClaimPush, claimPushText, claimRecipients,
-  weekStartKeyOf, twistForWeek, twistBonus, comebackIds, comebackBonus, comebackActive,
+  weekStartKeyOf, twistForWeek, twistBonus, comebackIds, comebackBonus, comebackActive, twistNoticeDue,
 } = require('./game');
 const league = require('./league');
 
@@ -632,6 +632,43 @@ exports.weeklyReset = onSchedule('1 0 * * 1', async (event) => {
 // every run and the bonuses effectively never paid. A milestone is now paid once
 // the streak has REACHED it (not only on the exact day), still at most once per
 // member per milestone (same reason-string dedupe as before).
+
+// ─── WEEKLY TWIST NOTICE ─────────────────────────────────────────────────────
+// Hourly. For each family: on ITS week-start day (weekStartDay), from 8am in the
+// family's timezone, announce this week's twist once (families.twistNotifiedWeek
+// marks it sent). Each person can switch it off (notificationConfigs.twistOff).
+exports.weeklyTwistNotice = onSchedule('5 * * * *', async () => {
+  const now = new Date();
+  const familiesSnap = await db.collection('families').get();
+  for (const familyDoc of familiesSnap.docs) {
+    const familyId = familyDoc.id;
+    const family = familyDoc.data();
+    if (family.twistsOff === true) continue;
+    try {
+      const configsSnap = await db.collection('families').doc(familyId).collection('notificationConfigs').get();
+      const tz = (configsSnap.docs.find((d) => d.data().timezone) || { data: () => ({}) }).data().timezone || 'UTC';
+      const due = twistNoticeDue(family, localParts(now, tz));
+      if (!due) continue;
+      // Mark first so a retry or overlap never double-sends.
+      await familyDoc.ref.set({ twistNotifiedWeek: due.weekKey }, { merge: true });
+      const tokens = configsSnap.docs
+        .map((d) => d.data())
+        .filter((c) => c.enabled !== false && c.twistOff !== true && c.pushToken)
+        .map((c) => c.pushToken);
+      if (!tokens.length) continue;
+      const { twist } = due;
+      await getMessaging().sendEachForMulticast({
+        tokens,
+        notification: { title: `🎲 This week's twist: ${twist.title}`, body: `${twist.blurb} Tap to see how it works.` },
+        data: { screen: 'tasks', twist: twist.id },
+        android: { channelId: 'alerts', priority: 'high' },
+      });
+      console.log(`twist notice family=${familyId} week=${due.weekKey} twist=${twist.id} tokens=${tokens.length}`);
+    } catch (err) {
+      console.error(`twist notice failed family=${familyId}:`, err && err.message);
+    }
+  }
+});
 
 exports.dailyStreakCheck = onSchedule('0 1 * * *', async () => {
   const STREAK_BONUSES = { 7: 50, 14: 100, 30: 250 };

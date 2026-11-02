@@ -37,7 +37,7 @@ export default function RegisterScreen() {
     try {
       setIsLoading(true);
       await signUp(email.trim().toLowerCase(), password);
-      // _layout.tsx auth listener routes new user to /auth/onboarding
+      // _layout.tsx routes the new (unverified) account to /auth/verify-email
     } catch (error: any) {
       Alert.alert('Couldn’t sign up', error?.message ?? 'Please try again.');
     } finally {

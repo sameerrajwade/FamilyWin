@@ -193,3 +193,22 @@ describe('claim push to parents (UX review 2026-11-01)', () => {
     expect(out.map((m) => m.id)).toEqual(['mom', 'dad']);
   });
 });
+
+describe('weekly twist notice (once, on the family week-start day)', () => {
+  const { twistNoticeDue } = require(path.join(__dirname, '../../firebase/functions/game'));
+  test('Monday family: due from 8am Monday local, not before, not on other days', () => {
+    expect(twistNoticeDue({ weekStartDay: 1 }, { dateKey: '2026-11-02', hour: 8 }).weekKey).toBe('2026-11-02');
+    expect(twistNoticeDue({ weekStartDay: 1 }, { dateKey: '2026-11-02', hour: 7 })).toBeNull();
+    expect(twistNoticeDue({ weekStartDay: 1 }, { dateKey: '2026-11-03', hour: 9 })).toBeNull();
+  });
+  test('Sunday and Saturday families get it on their own day', () => {
+    expect(twistNoticeDue({ weekStartDay: 0 }, { dateKey: '2026-11-08', hour: 10 }).weekKey).toBe('2026-11-08');
+    expect(twistNoticeDue({ weekStartDay: 6 }, { dateKey: '2026-11-07', hour: 10 }).weekKey).toBe('2026-11-07');
+    expect(twistNoticeDue({ weekStartDay: 0 }, { dateKey: '2026-11-02', hour: 10 })).toBeNull();
+  });
+  test('only once a week, and never when twists are off or skipped', () => {
+    expect(twistNoticeDue({ weekStartDay: 1, twistNotifiedWeek: '2026-11-02' }, { dateKey: '2026-11-02', hour: 12 })).toBeNull();
+    expect(twistNoticeDue({ weekStartDay: 1, twistsOff: true }, { dateKey: '2026-11-02', hour: 12 })).toBeNull();
+    expect(twistNoticeDue({ weekStartDay: 1, twistSkip: { '2026-11-02': true } }, { dateKey: '2026-11-02', hour: 12 })).toBeNull();
+  });
+});

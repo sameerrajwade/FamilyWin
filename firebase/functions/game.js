@@ -290,7 +290,27 @@ function comebackActive(family, memberId, dateKey) {
   return d >= 0 && d < 7 * DAY_MS;
 }
 
+/**
+ * Weekly twist push (user request 2026-11-01): ONCE per family per week, on the
+ * family's own week-start day (Mon for some, Sun/Sat for others), from 8am
+ * family-local time. `local` = { dateKey, hour } in the family's timezone.
+ * Returns the week key + twist to announce, or null.
+ */
+const TWIST_NOTICE_HOUR = 8;
+function twistNoticeDue(family, local) {
+  if (!family || !local || !local.dateKey) return null;
+  const wsd = family.weekStartDay ?? 1;
+  if (new Date(keyToUTC(local.dateKey)).getUTCDay() !== wsd) return null;
+  if (!(local.hour >= TWIST_NOTICE_HOUR)) return null;
+  const weekKey = weekStartKeyOf(local.dateKey, wsd);
+  if (family.twistNotifiedWeek === weekKey) return null;
+  const twist = twistForWeek(weekKey, family);
+  return twist ? { weekKey, twist } : null;
+}
+
 module.exports = {
+  twistNoticeDue,
+  TWIST_NOTICE_HOUR,
   TWISTS,
   weekStartKeyOf,
   twistForWeek,

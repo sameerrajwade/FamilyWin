@@ -101,7 +101,11 @@ export function generateInviteCode(): string {
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 
 export async function signUp(email: string, password: string) {
-  return auth().createUserWithEmailAndPassword(email, password);
+  const cred = await auth().createUserWithEmailAndPassword(email, password);
+  // New accounts verify their email before they can set up a family
+  // (lib/emailVerification). A failed send isn't fatal: the screen can resend.
+  await auth().sendEmailVerification().catch(() => {});
+  return cred;
 }
 
 export async function signIn(email: string, password: string) {
@@ -1787,7 +1791,7 @@ export async function upsertNotifConfig(
     quietStart?: string | null; quietEnd?: string | null;
     // G4: per-type off switches (absent = on). See lib/notifications NOTIF_OFF_FIELD.
     morningOff?: boolean; eveningOff?: boolean; reportOff?: boolean;
-    overtakenOff?: boolean; weeklyResultsOff?: boolean; claimsOff?: boolean;
+    overtakenOff?: boolean; weeklyResultsOff?: boolean; claimsOff?: boolean; twistOff?: boolean;
   },
 ) {
   await Col.notifConfigs(familyId).doc(memberId).set(data, { merge: true });

@@ -41,7 +41,7 @@ describe('G4: every reminder is on by default, each type can be switched off', (
   const scheduledTypes = () => Notifications.scheduleNotificationAsync.mock.calls.map((c: any[]) => c[0].content.data.type);
 
   it('reads prefs: absent config or flag = on', () => {
-    expect(notifPrefs(null)).toEqual({ morning: true, evening: true, report: true, overtaken: true, weekly: true, claims: true });
+    expect(notifPrefs(null)).toEqual({ morning: true, evening: true, report: true, overtaken: true, weekly: true, claims: true, twists: true });
     expect(notifPrefs({ eveningOff: true, overtakenOff: true })).toMatchObject({ evening: false, overtaken: false, morning: true });
   });
 

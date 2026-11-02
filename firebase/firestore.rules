@@ -27,6 +27,21 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    /**
+     * Email verification (user request 2026-11-01): a NEW email/password
+     * account must verify its email before it can create its lookup doc, a
+     * family, or a member. Google sign-ins are verified by Google. Accounts that
+     * already have a /users doc (families playing before this rule) pass.
+     */
+    function isVerifiedOrExternal() {
+      return request.auth.token.email_verified == true
+        || request.auth.token.firebase.sign_in_provider != 'password';
+    }
+    function canSetUpFamily() {
+      return isSignedIn() && (isVerifiedOrExternal()
+        || exists(/databases/$(database)/documents/users/$(request.auth.uid)));
+    }
+
     /** Get the user lookup doc — cached per rule evaluation */
     function userDoc() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
@@ -62,7 +77,8 @@ service cloud.firestore {
     // Each user can only read/write their own lookup doc.
 
     match /users/{uid} {
-      allow read, write: if isSignedIn() && request.auth.uid == uid;
+      allow read, update, delete: if isSignedIn() && request.auth.uid == uid;
+      allow create: if isSignedIn() && request.auth.uid == uid && isVerifiedOrExternal();
     }
 
     // ── /leagues/{leagueId} (Phase G7: family vs family) ─────────────────────
@@ -86,8 +102,8 @@ service cloud.firestore {
     match /families/{familyId} {
       // Any signed-in family member can read family doc
       allow read: if isFamilyMember(familyId);
-      // Anyone signed in can create a family (for onboarding)
-      allow create: if isSignedIn();
+      // Anyone signed in (and verified — see canSetUpFamily) can create a family
+      allow create: if canSetUpFamily();
       // Only admin_parent can update family settings
       allow update: if isFamilyMember(familyId) && isParent(familyId);
       allow delete: if false;
@@ -95,8 +111,8 @@ service cloud.firestore {
       // ── Members subcollection ─────────────────────────────────────────────
       match /members/{memberId} {
         allow read: if isFamilyMember(familyId);
-        // New members can join (create their own doc)
-        allow create: if isSignedIn();
+        // New members can join (create their own doc) — verified accounts only
+        allow create: if canSetUpFamily();
         // A parent may update any member (incl. promoting/demoting roles). A
         // member may update their OWN doc (name, avatar, etc.) but NOT change
         // their own `role` — otherwise a child could self-promote to parent and
