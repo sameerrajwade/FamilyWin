@@ -163,6 +163,10 @@ export default function HomeScreen() {
           return { ...task, completion: c ? { id: c.id, wasAutoFailed: c.wasAutoFailed, pointsAwarded: c.pointsAwarded, completedDate: c.completedDate ?? dayKey(c.completedAt), completedAt: c.completedAt, status: c.status } : null };
         });
 
+      // To-do first, then waiting for OK, then done — same order as Kid Mode,
+      // so the next thing to do is always on top. (Stable: keeps task order within a group.)
+      const rank = (t: TaskWithCompletion) => (!t.completion ? 0 : t.completion.status === 'pending' ? 1 : 2);
+      myTasks.sort((a, b) => rank(a) - rank(b));
       setTodaysTasks(myTasks as any);
 
       // Phase 4.3: family-wide count of completions awaiting a parent's approval

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Tabs, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, Text, StyleSheet, Platform } from 'react-native';
@@ -23,15 +23,25 @@ interface TabIconProps {
   iconActive: IconName;
   label: string;
   focused: boolean;
+  badge?: number;
 }
 
-function TabIcon({ icon, iconActive, label, focused }: TabIconProps) {
+function TabIcon({ icon, iconActive, label, focused, badge = 0 }: TabIconProps) {
   const { colors } = useTheme();
+  // Icon keeps the brand fill colour; the LABEL is text → textAccent (readable in dark mode).
   const tint = focused ? colors.primary : colors.textMuted;
+  const labelTint = focused ? colors.textAccent : colors.textMuted;
   return (
     <View style={styles.tabItem}>
-      <Icon name={focused ? iconActive : icon} size={23} color={tint} />
-      <Text numberOfLines={1} style={[styles.tabLabel, { color: tint }]}>{label}</Text>
+      <View>
+        <Icon name={focused ? iconActive : icon} size={23} color={tint} />
+        {badge > 0 && (
+          <View style={[styles.badge, { backgroundColor: colors.danger, borderColor: colors.tabBar }]}>
+            <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
+          </View>
+        )}
+      </View>
+      <Text numberOfLines={1} style={[styles.tabLabel, { color: labelTint }]}>{label}</Text>
     </View>
   );
 }
@@ -183,6 +193,21 @@ export default function AppTabsLayout() {
     return () => { cancelled = true; };
   }, [member?.id, member?.role, family?.id, family?.weekStartDay, member?.displayName, family?.penaltyPausedUntil, member?.penaltyPausedUntil, setReminderPermission]);
 
+  // Everything waiting for a parent (task claims + reward requests) → badge on
+  // the Family tab, so a kid's claim is visible from any screen. Parents only.
+  const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
+  const [pendingClaims, setPendingClaims] = useState(0);
+  const [pendingRewards, setPendingRewards] = useState(0);
+  useEffect(() => {
+    if (!family?.id || !isParent) { setPendingClaims(0); setPendingRewards(0); return; }
+    const off1 = Col.completions(family.id).where('status', '==', 'pending')
+      .onSnapshot((snap: any) => setPendingClaims(snap.size ?? snap.docs.length), () => {});
+    const off2 = Col.redemptions(family.id).where('status', '==', 'pending')
+      .onSnapshot((snap: any) => setPendingRewards(snap.size ?? snap.docs.length), () => {});
+    return () => { off1(); off2(); };
+  }, [family?.id, isParent]);
+  const waiting = pendingClaims + pendingRewards;
+
   return (
     <Tabs
       screenOptions={{
@@ -195,6 +220,7 @@ export default function AppTabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          tabBarAccessibilityLabel: 'Today',
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="list-outline" iconActive="list" label="Today" focused={focused} />
           ),
@@ -203,6 +229,7 @@ export default function AppTabsLayout() {
       <Tabs.Screen
         name="leaderboard"
         options={{
+          tabBarAccessibilityLabel: 'Scores',
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="trophy-outline" iconActive="trophy" label="Scores" focused={focused} />
           ),
@@ -211,6 +238,7 @@ export default function AppTabsLayout() {
       <Tabs.Screen
         name="rewards"
         options={{
+          tabBarAccessibilityLabel: 'Rewards',
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="gift-outline" iconActive="gift" label="Rewards" focused={focused} />
           ),
@@ -221,14 +249,16 @@ export default function AppTabsLayout() {
       <Tabs.Screen
         name="family"
         options={{
+          tabBarAccessibilityLabel: waiting > 0 ? `Family, ${waiting} waiting for your OK` : 'Family',
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="people-outline" iconActive="people" label="Family" focused={focused} />
+            <TabIcon icon="people-outline" iconActive="people" label="Family" focused={focused} badge={waiting} />
           ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
+          tabBarAccessibilityLabel: 'Settings',
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="settings-outline" iconActive="settings" label="Settings" focused={focused} />
           ),
@@ -264,6 +294,11 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     width: 60,
   },
+  badge: {
+    position: 'absolute', top: -5, right: -11, minWidth: 18, height: 18, borderRadius: 9,
+    paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 2,
+  },
+  badgeText: { color: '#FFFFFF', fontSize: 10, fontFamily: FontFamily.extraBold },
   tabLabel: {
     fontSize: 10,
     fontFamily: FontFamily.bold,

@@ -12,14 +12,14 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image, Modal, Pressable } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image, Modal, Pressable, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/store';
 import {
   getPendingCompletions, approveCompletion, approveCompletions, rejectCompletion,
-  getActiveTasks, getFamilyMembers,
+  getActiveTasks, getFamilyMembers, Col,
   type CompletionDoc, type TaskDoc, type MemberDoc,
 } from '@/lib/firebase';
 import { useTheme, type ThemeColors } from '@/lib/theme';
@@ -45,6 +45,7 @@ export default function ApprovalsScreen() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     if (!family?.id) { setRows([]); setLoading(false); return; }
@@ -68,7 +69,22 @@ export default function ApprovalsScreen() {
     }
   }, [family?.id]);
 
-  useEffect(() => { load(); }, [load]);
+  // Live: a kid's new claim (or another parent's decision) shows up without
+  // leaving the screen — it used to load once and go stale.
+  useEffect(() => {
+    if (!family?.id) { load(); return; }
+    const unsub = Col.completions(family.id).where('status', '==', 'pending').onSnapshot(
+      () => { load(); },
+      () => { load(); },
+    );
+    return () => unsub();
+  }, [family?.id, load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   const decide = useCallback(async (row: PendingRow, approve: boolean) => {
     if (!family?.id || !member?.id || busyId) return;
@@ -193,7 +209,11 @@ export default function ApprovalsScreen() {
           <Text style={styles.emptySub}>Completions that need approval will show up here.</Text>
         </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.lg, paddingTop: 0 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: Spacing.lg, paddingTop: 0 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+        >
           <Text style={styles.intro}>
             Approve to award the points, or reject to send the task back.
           </Text>

@@ -196,28 +196,6 @@ export default function LeaderboardScreen() {
           <ActivityIndicator color={colors.primary} style={{ marginTop: Spacing.xxl }} />
         ) : (
           <>
-            {/* Bet 3 — the co-op goal everyone earns toward together. */}
-            <View style={styles.goalWrap}>
-              <FamilyGoalCard />
-            </View>
-
-            {/* F1: the 4-week season race. */}
-            <SeasonCard />
-
-            {/* G7: family vs family (or, for a parent, an invite to start one). */}
-            <LeagueCard />
-
-            {/* Personal Best card — players only (coaches don't compete) */}
-            {iAmPlayer && personalBest > 0 && (
-              <View style={[styles.personalBestCard, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '33' }]}>
-                <Text style={styles.personalBestEmoji}>🏅</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.personalBestLabel, { color: colors.textSecondary }]}>Your Personal Best</Text>
-                  <Text style={[styles.personalBestValue, { color: colors.textAccent }]}>{personalBest} pts in a week</Text>
-                </View>
-              </View>
-            )}
-
             {/* Nobody to play with yet (a lone account) */}
             {members.length <= 1 && (
               <View style={styles.emptyPodium}>
@@ -322,6 +300,30 @@ export default function LeaderboardScreen() {
                       <Text style={[styles.coachPts, { color: colors.textAccent }]}>{c.points} pts</Text>
                     </View>
                   ))}
+                </View>
+              </View>
+            )}
+
+            {/* The race comes first (UX review 2026-11-01); goal, season, league and
+                personal best sit under it. */}
+            {/* Bet 3 — the co-op goal everyone earns toward together. */}
+            <View style={styles.goalWrap}>
+              <FamilyGoalCard />
+            </View>
+
+            {/* F1: the 4-week season race. */}
+            <SeasonCard />
+
+            {/* G7: family vs family (or, for a parent, an invite to start one). */}
+            <LeagueCard />
+
+            {/* Personal Best card — players only (coaches don't compete) */}
+            {iAmPlayer && personalBest > 0 && (
+              <View style={[styles.personalBestCard, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '33' }]}>
+                <Text style={styles.personalBestEmoji}>🏅</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.personalBestLabel, { color: colors.textSecondary }]}>Your Personal Best</Text>
+                  <Text style={[styles.personalBestValue, { color: colors.textAccent }]}>{personalBest} pts in a week</Text>
                 </View>
               </View>
             )}
