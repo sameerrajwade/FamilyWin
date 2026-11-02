@@ -18,7 +18,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { View, Text, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, Image, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Path, Rect, Circle, G } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, FontFamily } from '@/constants/theme';
@@ -36,7 +36,7 @@ export const Brand = {
   goldMid: '#E9A400',
   goldDeep: '#C88600',
   goldShadow: '#B87400',
-  tagline: 'Chores, points, wins.',
+  tagline: 'Do chores. Win the week.', // user pick 2026-11-01 (tagline C)
 } as const;
 
 export type BrandIconName = 'chest' | 'coin' | 'shield' | 'podium' | 'medal' | 'trophy';
@@ -70,18 +70,14 @@ function Frame({ size = 48, children }: { size?: number; children: React.ReactNo
 }
 
 // ── Treasure chest (master brand mark) ──────────────────────────────────────
-export function ChestMark({ size = 48, sparkle = true }: MarkProps) {
-  return (
-    <Frame size={size}>
-      {sparkle && <Path d="M96,16 L100,25 L109,29 L100,33 L96,42 L92,33 L83,29 L92,25 Z" fill={Brand.goldHi} />}
-      <Path d="M26,64 L26,56 C26,42 40,34 60,34 C80,34 94,42 94,56 L94,64 Z" fill={Brand.goldLid} />
-      <Path d="M26,64 L94,64 L94,89 C94,94 90,98 85,98 L35,98 C30,98 26,94 26,89 Z" fill={Brand.gold} />
-      <Rect x="21" y="59" width="78" height="11" rx="5.5" fill={Brand.goldMid} />
-      <Rect x="51" y="60.5" width="18" height="18" rx="6" fill={Brand.goldShadow} />
-      <Circle cx="60" cy="68" r="2.8" fill={Brand.goldHi} />
-      <Rect x="58.6" y="69.5" width="2.8" height="6" rx="1.2" fill={Brand.goldHi} />
-    </Frame>
-  );
+// The glossy 3D crowned chest picked by the user on 2026-11-01 ("icon A"). One
+// source drawing (scripts/brand/chest-a.svgfrag) renders the app icon, splash
+// and this in-app image via scripts/brand/render-icons.js. A PNG (not SVG)
+// because its gradients + soft highlights need blur filters react-native-svg
+// can't draw. `sparkle` is kept for call-site compatibility.
+const CHEST_3D = require('../../assets/brand/chest-3d.png');
+export function ChestMark({ size = 48 }: MarkProps) {
+  return <Image source={CHEST_3D} style={{ width: size, height: size }} resizeMode="contain" accessibilityIgnoresInvertColors />;
 }
 
 // ── Coin & star (points / reward / recap) ───────────────────────────────────

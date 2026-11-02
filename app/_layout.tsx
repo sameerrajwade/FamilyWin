@@ -288,7 +288,7 @@ function AnimatedSplash({ isExiting }: { isExiting: boolean }) {
 
       {/* Tagline */}
       <Animated.View style={tagStyle}>
-        <Text style={splashStyles.tagline}>Your family's weekly showdown. 🎯</Text>
+        <Text style={splashStyles.tagline}>Do chores. Win the week. 🏆</Text>
       </Animated.View>
 
       {/* Staggered bottom star row */}

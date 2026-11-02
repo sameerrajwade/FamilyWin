@@ -1,0 +1,58 @@
+<!-- Chore League brand mark "A" (glossy crowned chest), picked 2026-11-01. Source for scripts/brand/render-icons.js -->
+<radialGradient id="pBg" cx=".5" cy=".36" r=".75"><stop offset="0" stop-color="#9A93FF"/><stop offset=".45" stop-color="#6C63FF"/><stop offset="1" stop-color="#2E2880"/></radialGradient>
+    <radialGradient id="pGlow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFE9A0" stop-opacity=".85"/><stop offset=".5" stop-color="#FFD84D" stop-opacity=".25"/><stop offset="1" stop-color="#FFD84D" stop-opacity="0"/></radialGradient>
+    <linearGradient id="pBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD84D"/><stop offset=".55" stop-color="#FFB300"/><stop offset="1" stop-color="#D98200"/></linearGradient>
+    <linearGradient id="pLid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF4B8"/><stop offset=".5" stop-color="#FFD84D"/><stop offset="1" stop-color="#F2A400"/></linearGradient>
+    <linearGradient id="pBand" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7A4300"/><stop offset=".45" stop-color="#C98A1E"/><stop offset=".6" stop-color="#E7B04A"/><stop offset="1" stop-color="#7A4300"/></linearGradient>
+    <linearGradient id="pRim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE98A"/><stop offset=".5" stop-color="#E9A400"/><stop offset="1" stop-color="#9C5E00"/></linearGradient>
+    <radialGradient id="pLock" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#FFF6D6"/><stop offset=".5" stop-color="#E0A030"/><stop offset="1" stop-color="#8A5200"/></radialGradient>
+    <linearGradient id="pCrown" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF8D2"/><stop offset=".45" stop-color="#FFD24A"/><stop offset="1" stop-color="#D98E00"/></linearGradient>
+    <radialGradient id="pGemP" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#E4E1FF"/><stop offset=".45" stop-color="#8F87FF"/><stop offset="1" stop-color="#3A33A8"/></radialGradient>
+    <radialGradient id="pGemO" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#FFE1CF"/><stop offset=".45" stop-color="#FF7A3D"/><stop offset="1" stop-color="#B83A0A"/></radialGradient>
+    <linearGradient id="pInside" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5A2E00"/><stop offset="1" stop-color="#A86400"/></linearGradient>
+    <radialGradient id="pCoin" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#FFF8D2"/><stop offset=".5" stop-color="#FFC400"/><stop offset="1" stop-color="#C88600"/></radialGradient>
+    <filter id="pBlur3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="pBlur1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.2"/></filter>
+    <clipPath id="pChestClip"><path d="M32,64 L32,54 C32,42 45,36 60,36 C75,36 88,42 88,54 L88,64 Z M32,64 L88,64 L88,88 C88,92 85,95 81,95 L39,95 C35,95 32,92 32,88 Z"/></clipPath>
+    <path id="pSpark" d="M0,-6 C0.8,-1.6 1.6,-0.8 6,0 C1.6,0.8 0.8,1.6 0,6 C-0.8,1.6 -1.6,0.8 -6,0 C-1.6,-0.8 -0.8,-1.6 0,-6 Z"/>
+
+    <!-- closed glossy chest, body spans y 36–95 -->
+    <g id="pChest">
+      <ellipse cx="60" cy="97" rx="30" ry="4.5" fill="#1C1760" opacity=".55" filter="url(#pBlur1)"/>
+      <path d="M32,64 L88,64 L88,88 C88,92 85,95 81,95 L39,95 C35,95 32,92 32,88 Z" fill="url(#pBody)"/>
+      <path d="M32,64 L32,54 C32,42 45,36 60,36 C75,36 88,42 88,54 L88,64 Z" fill="url(#pLid)"/>
+      <g clip-path="url(#pChestClip)">
+        <rect x="39" y="30" width="8" height="70" fill="url(#pBand)"/>
+        <rect x="73" y="30" width="8" height="70" fill="url(#pBand)"/>
+        <rect x="32" y="88" width="56" height="8" fill="#9C5E00" opacity=".35"/>
+      </g>
+      <ellipse cx="52" cy="44" rx="13" ry="4" fill="#FFFFFF" opacity=".6" filter="url(#pBlur1)"/>
+      <rect x="29" y="60" width="62" height="8" rx="4" fill="url(#pRim)"/>
+      <circle cx="43" cy="80" r="1.6" fill="#FFF3CF"/><circle cx="77" cy="80" r="1.6" fill="#FFF3CF"/>
+      <circle cx="43" cy="50" r="1.6" fill="#FFF3CF"/><circle cx="77" cy="50" r="1.6" fill="#FFF3CF"/>
+      <rect x="52" y="61" width="16" height="18" rx="5" fill="url(#pLock)" stroke="#7A4300" stroke-width="1"/>
+      <circle cx="60" cy="68" r="2.4" fill="#4A2600"/><path d="M58.8,69 L61.2,69 L61.8,74 L58.2,74 Z" fill="#4A2600"/>
+    </g>
+
+    <g id="pCrownG">
+      <path d="M44,34 L46.5,18 L53.5,26 L60,13 L66.5,26 L73.5,18 L76,34 Z" fill="url(#pCrown)" stroke="#B87400" stroke-width="1" stroke-linejoin="round"/>
+      <rect x="43.5" y="31" width="33" height="6" rx="2.5" fill="url(#pRim)"/>
+      <circle cx="46.5" cy="18" r="2.4" fill="url(#pGemP)"/><circle cx="73.5" cy="18" r="2.4" fill="url(#pGemP)"/>
+      <circle cx="60" cy="13" r="3" fill="url(#pGemO)"/>
+      <circle cx="60" cy="27" r="3" fill="url(#pGemP)"/>
+      <path d="M49,22 L51,29" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>
+    </g>
+
+    <!-- A: crowned treasure (hero = transparent, icon = with background) -->
+    <g id="heroA">
+      <circle cx="60" cy="60" r="44" fill="url(#pGlow)"/>
+      <g transform="translate(0 4)"><use href="#pChest"/></g>
+      <g transform="translate(0 4)"><use href="#pCrownG"/></g>
+      <use href="#pSpark" transform="translate(95 36) scale(1)" fill="#FFF3CF"/>
+      <use href="#pSpark" transform="translate(25 48) scale(.6)" fill="#FFF3CF"/>
+      <use href="#pSpark" transform="translate(90 84) scale(.5)" fill="#FFE9A0"/>
+    </g>
+    <g id="iconA"><rect width="120" height="120" fill="url(#pBg)"/><g transform="translate(60 61) scale(.9) translate(-60 -60)"><use href="#heroA"/></g></g>
+
+        <!-- plainA: chest + crown only (no glow/sparkles) for small in-app sizes -->
+    <g id="plainA"><g transform="translate(0 4)"><use href="#pChest"/></g><g transform="translate(0 4)"><use href="#pCrownG"/></g></g>
