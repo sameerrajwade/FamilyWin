@@ -172,6 +172,13 @@ export interface FamilyDoc {
   // G7: leagues (family vs family) this family is in — written by the
   // createLeague / joinLeague / leaveLeague Cloud Functions only.
   leagueIds?: string[];
+  // Engagement (user-approved 2026-11-01): weekly twists + comeback boost.
+  // Absent = on. twistSkip[weekStartKey] skips one week. comeback is written
+  // by the weeklyReset Cloud Function (last week's last place).
+  twistsOff?: boolean;
+  twistSkip?: Record<string, boolean>;
+  comebackOff?: boolean;
+  comeback?: { memberIds: string[]; since: string } | null;
   // G6: "Discover more" — advanced features skipped at setup resurface as a
   // card on Today from week 2 (lib/starterKit DiscoverState).
   discover?: Record<string, { status: 'later' | 'done' | 'no'; until?: number }> | null;
@@ -1001,6 +1008,17 @@ export async function applyStarterKit(params: {
 /** G6: save the "Discover more" schedule (set up / not now / not for us). */
 export async function setDiscoverState(familyId: string, state: Record<string, { status: 'later' | 'done' | 'no'; until?: number }>): Promise<void> {
   await firestore().collection('families').doc(familyId).update({ discover: state });
+}
+
+/** Weekly twists / comeback on-off, or skip one week's twist. Parents only (rules). */
+export async function setEngagementSettings(
+  familyId: string, patch: { twistsOff?: boolean; comebackOff?: boolean; skipWeek?: string },
+): Promise<void> {
+  const update: Record<string, unknown> = {};
+  if (typeof patch.twistsOff === 'boolean') update.twistsOff = patch.twistsOff;
+  if (typeof patch.comebackOff === 'boolean') update.comebackOff = patch.comebackOff;
+  if (patch.skipWeek) update[`twistSkip.${patch.skipWeek}`] = true;
+  await firestore().collection('families').doc(familyId).update(update);
 }
 
 /** G5: auto-approve kids' claims on tasks worth ≤ `points` (0 = off). Parents only, via rules. */

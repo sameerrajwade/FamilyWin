@@ -23,11 +23,12 @@ const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 const { getAuth } = require('firebase-admin/auth');
 const { getStorage } = require('firebase-admin/storage');
-const { runMissedTaskSweep, localDateKey } = require('./sweep');
+const { runMissedTaskSweep, localDateKey, localParts } = require('./sweep');
 const {
   competitors, buildRanked, computeCrowns, crownsSummary, detectOvertakes,
   streakWithShields, reachedMilestones, STREAK_WINDOW_DAYS, shouldAutoApprove,
   shouldSendClaimPush, claimPushText, claimRecipients,
+  weekStartKeyOf, twistForWeek, twistBonus, comebackIds, comebackBonus, comebackActive,
 } = require('./game');
 const league = require('./league');
 
@@ -96,6 +97,7 @@ async function awardForCompletion(familyId, completionId, c) {
     .collection('families').doc(familyId).collection('tasks').doc(c.taskId).get();
   const pointValue = taskSnap.exists ? (taskSnap.data().pointValue || 0) : 0;
   const title = taskSnap.exists ? (taskSnap.data().title || 'Task') : 'Task';
+  const category = taskSnap.exists ? taskSnap.data().category : undefined;
 
   let delta;
   let reason;
@@ -127,15 +129,51 @@ async function awardForCompletion(familyId, completionId, c) {
     reason = c.completedLate ? `Completed (late): ${title}` : `Completed: ${title}`;
   }
 
-  await txCol(familyId).add({
-    familyId,
-    memberId: c.memberId,
-    delta,
-    reason,
-    source: 'task',
-    referenceId: completionId,
-    createdAt: txCreatedAt(c),
+  const createdAt = txCreatedAt(c);
+  const extras = delta > 0 ? await engagementBonuses(familyId, c, delta, category) : [];
+  // One batch: the award and any twist/comeback bonus land together (and all
+  // carry referenceId, so an undo/reject reverses the lot).
+  const batch = db.batch();
+  batch.set(txCol(familyId).doc(), {
+    familyId, memberId: c.memberId, delta, reason, source: 'task', referenceId: completionId, createdAt,
   });
+  for (const x of extras) {
+    batch.set(txCol(familyId).doc(), {
+      familyId, memberId: c.memberId, delta: x.delta, reason: `${x.reason}: ${title}`, source: 'bonus', referenceId: completionId, createdAt,
+    });
+  }
+  await batch.commit();
+}
+
+/**
+ * Weekly twist + comeback boost on top of a positive award (user-approved
+ * 2026-11-01). Pure rules live in game.js; this only gathers the inputs.
+ */
+async function engagementBonuses(familyId, c, award, category) {
+  try {
+    const familySnap = await db.collection('families').doc(familyId).get();
+    const family = familySnap.exists ? familySnap.data() : {};
+    const dateKey = c.completedDate || localDateKey(txCreatedAt(c).toDate(), 'UTC');
+    const out = [];
+    const twist = twistForWeek(weekStartKeyOf(dateKey, family.weekStartDay ?? 1), family);
+    if (twist) {
+      let localHour;
+      if (twist.kind === 'early') {
+        const when = c.completedAt && c.completedAt.toDate ? c.completedAt.toDate() : new Date();
+        const cfgs = await db.collection('families').doc(familyId).collection('notificationConfigs').get();
+        const own = cfgs.docs.find((d) => d.id === c.memberId);
+        const tz = (own && own.data().timezone) || (cfgs.docs.find((d) => d.data().timezone) || { data: () => ({}) }).data().timezone || 'UTC';
+        localHour = localParts(when, tz).hour;
+      }
+      const b = twistBonus(twist, { award, category, dateKey, localHour });
+      if (b > 0) out.push({ delta: b, reason: `${twist.emoji} ${twist.title}` });
+    }
+    if (comebackActive(family, c.memberId, dateKey)) out.push({ delta: comebackBonus(award), reason: '🚀 Comeback boost' });
+    return out;
+  } catch (err) {
+    console.error(`engagement bonus skipped family=${familyId}:`, err && err.message);
+    return [];
+  }
 }
 
 /**
@@ -508,6 +546,14 @@ exports.weeklyReset = onSchedule('1 0 * * 1', async (event) => {
         rank: e.rank,
         winner: e.rank === 1 && e.points > 0,
       }));
+
+      // Comeback (user-approved 2026-11-01): last week's last place gets a small
+      // boost on every task for the new week. Parents can switch it off.
+      if (familyData.comebackOff !== true) {
+        const since = new Date(lastSunday.getTime() + 1).toISOString().slice(0, 10);
+        await db.collection('families').doc(familyId).set(
+          { comeback: { memberIds: comebackIds(entries), since } }, { merge: true });
+      }
 
       // Write weekly score document (now carries the crown row too).
       await db

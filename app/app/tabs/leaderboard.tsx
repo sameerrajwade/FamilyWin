@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, RefreshControl, ActivityIndicator, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { useAuthStore, useFamilyStore, usePointsStore } from '@/store';
-import { getFamilyMembers, getCurrentWeekId, getPeriodCompletions, getMemberPersonalBest } from '@/lib/firebase';
+import { getFamilyMembers, getCurrentWeekId, getPeriodCompletions, getMemberPersonalBest, getTodayDateString } from '@/lib/firebase';
 import { familyPeriod, dayKey } from '@/lib/completionMatch';
 import { buildLeaderboard, computeCrowns, getWeekLabel, getCurrentWeekRange, getLevel } from '@/lib/pointsEngine';
 import { useMemberLevels } from '@/lib/memberLevels';
@@ -13,6 +13,8 @@ import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients 
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
+import { TwistBanner } from '@/components/ui/TwistBanner';
+import { comebackActive } from '@/lib/twists';
 import { BrandBar } from '@/components/ui/Brand';
 import { ShareCardModal, shareContext, standingsRows, type ShareCardData } from '@/components/ui/ShareCard';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -227,6 +229,9 @@ export default function LeaderboardScreen() {
               </SlideIn>
             )}
 
+            {/* Weekly twist (+ team-week totals) — engagement 2026-11-01 */}
+            <TwistBanner memberId={currentMember?.id} totals={weeklyTotals} style={{ marginHorizontal: Spacing.lg, marginBottom: Spacing.md }} />
+
             {/* Three-crowns row — rewards more than raw points (Roadmap 1.1/4.2) */}
             {leaderboard.length >= 2 && (
               <SlideIn delay={80} from="bottom">
@@ -270,6 +275,9 @@ export default function LeaderboardScreen() {
                       <View style={styles.rowInfo}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                           <Text style={[styles.rowName, { color: colors.text }]}>{entry.displayName}{entry.isCurrentUser ? ' (You)' : ''}</Text>
+                          {comebackActive(family as any, entry.memberId, getTodayDateString()) && (
+                            <Text style={{ marginLeft: 6 }} accessibilityLabel="Comeback boost">🚀</Text>
+                          )}
                           {(entry as any).previousRank != null && (
                             <RankChangeBadge previousRank={(entry as any).previousRank} currentRank={entry.rank} />
                           )}
@@ -324,6 +332,21 @@ export default function LeaderboardScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.personalBestLabel, { color: colors.textSecondary }]}>Your Personal Best</Text>
                   <Text style={[styles.personalBestValue, { color: colors.textAccent }]}>{personalBest} pts in a week</Text>
+                  {/* Beat your best: race your own record, not your big brother. */}
+                  {(() => {
+                    const mine = weeklyTotals[currentMember?.id ?? ''] ?? 0;
+                    const pct = personalBest > 0 ? Math.min(1, Math.max(0, mine / personalBest)) : 0;
+                    return (
+                      <View style={{ marginTop: 6 }}>
+                        <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.border, overflow: 'hidden' }}>
+                          <View style={{ width: `${Math.round(pct * 100)}%`, height: 8, borderRadius: 4, backgroundColor: colors.primary }} />
+                        </View>
+                        <Text style={{ marginTop: 4, fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: colors.textSecondary }}>
+                          {mine >= personalBest ? 'New personal best this week! 🎉' : `This week ${mine} · ${personalBest - mine} to beat your best`}
+                        </Text>
+                      </View>
+                    );
+                  })()}
                 </View>
               </View>
             )}

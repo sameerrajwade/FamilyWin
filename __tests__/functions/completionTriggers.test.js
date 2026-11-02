@@ -39,7 +39,7 @@ async function txForCompletion(completionId) {
 const sum = (txs) => txs.reduce((s, t) => s + (t.delta || 0), 0);
 
 beforeAll(async () => {
-  await famRef.set({ name: 'Test Family', missedTaskPenalty: 'half' });
+  await famRef.set({ name: 'Test Family', missedTaskPenalty: 'half', twistsOff: true }); // twists pinned off: amounts here must not depend on the week
   await famRef.collection('tasks').doc('t1').set({ title: 'Dishes', pointValue: 10 });
 });
 

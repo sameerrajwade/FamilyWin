@@ -36,7 +36,7 @@ async function txForCompletion(completionId) {
 const sum = (txs) => txs.reduce((s, t) => s + (t.delta || 0), 0);
 
 beforeAll(async () => {
-  await famRef.set({ name: 'Approval Family', missedTaskPenalty: 'off' });
+  await famRef.set({ name: 'Approval Family', missedTaskPenalty: 'off', twistsOff: true });
   await famRef.collection('tasks').doc('t1').set({ title: 'Homework', pointValue: 20, requiresApproval: true });
 
   // Warm up the REAL award pipeline before any timed assertion. This suite sorts
@@ -153,7 +153,7 @@ describe('G5 — approval trust levels (server auto-approves small claims)', () 
   const autoTx = async (id) => (await autoRef.collection('transactions').where('referenceId', '==', id).get()).docs.map((d) => d.data());
 
   beforeAll(async () => {
-    await autoRef.set({ name: 'Auto Family', autoApproveUnder: 25 });
+    await autoRef.set({ name: 'Auto Family', autoApproveUnder: 25, twistsOff: true });
     await autoRef.collection('tasks').doc('small').set({ title: 'Make bed', pointValue: 10 });
     await autoRef.collection('tasks').doc('big').set({ title: 'Mow lawn', pointValue: 50 });
     await autoRef.collection('tasks').doc('checked').set({ title: 'Homework', pointValue: 10, requiresApproval: true });

@@ -13,7 +13,7 @@ import { firestore } from '@/lib/fb';
 import { DEFAULT_ALLOWANCE_RATE } from '@/lib/pointsEngine';
 import { useAuthStore } from '@/store';
 import { useTheme, type ThemeColors } from '@/lib/theme';
-import { setMissedTaskPenalty, missedPenaltyMode, missedDeadlineHour, setMissedTaskDeadline, updateFamilyWeekStartDay, setFamilyPenaltyPause, PAUSE_INDEFINITE, setAllowanceSettings, setCompetitionMode, setLevelPerks, setAutoApproveUnder } from '@/lib/firebase';
+import { setMissedTaskPenalty, missedPenaltyMode, missedDeadlineHour, setMissedTaskDeadline, updateFamilyWeekStartDay, setFamilyPenaltyPause, PAUSE_INDEFINITE, setAllowanceSettings, setCompetitionMode, setLevelPerks, setAutoApproveUnder, setEngagementSettings } from '@/lib/firebase';
 import { LevelPerksEditor } from '@/components/ui/LevelPerks';
 import { FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
 
@@ -391,6 +391,46 @@ export default function ParentalControlsScreen() {
             </View>
           </SettingsBlock>
         )}
+      </SettingsGroup>
+
+      {/* Engagement (user-approved 2026-11-01): both on by default. */}
+      <SettingsGroup title="Keep it fresh">
+        <SettingsBlock>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, paddingRight: Spacing.md }}>
+              <Text style={[styles.blockLabel, { color: colors.text }]}>🎲 Weekly twist</Text>
+              <Text style={[styles.blockHint, { color: colors.textSecondary }]}>A new twist each week, like double points for chores or an early-bird bonus. You can skip any week from the banner.</Text>
+            </View>
+            <Switch
+              value={(family as any)?.twistsOff !== true}
+              onValueChange={(v) => {
+                setFamily({ ...family, twistsOff: !v } as any);
+                if (family?.id) setEngagementSettings(family.id, { twistsOff: !v }).catch(() => Alert.alert('That didn’t work', 'Could not save. Please try again.'));
+              }}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#FFFFFF"
+              accessibilityLabel="Weekly twist"
+            />
+          </View>
+        </SettingsBlock>
+        <SettingsBlock isLast>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, paddingRight: Spacing.md }}>
+              <Text style={[styles.blockLabel, { color: colors.text }]}>🚀 Comeback boost</Text>
+              <Text style={[styles.blockHint, { color: colors.textSecondary }]}>Whoever finished last week in last place gets +10% on every task (up to +5 each) for the new week.</Text>
+            </View>
+            <Switch
+              value={(family as any)?.comebackOff !== true}
+              onValueChange={(v) => {
+                setFamily({ ...family, comebackOff: !v } as any);
+                if (family?.id) setEngagementSettings(family.id, { comebackOff: !v }).catch(() => Alert.alert('That didn’t work', 'Could not save. Please try again.'));
+              }}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#FFFFFF"
+              accessibilityLabel="Comeback boost"
+            />
+          </View>
+        </SettingsBlock>
       </SettingsGroup>
 
       {/* E3: real-world perks that unlock with each level (frames unlock on their own). */}

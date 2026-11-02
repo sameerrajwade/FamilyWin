@@ -218,7 +218,86 @@ function claimRecipients(members) {
   return (members || []).filter((m) => !m.isManaged && (m.role === 'parent' || m.role === 'admin_parent'));
 }
 
+// ─── Weekly twists + comeback (engagement, user-approved 2026-11-01) ─────────
+// Mirrored in lib/twists.ts for the app's banners — keep the two lists in step
+// (__tests__/lib/twists.test.ts checks they match).
+const TWISTS = [
+  { id: 'double-chores', emoji: '🧹', title: 'Double chores', blurb: 'Chores pay double this week.', kind: 'category', category: 'chores', multiplier: 2 },
+  { id: 'early-bird', emoji: '🌅', title: 'Early bird', blurb: 'Tasks done before 9am earn +5 points.', kind: 'early', beforeHour: 9, bonus: 5 },
+  { id: 'homework-heroes', emoji: '📚', title: 'Homework heroes', blurb: 'Homework pays +50% this week.', kind: 'category', category: 'homework', multiplier: 1.5 },
+  { id: 'team-week', emoji: '🤝', title: 'Team week', blurb: 'Kids vs grown-ups: team totals on Scores.', kind: 'team' },
+  { id: 'weekend-warriors', emoji: '🏖️', title: 'Weekend warriors', blurb: 'Saturday and Sunday tasks pay +50%.', kind: 'weekend', multiplier: 1.5 },
+  { id: 'healthy-habits', emoji: '🪥', title: 'Healthy habits', blurb: 'Hygiene tasks pay double this week.', kind: 'category', category: 'hygiene', multiplier: 2 },
+  { id: 'kindness-week', emoji: '💛', title: 'Kindness week', blurb: 'Behaviour tasks pay double this week.', kind: 'category', category: 'behavior', multiplier: 2 },
+];
+
+const DAY_MS = 86_400_000;
+const keyToUTC = (k) => Date.UTC(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8, 10));
+
+/** The family-week start (YYYY-MM-DD) that contains local date `dateKey`. */
+function weekStartKeyOf(dateKey, weekStartDay = 1) {
+  const ms = keyToUTC(dateKey);
+  const dow = new Date(ms).getUTCDay();
+  const back = (dow - (weekStartDay ?? 1) + 7) % 7;
+  return utcToKey(ms - back * DAY_MS);
+}
+
+/** This week's twist (null = twists off, or skipped this week). Rotates in order. */
+function twistForWeek(weekStartKey, family) {
+  if (!weekStartKey || (family && family.twistsOff === true)) return null;
+  if (family && family.twistSkip && family.twistSkip[weekStartKey]) return null;
+  const n = Math.floor(keyToUTC(weekStartKey) / (7 * DAY_MS));
+  return TWISTS[((n % TWISTS.length) + TWISTS.length) % TWISTS.length];
+}
+
+/**
+ * Extra points a twist adds to an award (0 = none).
+ * ctx: { award, category, dateKey, localHour }
+ */
+function twistBonus(twist, ctx) {
+  if (!twist || !(ctx.award > 0)) return 0;
+  if (twist.kind === 'category') return ctx.category === twist.category ? Math.round(ctx.award * (twist.multiplier - 1)) : 0;
+  if (twist.kind === 'weekend') {
+    const dow = new Date(keyToUTC(ctx.dateKey)).getUTCDay();
+    return dow === 0 || dow === 6 ? Math.round(ctx.award * (twist.multiplier - 1)) : 0;
+  }
+  if (twist.kind === 'early') return typeof ctx.localHour === 'number' && ctx.localHour < twist.beforeHour ? twist.bonus : 0;
+  return 0; // team week: display only
+}
+
+/** Last week's last place among ≥2 players (ties all get it; none if everyone tied). */
+function comebackIds(entries) {
+  const ps = (entries || []).filter((e) => typeof e.points === 'number');
+  if (ps.length < 2) return [];
+  const max = Math.max(...ps.map((e) => e.points));
+  const min = Math.min(...ps.map((e) => e.points));
+  if (min === max) return [];
+  return ps.filter((e) => e.points === min).map((e) => e.memberId);
+}
+
+/** Comeback boost: +10% of each award, at least 1, at most 5. */
+function comebackBonus(award) {
+  if (!(award > 0)) return 0;
+  return Math.min(5, Math.max(1, Math.round(award * 0.1)));
+}
+
+/** Is the comeback boost live for this member on this local day? */
+function comebackActive(family, memberId, dateKey) {
+  const cb = family && family.comeback;
+  if (!cb || family.comebackOff === true || !Array.isArray(cb.memberIds) || !cb.since) return false;
+  if (!cb.memberIds.includes(memberId)) return false;
+  const d = keyToUTC(dateKey) - keyToUTC(cb.since);
+  return d >= 0 && d < 7 * DAY_MS;
+}
+
 module.exports = {
+  TWISTS,
+  weekStartKeyOf,
+  twistForWeek,
+  twistBonus,
+  comebackIds,
+  comebackBonus,
+  comebackActive,
   shouldSendClaimPush,
   claimPushText,
   claimRecipients,

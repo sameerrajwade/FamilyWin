@@ -22,6 +22,8 @@ jest.mock('@/lib/firebase', () => ({
   getCurrentWeekId: jest.fn().mockReturnValue('2024-W21'),
   getPeriodCompletions: jest.fn().mockResolvedValue([]),
   getMemberPersonalBest: jest.fn().mockResolvedValue(0),
+  getTodayDateString: jest.fn().mockReturnValue('2024-05-21'),
+  setEngagementSettings: jest.fn().mockResolvedValue(undefined),
   Col: {
     transactions: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),

@@ -90,7 +90,7 @@ describe('runMissedTaskSweep — against the emulator', () => {
   const CREATED = Timestamp.fromDate(new Date('2026-08-01T00:00:00Z'));
 
   beforeAll(async () => {
-    await famRef.set({ name: 'Sweep Family', missedTaskPenalty: 'half' });
+    await famRef.set({ name: 'Sweep Family', missedTaskPenalty: 'half', twistsOff: true });
     // m1: UTC, has a daily task assigned → should be penalized for 08-15 & 08-14
     await famRef.collection('members').doc('m1').set({ displayName: 'Alex' });
     await famRef.collection('members').doc('m2').set({ displayName: 'Jamie' });
@@ -169,7 +169,7 @@ describe('runMissedTaskSweep — deadline + timezone fallback', () => {
   beforeAll(async () => {
     // Deadline 9 PM (default). m1 has a UTC config; m3 has NO config → must fall
     // back to the family's known timezone (UTC), not skip and not crash.
-    await famRef.set({ name: 'Deadline Family', missedTaskPenalty: 'full' });
+    await famRef.set({ name: 'Deadline Family', missedTaskPenalty: 'full', twistsOff: true });
     await famRef.collection('members').doc('m1').set({ displayName: 'Alex' });
     await famRef.collection('members').doc('m3').set({ displayName: 'Robin' });
     await famRef.collection('notificationConfigs').doc('m1').set({ timezone: 'UTC' });
@@ -206,7 +206,7 @@ describe('runMissedTaskSweep — off mode', () => {
   const CREATED = Timestamp.fromDate(new Date('2026-08-01T00:00:00Z'));
 
   beforeAll(async () => {
-    await famRef.set({ name: 'Off Family', missedTaskPenalty: 'off' });
+    await famRef.set({ name: 'Off Family', missedTaskPenalty: 'off', twistsOff: true });
     await famRef.collection('members').doc('m1').set({ displayName: 'Alex' });
     await famRef.collection('notificationConfigs').doc('m1').set({ timezone: 'UTC' });
     await famRef.collection('tasks').doc('daily1').set({

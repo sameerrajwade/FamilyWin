@@ -36,6 +36,8 @@ import { SavingGoalRow } from '@/components/ui/SavingGoal';
 import { BountyBoard } from '@/components/ui/BountyBoard';
 import { DiscoverCard } from '@/components/ui/DiscoverCard';
 import { InviteNudge } from '@/components/ui/InviteNudge';
+import { TwistBanner } from '@/components/ui/TwistBanner';
+import { twistForWeek, weekStartKeyOf, twistChipFor } from '@/lib/twists';
 import { maybeAskForReview } from '@/lib/nudgeStore';
 import { discoverCardToShow } from '@/lib/starterKit';
 import { useMemberLevels } from '@/lib/memberLevels';
@@ -117,6 +119,7 @@ export default function HomeScreen() {
   const dateString = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const todayStr = getTodayDateString();
+  const twist = twistForWeek(weekStartKeyOf(todayStr, family?.weekStartDay ?? 1), family as any);
   const monthId = getCurrentMonthId();
   // The FAMILY week (its weekStartDay) — a weekly task done on any day of it is
   // done; also lists the stored week ids that overlap it (see completionMatch).
@@ -758,6 +761,8 @@ export default function HomeScreen() {
           spendable={lifetimePoints}
           onAffordable={celebrateAffordable}
         />
+        {/* Weekly twist + comeback boost (engagement, 2026-11-01) */}
+        <TwistBanner memberId={effectiveMember?.id} style={styles.section} />
         {isChildMode && (
           <SlideIn delay={100}>
             <View style={styles.mascotSection}>
@@ -838,7 +843,7 @@ export default function HomeScreen() {
                   + (task.completion?.status ? ':' + task.completion.status : '');
                 return (
                   <SlideIn key={cardKey} delay={120 + i * 50}>
-                    <AdultTaskCard task={task} onComplete={handleCompleteTask} onUndo={handleUndoTask} onRecover={handleRecoverTask} onDelete={handleDeleteTask} isCompleting={completingTaskId === task.id} colors={colors} fontSize={fontSize} isReadOnly={isReadOnly} isParent={isParent} weekProgress={weekProgress} />
+                    <AdultTaskCard twistChip={twistChipFor(twist, task as any, todayStr)} task={task} onComplete={handleCompleteTask} onUndo={handleUndoTask} onRecover={handleRecoverTask} onDelete={handleDeleteTask} isCompleting={completingTaskId === task.id} colors={colors} fontSize={fontSize} isReadOnly={isReadOnly} isParent={isParent} weekProgress={weekProgress} />
                   </SlideIn>
                 );
               })
@@ -912,7 +917,7 @@ export default function HomeScreen() {
   );
 }
 
-function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isCompleting, colors, fontSize, isReadOnly, isParent, streak, weekProgress }: any) {
+function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isCompleting, colors, fontSize, isReadOnly, isParent, streak, weekProgress, twistChip }: any) {
   // Phase 4.3: a completion awaiting parent approval — done-but-not-awarded.
   const isPending = task.completion?.status === 'pending';
   const isDone = !!task.completion && !task.completion.wasAutoFailed && !isPending;
@@ -940,7 +945,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
   // Gamified recurrence pill — a live stat, not a grey label.
   const rec = task.recurrence;
   const recPill = rec === 'daily'
-    ? { icon: '🔥', label: streak > 0 ? `${streak}` : 'Daily', color: colors.textWarning }
+    ? { icon: '🔥', label: streak > 0 ? `${streak}` : 'Daily', color: colors.textWarning, tint: colors.warning }
     : rec === 'weekly'
     ? { icon: '📅', label: 'Weekly', color: colors.textAccent }
     : rec === 'monthly'
@@ -987,10 +992,16 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
                 <View style={[styles.diffDot, { backgroundColor: diffColor }]} />
                 <Text style={[styles.diffPillText, { color: diffText }]}>{task.difficulty}</Text>
               </View>
-              <View style={[styles.recPill, { backgroundColor: recPill.color + '1F' }]}>
+              <View style={[styles.recPill, { backgroundColor: ((recPill as any).tint ?? recPill.color) + '1F' }]}>
                 <Text style={styles.recPillIcon}>{recPill.icon}</Text>
                 <Text style={[styles.recPillText, { color: recPill.color }]}>{recPill.label}</Text>
               </View>
+              {twistChip && !isDone ? (
+                <View style={[styles.recPill, { backgroundColor: colors.primary + '1F' }]} accessibilityLabel={`Weekly twist: ${twistChip} points`}>
+                  <Text style={styles.recPillIcon}>🎲</Text>
+                  <Text style={[styles.recPillText, { color: colors.textAccent }]}>{twistChip}</Text>
+                </View>
+              ) : null}
               {task.rotation?.memberIds?.length ? (
                 <View style={[styles.recPill, { backgroundColor: colors.accent + '1F' }]}>
                   <Text style={styles.recPillIcon}>🔄</Text>
