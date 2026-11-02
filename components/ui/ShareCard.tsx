@@ -83,7 +83,7 @@ const CONFETTI: [x: number, y: number, w: number, h: number, c: string, r: numbe
   [0.08, 0.17, 10, 4, Brand.gold, -20], [0.86, 0.14, 8, 8, Brand.orangeLight, 0],
   [0.14, 0.34, 6, 6, '#FFFFFF', 0], [0.9, 0.3, 12, 4, Brand.goldLid, 35],
   [0.04, 0.48, 9, 4, Brand.orangeLight, 60], [0.94, 0.46, 6, 6, Brand.gold, 0],
-  [0.22, 0.12, 5, 5, Brand.goldHi, 0], [0.72, 0.1, 10, 4, '#FFFFFF', -40],
+  [0.3, 0.46, 5, 5, Brand.goldHi, 0], [0.72, 0.1, 10, 4, '#FFFFFF', -40],
 ];
 
 /**
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   captureWrap: { borderRadius: 28, overflow: 'hidden' },
   card: { borderRadius: 28, paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.md, alignItems: 'center', overflow: 'hidden' },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' },
-  wordRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  wordRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 }, // wordmark never wraps; the chip yields
   word: { fontFamily: FontFamily.black, fontSize: 19, letterSpacing: -0.5 },
   chip: { borderRadius: BorderRadius.full, paddingHorizontal: 10, paddingVertical: 4, maxWidth: '52%' },
   chipText: { fontFamily: FontFamily.black, fontSize: 10, letterSpacing: 1.2, color: Brand.purpleDark },

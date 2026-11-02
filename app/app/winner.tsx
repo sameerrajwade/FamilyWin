@@ -115,7 +115,7 @@ export default function WinnerScreen() {
     icon: 'podium',
     hero: '🏆',
     theme: 'win',
-    eyebrow: champions.length > 1 ? 'CO-CHAMPIONS' : 'CHAMPION OF THE WEEK',
+    eyebrow: champions.length > 1 ? 'CO-CHAMPIONS' : 'WEEK CHAMPION',
     context: shareContext(weekLabel),
     title: champions.length > 1 ? `${championNames} share the crown!` : `${championNames} won our family's chore week!`,
     subtitle: margin > 0 ? `${champions[0].points} points · won by ${margin}` : `${champions[0].points} points`,
