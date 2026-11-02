@@ -19,7 +19,7 @@ import { useTheme, type ThemeColors } from '@/lib/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Avatar } from '@/components/ui';
 import { weeklyTrend } from '@/lib/familyGame';
-import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
+import { ShareCardModal, shareContext, type ShareCardData } from '@/components/ui/ShareCard';
 import type { MemberDoc, TransactionDoc, CompletionDoc } from '@/lib/firebase';
 
 export default function MemberProfileScreen() {
@@ -260,9 +260,12 @@ export default function MemberProfileScreen() {
   function shareRecap() {
     setShareData({
       icon: 'coin',
-      eyebrow: 'MY WEEK ON CHORE LEAGUE',
-      title: `${firstName}'s week`,
-      subtitle: 'Chores done, points earned.',
+      hero: '📈',
+      theme: 'recap',
+      eyebrow: 'WEEK RECAP',
+      context: shareContext(family?.name),
+      title: `${firstName}'s chore week`,
+      subtitle: weeklyPoints > 0 ? 'Chores done, points banked.' : 'A fresh week to climb.',
       stats: [
         { value: `${weeklyPoints >= 0 ? '+' : ''}${weeklyPoints}`, label: 'this week' },
         { value: `${completionRate}%`, label: 'done' },
@@ -274,9 +277,12 @@ export default function MemberProfileScreen() {
   function shareStreak() {
     setShareData({
       icon: 'medal',
-      eyebrow: 'ON A ROLL',
-      title: `${firstName} is on a ${streak}-day streak!`,
-      subtitle: 'One task at a time.',
+      hero: '🔥',
+      theme: 'streak',
+      eyebrow: 'ON FIRE',
+      context: shareContext(family?.name),
+      title: `${firstName} is on a ${streak}-day chore streak!`,
+      subtitle: 'Every day, no misses. Can anyone keep up?',
       stats: [{ value: `${streak}`, label: 'days in a row' }],
       shareMessage: `${firstName} is on a ${streak}-day streak on Chore League! 🔥`,
     });
@@ -285,10 +291,13 @@ export default function MemberProfileScreen() {
     const lv = getLevel(earnedPts);
     setShareData({
       icon: 'shield',
+      hero: '⭐',
+      theme: 'level',
       eyebrow: 'LEVEL UP',
+      context: shareContext(family?.name),
       title: `${firstName} reached Level ${lv.level}!`,
-      subtitle: lv.title,
-      stats: [{ value: `${allTimePoints}`, label: 'all-time pts' }],
+      subtitle: `New title: ${lv.title}`,
+      stats: [{ value: `${lv.level}`, label: 'level' }, { value: `${allTimePoints}`, label: 'points earned' }],
       shareMessage: `${firstName} just hit Level ${lv.level} (${lv.title}) on Chore League! ⭐`,
     });
   }

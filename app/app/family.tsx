@@ -33,7 +33,7 @@ import { pickPhotoUri as pickPhotoViaRNIP } from '@/lib/photoPicker';
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
-import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
+import { ShareCardModal, shareContext, type ShareCardData } from '@/components/ui/ShareCard';
 import { AvatarPicker } from '@/components/ui/AvatarPicker';
 import type { MemberDoc } from '@/lib/firebase';
 
@@ -72,10 +72,14 @@ export default function FamilyScreen() {
 
   const inviteCard: ShareCardData | null = family?.inviteCode ? {
     icon: 'chest',
-    eyebrow: 'JOIN OUR FAMILY',
-    title: `Join ${family.name} on Chore League`,
-    subtitle: 'Download the app and enter this code',
-    stats: [{ value: family.inviteCode, label: 'invite code' }],
+    hero: '🏠',
+    theme: 'invite',
+    eyebrow: "YOU'RE INVITED",
+    context: shareContext(family.name),
+    title: 'Come play our family chore game!',
+    subtitle: 'Do chores, earn points, win the week. Get the app and join with this code:',
+    stats: [{ value: family.inviteCode, label: 'family code' }],
+    cta: 'Join us on Chore League',
     shareMessage: `Join our family on Chore League! 🏆\n\nInvite code: ${family.inviteCode}\n\nGet the app: ${APP_STORE_URL}\n\nComplete tasks, earn points, and win the week!`,
   } : null;
 

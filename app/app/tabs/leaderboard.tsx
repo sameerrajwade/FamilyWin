@@ -14,7 +14,7 @@ import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { BrandBar } from '@/components/ui/Brand';
-import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
+import { ShareCardModal, shareContext, standingsRows, type ShareCardData } from '@/components/ui/ShareCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/lib/theme';
 import { SlideIn, CountUp, RankChangeBadge } from '@/components/ui/Animations';
@@ -155,15 +155,16 @@ export default function LeaderboardScreen() {
   const leader = leaderboard[0];
   const canShareStandings = leaderboard.length >= 2 && (leader?.points ?? 0) > 0;
   const leaderIsMe = leader?.memberId === currentMember?.id;
+  const leadBy = leaderboard[1] ? leader.points - leaderboard[1].points : 0;
   const standingsCard: ShareCardData | null = canShareStandings ? {
     icon: 'podium',
-    eyebrow: 'THIS WEEK',
-    title: leaderIsMe ? `I'm leading the week!` : `${leader.displayName.split(' ')[0]} leads the week!`,
-    subtitle: weekLabel,
-    stats: [
-      { value: `${leader.points}`, label: 'points' },
-      ...(leaderboard[1] ? [{ value: `+${leader.points - leaderboard[1].points}`, label: 'ahead' }] : []),
-    ],
+    hero: '🏆',
+    theme: 'race',
+    eyebrow: 'LIVE STANDINGS',
+    context: shareContext(family?.name, weekLabel),
+    title: leaderIsMe ? `I'm leading our family's chore race!` : `${leader.displayName.split(' ')[0]} leads our family's chore race!`,
+    subtitle: leadBy > 0 ? `${leadBy} points ahead — the week ends Sunday night.` : 'Neck and neck — the week ends Sunday night.',
+    standings: standingsRows(leaderboard, leader.memberId),
     shareMessage: `${leaderIsMe ? 'I am' : leader.displayName.split(' ')[0] + ' is'} leading our family week on Chore League with ${leader.points} points! 🏆`,
   } : null;
 

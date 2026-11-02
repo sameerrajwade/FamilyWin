@@ -38,6 +38,7 @@ import { DiscoverCard } from '@/components/ui/DiscoverCard';
 import { useMemberLevels } from '@/lib/memberLevels';
 import { LevelUpReveal } from '@/components/ui/LevelPerks';
 import { questProgress, questLabel, questExplainer } from '@/lib/surprisePacks';
+import { ShareCardModal, shareContext, type ShareCardData } from '@/components/ui/ShareCard';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
@@ -92,6 +93,7 @@ export default function HomeScreen() {
   // Optional missed-task penalty: daily tasks missed within the 2-day grace
   // window, catch-up-able to win the points back. Empty unless the feature is on.
   const [catchUpItems, setCatchUpItems] = useState<CatchUpItem[]>([]);
+  const [shareData, setShareData] = useState<ShareCardData | null>(null);
   // Guards against undoing the same completion twice (rapid taps, or toast+card
   // both firing) — the double-fire that produced phantom −pts. Keyed by completionId.
   const undoInFlightRef = useRef<Set<string>>(new Set());
@@ -665,7 +667,23 @@ export default function HomeScreen() {
           <View style={styles.header}>
             {quest.total > 0 && (
               <TouchableOpacity
-                onPress={() => { const e = questExplainer(); Alert.alert(e.title, e.body); }}
+                onPress={() => {
+                  const e = questExplainer();
+                  if (!quest.complete) { Alert.alert(e.title, e.body); return; }
+                  // All dailies done → offer the "perfect day" share card.
+                  const who = effectiveMember?.displayName?.split(' ')[0] ?? 'I';
+                  Alert.alert('Perfect day 🎉', `Every daily task done — bonus chest earned.`, [
+                    { text: 'Nice', style: 'cancel' },
+                    { text: 'Share 🎉', onPress: () => setShareData({
+                      icon: 'trophy', hero: '✅', theme: 'perfect', eyebrow: 'PERFECT DAY',
+                      context: shareContext(family?.name),
+                      title: `${who} finished every chore today!`,
+                      subtitle: 'All daily tasks done → bonus chest unlocked.',
+                      stats: [{ value: `${quest.total}/${quest.total}`, label: 'daily tasks' }, ...(streak > 0 ? [{ value: `${streak}`, label: 'day streak' }] : [])],
+                      shareMessage: `${who} finished every chore today on Chore League! ✅`,
+                    }) },
+                  ]);
+                }}
                 accessibilityRole="button"
                 accessibilityHint="Explains the bonus chest"
                 hitSlop={6}
@@ -879,6 +897,7 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+      <ShareCardModal visible={!!shareData} data={shareData} onClose={() => setShareData(null)} />
     </SafeAreaView>
   );
 }

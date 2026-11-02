@@ -27,7 +27,7 @@ import { useTheme } from '@/lib/theme';
 import { Avatar } from '@/components/ui';
 import { SeasonEndCard } from '@/components/ui/Season';
 import { BrandLockup } from '@/components/ui/Brand';
-import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
+import { ShareCardModal, shareContext, standingsRows, type ShareCardData } from '@/components/ui/ShareCard';
 import { Confetti } from '@/components/ui/Animations';
 
 export default function WinnerScreen() {
@@ -110,13 +110,13 @@ export default function WinnerScreen() {
   // The branded share-card spec for this week's win (Phase 2 share cards).
   const winCard: ShareCardData | null = hasWinner ? {
     icon: 'podium',
-    eyebrow: champions.length > 1 ? 'CO-CHAMPIONS' : 'WIN OF THE WEEK',
-    title: champions.length > 1 ? `${championNames} tied the crown!` : `${championNames} won the week!`,
-    subtitle: weekLabel,
-    stats: [
-      { value: `${champions[0].points}`, label: 'points' },
-      ...(margin > 0 ? [{ value: `+${margin}`, label: 'margin' }] : []),
-    ],
+    hero: '🏆',
+    theme: 'win',
+    eyebrow: champions.length > 1 ? 'CO-CHAMPIONS' : 'CHAMPION OF THE WEEK',
+    context: shareContext(family?.name, weekLabel),
+    title: champions.length > 1 ? `${championNames} share the crown!` : `${championNames} won our family's chore week!`,
+    subtitle: margin > 0 ? `${champions[0].points} points · won by ${margin}` : `${champions[0].points} points`,
+    standings: standingsRows(board, champions[0].memberId),
     shareMessage: `🏆 ${championNames} ${champions.length > 1 ? 'are' : 'is'} our family champion this week with ${champions[0].points} points on Chore League! Chores in, champions out. 🎉`,
   } : null;
 

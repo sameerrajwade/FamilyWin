@@ -27,7 +27,7 @@ import { SlideIn, ScalePress } from '@/components/ui/Animations';
 import { Col, getActiveRewards, requestRedemption, approveRedemption, rejectRedemption, createReward, deactivateReward, getFamilyMembers, requestPayout, setSavingFor } from '@/lib/firebase';
 import { SavingGoalCard } from '@/components/ui/SavingGoal';
 import { pointsToCash, formatCash, pointsForOneUnit, DEFAULT_ALLOWANCE_RATE } from '@/lib/pointsEngine';
-import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
+import { ShareCardModal, shareContext, type ShareCardData } from '@/components/ui/ShareCard';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { rewardIcon } from '@/lib/rewardIcon';
 import { useAuthStore, usePointsStore, useFamilyStore } from '@/store';
@@ -301,9 +301,12 @@ export default function RewardsScreen() {
                     text: 'Share 🎉',
                     onPress: () => setShareData({
                       icon: 'coin',
+                      hero: '🎁',
+                      theme: 'reward',
                       eyebrow: 'REWARD UNLOCKED',
-                      title: `${who} unlocked "${rewardTitle}"!`,
-                      subtitle: 'Points well spent.',
+                      context: shareContext(family?.name),
+                      title: `${who} earned "${rewardTitle}"!`,
+                      subtitle: 'Chores done → points earned → reward unlocked.',
                       stats: [{ value: `${pointCost}`, label: 'points spent' }],
                       shareMessage: `${who} just redeemed "${rewardTitle}" on Chore League! 🎁`,
                     }),
