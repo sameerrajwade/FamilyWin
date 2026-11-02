@@ -2,11 +2,12 @@
 
 > **New session? Start here.** Read this file, then `CLAUDE.md` (gotchas 9–16
 > matter), then the top entries of `docs/PROGRESS.md`. Say:
-> *"Read docs/HANDOFF.md and continue with G9."*
+> *"Read docs/HANDOFF.md and continue with G10."*
 >
-> Last updated: **2026-11-01** — Phases A–F and G1–G8 done, committed, deployed
-> and installed on the Pixel. The app is now **Chore League**. **Next: G9**
-> (store review prompt), the remaining quick fix in §4, then G10–G15.
+> Last updated: **2026-11-01** — Phases A–F and G1–G9 done and committed. The
+> user's pre-G9 list is done too (weekly-task reset, Scores 0s, packs "for whom",
+> quest line, 3D icon + wording polish, share-card redesign, invite nudge,
+> feedback/rating). **Next:** the 3 expert reviews (market / brand / UX), then G10–G15.
 
 ---
 
@@ -15,7 +16,7 @@
 | Thing | State |
 |---|---|
 | Branch | `main`, local only — **nothing pushed** (ask before pushing) |
-| Working tree | clean (everything committed; last code commit `4ca0aa9` G8 rename, docs after) |
+| Working tree | clean. Commits after G8: `2e3196c` weekly tasks + Scores 0s · `c96a55c` polish (quest line, packs for whom, 3D icons, alert wording) · `5132be6` share cards · `4290dd8` G9 nudges/review |
 | App on phone | G1–G8 build (**Chore League**) **installed 2026-11-01 18:14**, launches clean; Scores screenshot ✓ (wordmark fits, Season 1 card, "Challenge another family"). Wireless adb dropped mid-install once — `adb reconnect offline` fixed it |
 | Prod Firebase | `familywin-35a97`. Rules + **12 functions** deployed on **Node 22** (Node 20 was decommissioned 2026-10-30). Last deploy: G7 rules + `createLeague`/`joinLeague`/`leaveLeague` + `onTransactionCreated` |
 | Tests | app **34 suites / 479**; `tsc` 0 app-source errors; emulator: rules **54/54**, functions **70/70** |
@@ -24,8 +25,8 @@
 | Pricing | **None.** Lootboard Plus was removed entirely (G1) |
 
 ### First thing to do in a new session
-1. **G9 store review prompt** (needs `expo-store-review` → native rebuild).
-2. Remaining quick fix in §4: task packs "for whom" picker.
+1. Run the 3 expert reviews the user asked for (market analyst + engagement; brand in & out; UX + customer sentiment) and bring the findings back for decisions.
+2. G10 package rename / permissions (+ the `lootboard` scheme/slug).
 3. Ask the user to try the league on device (Family → Family league → Start; needs a 2nd family/test account to see a real race).
 4. After 01:00 UTC each night: `firebase functions:log --only dailyStreakCheck --project familywin-35a97` → confirm the F2 rewrite ran clean (it never paid bonuses before).
 5. **Never tap the phone UI while the user may be holding it** — screenshots only.
@@ -60,7 +61,7 @@
 |---|---|---|---|
 | G1–G7 | see §2 | — | ✅ |
 | G8 | **Name** ✅ `4ca0aa9` — **renamed to Chore League** (user: "stick with league for app name, domain later"). Research: "Chore League" looks available — no Play Store app (exact search empty), no App Store/web hits, **no USPTO filing** (official tmsearch, verified by a CHORE WARS control search). Nearest marks: CHORE (Levy Inc., live, payroll services 35/42), CHORE WARS / CHORE BOY (cleaning products) — none in kids' apps/games. ⚠️ **choreleague.com is registered** (IONOS, created 2026-01-10, no site served). Free: **choreleague.app**, thechoreleague.com, choreleagueapp.com. Recommend: user buys choreleague.app (+ a .com variant), considers an intent-to-use trademark filing (classes 9/41/42) with a lawyer's clearance, then we rename app name / wordmark / copy / notifications / share text / store listing (package rename is G10). Keep the chest mark | S–M | before G12 |
-| **G9** | ⏳ **next** — **Store review prompt**: after 3rd–5th open, right after a happy moment; native sheet (`expo-store-review`, needs native rebuild) with store-URL fallback; **max 3 asks, never after rated** | M | |
+| G9 | ✅ `4290dd8` **Review prompt + gentle asks** (`lib/nudges` pure + `lib/nudgeStore` per-device). "Enjoying Chore League?" only after a perfect day (parent's own phone) or a won week, from the 4th open, 30+ days apart, max 3; Love it → Play in-app review (`expo-store-review`, store URL fallback), Not really → feedback email; Settings → Support: Send feedback / Rate. **Invite nudge** on Today for a parent alone (no kid → "Add your first player"; one grown-up → "Share family code" opens the invite card); not in the first hour, Not now = 1 week, 3 max, ✕ = never; never shown together with Discover | M | |
 | G10 | Package rename, strip unused permissions, versionCode scheme (`docs/PHASE0_CHECKLIST.md`) | M | |
 | G11 | Privacy policy URL, Data Safety form, **COPPA / Designed-for-Families** (invite-code self-join), advertising-ID decision (`docs/DATA_SAFETY.md`, `docs/TARGET_AUDIENCE_COPPA.md`) — **review together with the user** | M | |
 | G12 | Store assets: icon 512, feature graphic, screenshots in this order: weekly showdown + crowns, Kid Mode, saving up, Parent Report; Play internal testing track | M | |
@@ -80,8 +81,8 @@ User chose the recommendations: **score = average points per competing player** 
 ---
 
 ## 4. Quick fixes / backlog (small, do anytime)
-- **Task packs screen assigns "whole family" (`assignedTo: null`) → managed kids never see pack tasks.** Add a "for whom" picker (each kid / everyone) to `app/app/task/packs.tsx` (`createTasksFromPack` already accepts `assignedTo`).
-- Monthly tasks completed in an earlier week of the month may show as not done (Home loads only this week's completions) — also affects the bonus-chest "day complete".
+- ✅ Done 2026-11-01: packs "for whom" (each kid / one kid / everyone); weekly + monthly tasks now matched over the FAMILY week/month (`familyPeriod` + `getPeriodCompletions`) — stored weekIds are Sunday-start, family weeks Monday-start.
+- Share cards: all 8 moments (win, standings, streak, recap, level, reward, perfect day, invite) share one `ShareCardBody`; **not yet eyeballed on the phone** — open one and screenshot.
 - `firebase-functions` 5.1.1 → latest (CLI warns; breaking changes — separate task, run the emulator suites after).
 - Level/season data reads the whole family ledger on the client (`lib/memberLevels`); fine for a household — move totals to a CF-maintained doc if ledgers get large.
 - `ChildMode.tsx` card backgrounds are hard-coded light pastels (not theme tokens).

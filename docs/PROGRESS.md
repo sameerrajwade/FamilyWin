@@ -13,6 +13,14 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 67 (2026-11-01) — User's pre-G9 list + G9 (review prompt, invite nudge)
+- **Fixed** (`2e3196c`): a weekly task done Saturday showed pending on Sunday (stored weekId is Sunday-start, family week Monday-start → match by family-week date range; monthly too). Scores showed 0s until refresh → board built from the live ledger, spinner until it loads.
+- **Polish** (`c96a55c`): quest line = one short line, tap the ring for the bonus-chest explainer; task packs ask "for whom"; 24 more 3D icons (audit: 0 icon emoji left on flat glyphs); alert titles friendlier + sentence case.
+- **Share cards** (`5132be6`): answered honestly that no outside research was run for the earlier "marketer" review. Redesigned: wordmark + "the family chore game" + family/week context, live standings on race/win cards (no more bare "I'm leading"), 3D hero + theme per moment, challenge footer; new perfect-day card; preview centred below the status bar.
+- **G9** (`4290dd8`): review ask after happy moments (4th open+, 3 max, 30 days apart), feedback email, Settings rows; "Better together" invite card. `expo-store-review` added with `npm install --force` (`--legacy-peer-deps` drops metro-config/babel-preset from the lockfile — don't use it).
+- **Tests:** app suites 475/475, tsc 0 app errors. Emulator suites not re-run (no functions/rules changes).
+- **Next Up:** (1) eyeball share cards on the phone; (2) 3 expert reviews (market, brand, UX/sentiment); (3) G10–G15.
+
 ## Iteration 66 (2026-11-01) — App renamed to **Chore League** (G8 done)
 - **User decision:** "stick with league for app name, domain name we can tweak later".
 - **Renamed** (commit `4ca0aa9`): home-screen label (app.json name + android `strings.xml` app_name), two-tone wordmark Chore|League (app bar, logo, share cards), splash/onboarding/welcome copy, notification titles, share messages, permission prompts, About/Settings, error screen. **Kept on purpose:** `lootboard` scheme + slug (G10 with the package rename), welcome-tour storage key, `LootboardMark` identifiers. CLAUDE.md brand line updated.
