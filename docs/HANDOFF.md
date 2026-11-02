@@ -25,7 +25,7 @@
 | Pricing | **None.** Lootboard Plus was removed entirely (G1) |
 
 ### First thing to do in a new session
-1. Run the 3 expert reviews the user asked for (market analyst + engagement; brand in & out; UX + customer sentiment) and bring the findings back for decisions.
+1. Expert reviews DONE → `docs/EXPERT_REVIEWS_2026-11-01.md` (consensus table of 16 items). Walk the user through it and get decisions; then build the agreed items before G10.
 2. G10 package rename / permissions (+ the `lootboard` scheme/slug).
 3. Ask the user to try the league on device (Family → Family league → Start; needs a 2nd family/test account to see a real race).
 4. After 01:00 UTC each night: `firebase functions:log --only dailyStreakCheck --project familywin-35a97` → confirm the F2 rewrite ran clean (it never paid bonuses before).
