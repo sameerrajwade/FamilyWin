@@ -13,6 +13,13 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 72 (2026-11-02) — Email verification, weekly twist push, expert re-reviews
+- **Current State:** APK installed 23:58 with email verification + twist push. Rules + `weeklyTwistNotice` deployed. Tests: app 499, functions 82, rules 61.
+- **Email verification** (`0334240`, user picked Firebase's built-in link email): signUp sends the link; new unverified password accounts (created ≥2026-11-02) land on `/auth/verify-email`; rules block creating users/family/member until verified (existing /users docs + Google pass).
+- **Twist push:** `weeklyTwistNotice` hourly → once per family per week, 8am family-local on its own weekStartDay (`twistNotifiedWeek` marker); "Weekly twist" switch (`twistOff`). First one: Mon Nov 2, Weekend warriors.
+- **Re-reviews:** market + brand done (UX still running). Quick fixes applied (uncommitted): twist example uses generic names (was Vian/Vayu), comeback copy no longer says "last place".
+- **Next Up:** (1) commit quick fixes; collect the UX review; write all 3 into docs/EXPERT_REVIEWS (scorecards + points) and walk the user through them. (2) Flagged risks to decide: twist bonus vs allowance cash (inflation), passed-you push for kids, 🎲 symbol, notification daily cap, COPPA retention policy, invite code/deep link on share cards. (3) Package id before first upload; G10–G15.
+
 ## Iteration 71 (2026-11-01) — Auth emails say "Chore League"
 - The app sends no verification email — only password reset (`lib/firebase.ts` sendPasswordResetEmail). All Auth templates use %APP_NAME% = the project's **public-facing name** (still the FamilyWin-era value).
 - Done via Identity Toolkit admin API (CLI login): **senderDisplayName = "Chore League"** on reset / verify / change-email / 2FA templates. Subjects + bodies are locked by Firebase (EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED) — they keep %APP_NAME%.

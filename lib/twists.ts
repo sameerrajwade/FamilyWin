@@ -117,7 +117,7 @@ export const TWIST_HOW: Record<string, { how: string; example: string }> = {
   },
   'team-week': {
     how: 'This week the family splits into two teams: kids vs grown-ups. Every point you earn also counts for your team. Points work as normal, nothing extra. Scores shows which team is ahead, and the leading team wins bragging rights on Sunday.',
-    example: 'Example: Vian 40 + Vayu 25 = Kids 65 · Mom 30 + Dad 20 = Grown-ups 50 → kids lead.',
+    example: 'Example: Ava 40 + Leo 25 = Kids 65 · Mom 30 + Dad 20 = Grown-ups 50 → kids lead.',
   },
   'weekend-warriors': {
     how: 'Tasks done on Saturday or Sunday pay 50% more this week. Weekdays work as normal.',

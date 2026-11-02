@@ -130,7 +130,7 @@ export function TwistBanner({ memberId, totals, dismissible = false, showIntro =
             )}
             {boosted && (
               <Text style={[styles.body, { marginTop: Spacing.sm }]}>
-                🚀 <Text style={{ fontFamily: FontFamily.extraBold }}>Comeback boost:</Text> you finished last week in last place, so every task pays +10% this week (up to +5 each).
+                🚀 <Text style={{ fontFamily: FontFamily.extraBold }}>Comeback boost:</Text> a fresh start, so every task pays +10% this week (up to +5 each).
               </Text>
             )}
             {twist && <Text style={styles.next}>Next week: {next.emoji} {next.title}</Text>}
