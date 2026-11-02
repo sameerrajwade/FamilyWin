@@ -97,3 +97,38 @@ export function comebackActive(
   const d = keyToUTC(dateKey) - keyToUTC(cb.since);
   return d >= 0 && d < 7 * DAY_MS;
 }
+
+/**
+ * Plain-language "how it works" for each twist — shown in the once-a-week
+ * pop-up and when the banner is tapped (user: "no explanation at all").
+ */
+export const TWIST_HOW: Record<string, { how: string; example: string }> = {
+  'double-chores': {
+    how: 'Every task in the Chores category pays twice its points this week. Look for the 🎲 ×2 tag on Today.',
+    example: 'Example: “Load the dishwasher” is worth 10 → you get 20.',
+  },
+  'early-bird': {
+    how: 'Finish a task before 9 in the morning and you get 5 extra points on top of its normal points.',
+    example: 'Example: make your bed at 7:30am → 10 + 5 = 15 points.',
+  },
+  'homework-heroes': {
+    how: 'Every Homework task pays 50% more this week. Look for the 🎲 +50% tag on Today.',
+    example: 'Example: “Reading 20 min” is worth 25 → you get 38.',
+  },
+  'team-week': {
+    how: 'This week the family splits into two teams: kids vs grown-ups. Every point you earn also counts for your team. Points work as normal, nothing extra. Scores shows which team is ahead, and the leading team wins bragging rights on Sunday.',
+    example: 'Example: Vian 40 + Vayu 25 = Kids 65 · Mom 30 + Dad 20 = Grown-ups 50 → kids lead.',
+  },
+  'weekend-warriors': {
+    how: 'Tasks done on Saturday or Sunday pay 50% more this week. Weekdays work as normal.',
+    example: 'Example: a 10-point task on Saturday → 15 points.',
+  },
+  'healthy-habits': {
+    how: 'Every Hygiene task (teeth, shower, hair…) pays twice its points this week. Look for the 🎲 ×2 tag on Today.',
+    example: 'Example: “Brush teeth” is worth 10 → you get 20.',
+  },
+  'kindness-week': {
+    how: 'Every Behaviour task (helping, being kind, good manners) pays twice its points this week. Look for the 🎲 ×2 tag on Today.',
+    example: 'Example: “Help set the table” is worth 10 → you get 20.',
+  },
+};

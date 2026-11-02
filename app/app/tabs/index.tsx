@@ -763,7 +763,7 @@ export default function HomeScreen() {
           onAffordable={celebrateAffordable}
         />
         {/* Weekly twist + comeback boost (engagement, 2026-11-01) */}
-        <TwistBanner memberId={effectiveMember?.id} style={styles.section} />
+        <TwistBanner memberId={effectiveMember?.id} dismissible showIntro style={styles.section} />
         {/* Kudos sticker from a grown-up (praise, never points) */}
         <KudosToast memberId={effectiveMember?.id} style={styles.section} />
         {isChildMode && (
