@@ -192,7 +192,37 @@ function shouldAutoApprove({ task, family, points, completion }) {
   return true;
 }
 
+/**
+ * Claim push (UX review 2026-11-01): when a kid's claim waits for a parent,
+ * tell the parents — but at most once per CLAIM_PUSH_GAP_MS per family, so a
+ * kid ticking off five chores in a row makes one buzz, not five (the Family tab
+ * badge carries the running count).
+ */
+const CLAIM_PUSH_GAP_MS = 10 * 60 * 1000;
+
+function shouldSendClaimPush(lastSentMs, nowMs) {
+  return !(typeof lastSentMs === 'number' && nowMs - lastSentMs < CLAIM_PUSH_GAP_MS);
+}
+
+function claimPushText(kidName, taskTitle, points) {
+  const who = kidName ? kidName.split(' ')[0] : 'A kid';
+  const what = taskTitle ? `"${taskTitle}"` : 'a task';
+  return {
+    title: `${who} finished ${what} ✅`,
+    body: points > 0 ? `+${points} pts waiting for your OK — tap to approve.` : 'Waiting for your OK — tap to approve.',
+  };
+}
+
+/** Parents (with their own login) who should hear about a claim. */
+function claimRecipients(members) {
+  return (members || []).filter((m) => !m.isManaged && (m.role === 'parent' || m.role === 'admin_parent'));
+}
+
 module.exports = {
+  shouldSendClaimPush,
+  claimPushText,
+  claimRecipients,
+  CLAIM_PUSH_GAP_MS,
   shouldAutoApprove,
   isKid,
   competitors,

@@ -408,6 +408,7 @@ function InnerLayout() {
         if (data?.screen === 'leaderboard') router.push('/app/tabs/leaderboard');
         if (data?.screen === 'tasks') router.push('/app/tabs');
         if (data?.screen === 'report') router.push('/app/report' as any);
+        if (data?.screen === 'approvals') router.push('/app/approvals' as any);
       },
     );
     return cleanup;

@@ -171,3 +171,25 @@ describe('shouldAutoApprove — approval trust levels (G5)', () => {
     expect(shouldAutoApprove({ task: {}, family: fam(50), points: 0 })).toBe(false);
   });
 });
+
+describe('claim push to parents (UX review 2026-11-01)', () => {
+  const { shouldSendClaimPush, claimPushText, claimRecipients, CLAIM_PUSH_GAP_MS } =
+    require(path.join(__dirname, '../../firebase/functions/game'));
+  test('one buzz per family per 10 minutes', () => {
+    const t = 1_000_000_000;
+    expect(shouldSendClaimPush(undefined, t)).toBe(true);
+    expect(shouldSendClaimPush(t, t + 60_000)).toBe(false);
+    expect(shouldSendClaimPush(t, t + CLAIM_PUSH_GAP_MS)).toBe(true);
+  });
+  test('says who, what and how many points', () => {
+    expect(claimPushText('Vayu Rajwade', 'Make my bed', 10)).toEqual({
+      title: 'Vayu finished "Make my bed" ✅',
+      body: '+10 pts waiting for your OK — tap to approve.',
+    });
+    expect(claimPushText(undefined, null, 0).title).toBe('A kid finished a task ✅');
+  });
+  test('only parents with their own login hear about it', () => {
+    const out = claimRecipients([M('mom', { role: 'admin_parent' }), M('dad', { role: 'parent' }), M('kid', { role: 'child' }), M('tot', { isManaged: true, role: 'child' })]);
+    expect(out.map((m) => m.id)).toEqual(['mom', 'dad']);
+  });
+});

@@ -1733,7 +1733,7 @@ export async function upsertNotifConfig(
     quietStart?: string | null; quietEnd?: string | null;
     // G4: per-type off switches (absent = on). See lib/notifications NOTIF_OFF_FIELD.
     morningOff?: boolean; eveningOff?: boolean; reportOff?: boolean;
-    overtakenOff?: boolean; weeklyResultsOff?: boolean;
+    overtakenOff?: boolean; weeklyResultsOff?: boolean; claimsOff?: boolean;
   },
 ) {
   await Col.notifConfigs(familyId).doc(memberId).set(data, { merge: true });

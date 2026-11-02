@@ -169,6 +169,14 @@ export default function NotificationsScreen() {
             right={<TimeAndSwitch on={prefs.report} onToggle={(v) => toggle('report', v)} label="Weekly Parent Report" styles={styles} colors={colors} />}
           />
         )}
+        {isParent && (
+          <NavRow
+            icon="checkmark-done-outline"
+            label="Kids' claims"
+            subtitle="When a kid finishes a task that needs your OK"
+            right={<TimeAndSwitch on={prefs.claims} onToggle={(v) => toggle('claims', v)} label="Kids' claims" styles={styles} colors={colors} />}
+          />
+        )}
         <NavRow
           icon="trending-up-outline"
           label="Someone passed you"

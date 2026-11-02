@@ -27,6 +27,7 @@ const { runMissedTaskSweep, localDateKey } = require('./sweep');
 const {
   competitors, buildRanked, computeCrowns, crownsSummary, detectOvertakes,
   streakWithShields, reachedMilestones, STREAK_WINDOW_DAYS, shouldAutoApprove,
+  shouldSendClaimPush, claimPushText, claimRecipients,
 } = require('./game');
 const league = require('./league');
 
@@ -204,6 +205,47 @@ async function stampLockedPoints(familyId, completionId, c) {
     update.approvedAt = Timestamp.now();
   }
   await familyRef.collection('completions').doc(completionId).set(update, { merge: true });
+  return { stillPending: update.status !== 'approved', points: pointValue, taskTitle: task ? task.title : null };
+}
+
+/**
+ * Tell the parents a kid's claim is waiting (UX review 2026-11-01). Throttled to
+ * one push per family per 10 min (families/{id}/meta/claimPush.lastSentAt).
+ * Each parent can switch it off: notificationConfigs.claimsOff.
+ */
+async function notifyParentsOfClaim(familyId, c, points, taskTitle) {
+  const familyRef = db.collection('families').doc(familyId);
+  const metaRef = familyRef.collection('meta').doc('claimPush');
+  const nowMs = Date.now();
+  const go = await db.runTransaction(async (tx) => {
+    const m = await tx.get(metaRef);
+    const last = m.exists ? m.data().lastSentAt : undefined;
+    if (!shouldSendClaimPush(last, nowMs)) return false;
+    tx.set(metaRef, { lastSentAt: nowMs }, { merge: true });
+    return true;
+  });
+  if (!go) return;
+  const membersSnap = await familyRef.collection('members').get();
+  const members = membersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const kid = members.find((m) => m.id === c.memberId);
+  const { title, body } = claimPushText(kid && kid.displayName, taskTitle, points);
+  for (const parent of claimRecipients(members)) {
+    if (parent.id === c.memberId) continue;
+    const cfg = await familyRef.collection('notificationConfigs').doc(parent.id).get();
+    if (!cfg.exists) continue;
+    const n = cfg.data();
+    if (n.enabled === false || n.claimsOff === true || !n.pushToken) continue;
+    try {
+      await getMessaging().send({
+        notification: { title, body },
+        data: { screen: 'approvals', memberId: c.memberId || '' },
+        android: { channelId: 'alerts', priority: 'high' },
+        token: n.pushToken,
+      });
+    } catch (err) {
+      console.error(`claim push failed family=${familyId} parent=${parent.id}:`, err && err.message);
+    }
+  }
 }
 
 // Award (or penalize) on completion create. Idempotent per completion id.
@@ -220,7 +262,11 @@ exports.onCompletionCreated = onDocumentCreated(
       // DO freeze the task's point value now so a later edit can't change the
       // approved payout (positive claims only; absent lockedPoints means pre-D2).
       if (c.status === 'pending' && c.wasAutoFailed !== true && typeof c.lockedPoints !== 'number') {
-        await stampLockedPoints(familyId, completionId, c);
+        const r = await stampLockedPoints(familyId, completionId, c);
+        if (r.stillPending) {
+          try { await notifyParentsOfClaim(familyId, c, r.points, r.taskTitle); }
+          catch (err) { console.error(`claim notify failed family=${familyId}:`, err && err.message); }
+        }
       }
       return;
     }
