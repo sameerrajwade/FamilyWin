@@ -92,7 +92,8 @@ const CONFETTI: [x: number, y: number, w: number, h: number, c: string, r: numbe
  * to people outside it. Only first names of the top 3 ever appear.
  */
 export function shareContext(when?: string | null): string {
-  return when ? `The family chore game · ${when}` : 'The family chore game';
+  // The tagline says what this is (brand review 2026-11-02).
+  return when ? `Do chores. Win the week. · ${when}` : 'Do chores. Win the week.';
 }
 
 /** Max rows on a shared card — top 3 only, never the whole family. */
@@ -136,7 +137,7 @@ export function ShareCardBody({ data, width = 340 }: { data: ShareCardData; widt
           </View>
         ) : null}
       </View>
-      <Text style={styles.context} numberOfLines={1}>{data.context ?? 'The family chore game'}</Text>
+      <Text style={styles.context} numberOfLines={1}>{data.context ?? 'Do chores. Win the week.'}</Text>
 
       {/* Hero */}
       <View style={styles.heroWrap}>

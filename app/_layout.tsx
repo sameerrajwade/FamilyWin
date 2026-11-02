@@ -281,7 +281,7 @@ function AnimatedSplash({ isExiting }: { isExiting: boolean }) {
 
       {/* Chore League title */}
       <Animated.View style={titleStyle}>
-        <Text style={splashStyles.title}>Chore League</Text>
+        <Text style={splashStyles.title}>Chore<Text style={{ color: '#FFD84D' }}> League</Text></Text>
       </Animated.View>
 
       {/* Accent line */}

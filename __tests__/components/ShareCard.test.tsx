@@ -3,8 +3,8 @@ import { ShareCardBody, shareContext, standingsRows } from '@/components/ui/Shar
 
 describe('share cards', () => {
   it('never names the family (privacy) — just the game and the week', () => {
-    expect(shareContext('Oct 27 – Nov 2')).toBe('The family chore game · Oct 27 – Nov 2');
-    expect(shareContext()).toBe('The family chore game');
+    expect(shareContext('Oct 27 – Nov 2')).toBe('Do chores. Win the week. · Oct 27 – Nov 2');
+    expect(shareContext()).toBe('Do chores. Win the week.');
   });
 
   it('shows the top 3 only, never the whole family', () => {
@@ -30,20 +30,20 @@ describe('share cards', () => {
     const { getByText } = render(
       <ShareCardBody data={{
         icon: 'podium', hero: '🏆', theme: 'race', eyebrow: 'LIVE STANDINGS',
-        context: 'The family chore game · Oct 27 – Nov 2',
+        context: 'Do chores. Win the week. · Oct 27 – Nov 2',
         title: "I'm leading our family's chore race!",
         standings: [{ name: 'Vian', points: 120, highlight: true }, { name: 'Vayu', points: 90 }],
       }} />,
     );
-    expect(getByText('The family chore game · Oct 27 – Nov 2')).toBeTruthy();
+    expect(getByText('Do chores. Win the week. · Oct 27 – Nov 2')).toBeTruthy();
     expect(getByText("I'm leading our family's chore race!")).toBeTruthy();
     expect(getByText('120 pts')).toBeTruthy();
     expect(getByText('Vayu')).toBeTruthy();
     expect(getByText('Think your family can beat us?')).toBeTruthy();
   });
 
-  it('falls back to "the family chore game" when no context is given', () => {
+  it('falls back to the tagline when no context is given', () => {
     const { getByText } = render(<ShareCardBody data={{ icon: 'chest', title: 'Hi' }} />);
-    expect(getByText('The family chore game')).toBeTruthy();
+    expect(getByText('Do chores. Win the week.')).toBeTruthy();
   });
 });
