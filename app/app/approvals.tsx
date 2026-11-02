@@ -28,6 +28,8 @@ import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants
 import { Icon } from '@/components/ui/Icon';
 import { Avatar } from '@/components/ui';
 import { checkSurprisePacks, type PackAward } from '@/lib/surprise';
+import { sendKudos } from '@/lib/firebase';
+import { StickerPicker } from '@/components/ui/Kudos';
 
 interface PendingRow {
   completion: CompletionDoc;
@@ -46,6 +48,13 @@ export default function ApprovalsScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Kudos (engagement 2026-11-01): right after an approval, offer a sticker.
+  const [kudosFor, setKudosFor] = useState<{ memberId: string; name: string; taskTitle?: string; completionId: string } | null>(null);
+  useEffect(() => {
+    if (!kudosFor) return;
+    const t = setTimeout(() => setKudosFor(null), 9000);
+    return () => clearTimeout(t);
+  }, [kudosFor]);
 
   const load = useCallback(async () => {
     if (!family?.id) { setRows([]); setLoading(false); return; }
@@ -99,7 +108,10 @@ export default function ApprovalsScreen() {
       }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setRows((prev) => prev.filter((r) => r.completion.id !== id));
-      if (approve) grantPacks([row]);
+      if (approve) {
+        grantPacks([row]);
+        if (row.member) setKudosFor({ memberId: row.member.id, name: (row.member.displayName ?? '').split(' ')[0], taskTitle: row.task?.title, completionId: id });
+      }
     } catch (e) {
       if (__DEV__) console.error('approval decision failed:', e);
       Alert.alert('Could not update', 'Please try again.');
@@ -194,6 +206,16 @@ export default function ApprovalsScreen() {
         </TouchableOpacity>
       )}
 
+      {kudosFor && family?.id && member?.id && (
+        <View style={styles.kudosBar}>
+          <Text style={styles.kudosText}>✓ Approved! Send {kudosFor.name} a sticker?</Text>
+          <StickerPicker size={32} onPick={(emoji) => {
+            const k = kudosFor; setKudosFor(null);
+            sendKudos(family.id, { memberId: k.memberId, emoji, fromId: member.id, fromName: (member.displayName ?? 'A grown-up').split(' ')[0], taskTitle: k.taskTitle ?? null, completionId: k.completionId })
+              .catch(() => Alert.alert('That didn’t work', 'Could not send the sticker. Please try again.'));
+          }} />
+        </View>
+      )}
       {!isParent ? (
         <View style={styles.empty}>
           <Icon name="lock-closed" size={52} color={colors.textMuted} />
@@ -285,6 +307,8 @@ function createStyles(colors: ThemeColors) {
     container: { flex: 1, backgroundColor: colors.background },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.lg },
     approveAllBtn: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md, borderRadius: BorderRadius.lg, paddingVertical: 14, alignItems: 'center', ...Shadow.sm },
+    kudosBar: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md, padding: Spacing.md, borderRadius: BorderRadius.lg, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary + '40', gap: Spacing.sm },
+    kudosText: { fontSize: FontSize.md, fontFamily: FontFamily.extraBold, color: colors.text },
     approveAllText: { color: '#1A1830', fontSize: FontSize.md, fontFamily: FontFamily.extraBold },
     backBtn: { flexDirection: 'row', alignItems: 'center', width: 60 },
     backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.textAccent },

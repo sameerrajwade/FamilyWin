@@ -303,3 +303,24 @@ describe('Leagues (Phase G7: family vs family)', () => {
     await assertFails(getDoc(doc(anon(), 'leagues/L1')));
   });
 });
+
+describe('kudos stickers (engagement 2026-11-01)', () => {
+  const K = (extra = {}) => ({ memberId: 'mChildA', emoji: '⭐', fromId: 'mAdminA', fromName: 'Mom', taskTitle: 'Dishes', completionId: 'c1', createdAt: new Date(), ...extra });
+  test('a parent can send one of the six stickers', async () => {
+    await assertSucceeds(setDoc(doc(adminA(), 'families/famA/kudos/k1'), K()));
+  });
+  test('a kid cannot send a sticker', async () => {
+    await assertFails(setDoc(doc(childA(), 'families/famA/kudos/k2'), K({ fromId: 'mChildA' })));
+  });
+  test('no made-up stickers, no sending as someone else, no extra fields', async () => {
+    await assertFails(setDoc(doc(adminA(), 'families/famA/kudos/k3'), K({ emoji: '💩' })));
+    await assertFails(setDoc(doc(adminA(), 'families/famA/kudos/k4'), K({ fromId: 'mOther' })));
+    await assertFails(setDoc(doc(adminA(), 'families/famA/kudos/k5'), K({ points: 50 })));
+  });
+  test('family can read; nobody edits; another family cannot read', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'families/famA/kudos/k9'), K()); });
+    await assertSucceeds(getDoc(doc(childA(), 'families/famA/kudos/k9')));
+    await assertFails(updateDoc(doc(adminA(), 'families/famA/kudos/k9'), { emoji: '🏆' }));
+    await assertFails(getDoc(doc(adminB(), 'families/famA/kudos/k9')));
+  });
+});

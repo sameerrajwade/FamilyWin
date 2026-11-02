@@ -187,6 +187,18 @@ service cloud.firestore {
       //   • WITHDRAW their own claim (claimed-by-me → open, claimedBy = null)
       // touching nothing but status/claimedBy/claimedAt. They can never mark a
       // bounty done; the points are a parent-written source:'bonus' transaction.
+      // Kudos stickers (engagement 2026-11-01): praise, never points. Parents
+      // send them; everyone in the family can see them; nobody edits one.
+      match /kudos/{kudosId} {
+        allow read: if isFamilyMember(familyId);
+        allow create: if isFamilyMember(familyId) && isParent(familyId)
+          && request.resource.data.keys().hasOnly(['memberId', 'emoji', 'fromId', 'fromName', 'taskTitle', 'completionId', 'createdAt'])
+          && request.resource.data.emoji in ['⭐', '🙌', '💪', '🌟', '🏆', '🎉']
+          && request.resource.data.fromId == userDoc().memberId;
+        allow update: if false;
+        allow delete: if isFamilyMember(familyId) && isParent(familyId);
+      }
+
       match /bounties/{bountyId} {
         allow read: if isFamilyMember(familyId);
         allow create, delete: if isFamilyMember(familyId) && isParent(familyId);

@@ -37,6 +37,7 @@ import { BountyBoard } from '@/components/ui/BountyBoard';
 import { DiscoverCard } from '@/components/ui/DiscoverCard';
 import { InviteNudge } from '@/components/ui/InviteNudge';
 import { TwistBanner } from '@/components/ui/TwistBanner';
+import { KudosToast } from '@/components/ui/Kudos';
 import { twistForWeek, weekStartKeyOf, twistChipFor } from '@/lib/twists';
 import { maybeAskForReview } from '@/lib/nudgeStore';
 import { discoverCardToShow } from '@/lib/starterKit';
@@ -763,6 +764,8 @@ export default function HomeScreen() {
         />
         {/* Weekly twist + comeback boost (engagement, 2026-11-01) */}
         <TwistBanner memberId={effectiveMember?.id} style={styles.section} />
+        {/* Kudos sticker from a grown-up (praise, never points) */}
+        <KudosToast memberId={effectiveMember?.id} style={styles.section} />
         {isChildMode && (
           <SlideIn delay={100}>
             <View style={styles.mascotSection}>

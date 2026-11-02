@@ -13,6 +13,8 @@ import { getCompletionRate, getRankEmoji, calculateStreak, getCurrentWeekRange, 
 import { useMemberLevels } from '@/lib/memberLevels';
 import { LevelLadder } from '@/components/ui/LevelPerks';
 import { SeasonBadges } from '@/components/ui/Season';
+import { StickerBook, StickerPicker } from '@/components/ui/Kudos';
+import { sendKudos } from '@/lib/firebase';
 import { streakWithShields, activeDayKeys } from '@/lib/streakShield';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
@@ -382,6 +384,21 @@ export default function MemberProfileScreen() {
               {/* F1: medals from finished seasons (renders nothing until one ends). */}
               <SeasonBadges memberId={id} />
 
+              {/* Kudos stickers (engagement 2026-11-01): parents send, everyone collects. */}
+              <View style={styles.stickerCard}>
+                <StickerBook memberId={id} name={firstName} />
+                {canEditPhoto && id !== viewerMember?.id && family?.id && viewerMember?.id && (
+                  <View style={{ marginTop: Spacing.sm, gap: 6 }}>
+                    <Text style={styles.stickerHint}>Send {firstName} a sticker</Text>
+                    <StickerPicker onPick={(emoji) => {
+                      sendKudos(family.id, { memberId: id as string, emoji, fromId: viewerMember.id, fromName: (viewerMember.displayName ?? 'A grown-up').split(' ')[0] })
+                        .then(() => Alert.alert(`${emoji} Sent!`, `${firstName} will see it on their Today screen.`))
+                        .catch(() => Alert.alert('That didn’t work', 'Could not send the sticker. Please try again.'));
+                    }} />
+                  </View>
+                )}
+              </View>
+
               {streak > 0 && (
                 <TouchableOpacity style={styles.streakBadge} activeOpacity={0.85} onPress={shareStreak} accessibilityRole="button" accessibilityLabel={`Share ${streak} day streak`}>
                   <Text style={styles.streakText}>🔥 {streak} day streak</Text>
@@ -641,6 +658,8 @@ function createStyles(colors: ThemeColors) {
   levelPts: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.textSecondary },
   levelTrack: { height: 8, borderRadius: 5, backgroundColor: colors.primary + '1A', overflow: 'hidden' },
   levelFill: { height: '100%', borderRadius: 5, backgroundColor: colors.primary },
+  stickerCard: { alignSelf: 'stretch', marginHorizontal: Spacing.xl, marginTop: Spacing.md, backgroundColor: colors.surface, borderRadius: BorderRadius.lg, borderWidth: 1, borderColor: colors.border, padding: Spacing.md },
+  stickerHint: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textSecondary },
   streakBadge: { marginTop: Spacing.sm, backgroundColor: colors.warning + '22', borderRadius: 20, paddingHorizontal: Spacing.md, paddingVertical: 6, borderWidth: 1.5, borderColor: colors.warning + '66' },
   streakText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textWarning },
   statsRow: { flexDirection: 'row', paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.lg },

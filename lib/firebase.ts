@@ -1010,6 +1010,42 @@ export async function setDiscoverState(familyId: string, state: Record<string, {
   await firestore().collection('families').doc(familyId).update({ discover: state });
 }
 
+// ─── Kudos stickers (engagement 2026-11-01) ──────────────────────────────────
+// Praise for effort — never points. Parents send; the kid sees them on Today and
+// in the sticker book on their profile. Rules allow only the six stickers below.
+
+export const KUDOS_STICKERS = ['⭐', '🙌', '💪', '🌟', '🏆', '🎉'] as const;
+export type KudosSticker = typeof KUDOS_STICKERS[number];
+
+export interface KudosDoc {
+  id: string;
+  memberId: string;
+  emoji: KudosSticker;
+  fromId: string;
+  fromName: string;
+  taskTitle?: string | null;
+  completionId?: string | null;
+  createdAt: Timestamp;
+}
+
+export async function sendKudos(familyId: string, k: {
+  memberId: string; emoji: KudosSticker; fromId: string; fromName: string; taskTitle?: string | null; completionId?: string | null;
+}): Promise<void> {
+  await firestore().collection('families').doc(familyId).collection('kudos').add({
+    memberId: k.memberId, emoji: k.emoji, fromId: k.fromId, fromName: k.fromName,
+    taskTitle: k.taskTitle ?? null, completionId: k.completionId ?? null,
+    createdAt: firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+export async function getMemberKudos(familyId: string, memberId: string): Promise<KudosDoc[]> {
+  const snap = await firestore().collection('families').doc(familyId).collection('kudos')
+    .where('memberId', '==', memberId).get();
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<KudosDoc, 'id'>) }))
+    .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+}
+
 /** Weekly twists / comeback on-off, or skip one week's twist. Parents only (rules). */
 export async function setEngagementSettings(
   familyId: string, patch: { twistsOff?: boolean; comebackOff?: boolean; skipWeek?: string },
