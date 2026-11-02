@@ -9,24 +9,24 @@ Three read-only reviews run by sub-agents: market analyst, brand, and UX/custome
 - Device check (19:30): weekly tasks done on Saturday now show ✓ on Sunday. The quest line still truncates ("All done · bonus chest earne…"), because the Task and Penalty pills squeeze it.
 
 ## Cross-review consensus (my synthesis, ranked)
-| # | Item | Source | Effort |
-|---|---|---|---|
-| 1 | **Privacy for G11:** stop sending `display_name`/task titles to Analytics; settle the Families target-audience declaration; rename and fix the privacy policy and data-safety docs (they still say Lootboard/FamilyWin); fix About contradictions (`about.tsx:25` "children do not sign in" vs own-phone kids; `:35` "no cash" vs allowance payouts) | market + brand | S |
-| 2 | **Closed test is the critical path:** new Play accounts need ≥12 testers opted in for 14 straight days. Recruit about 20 families now | market | — |
-| 3 | **Push parents when a kid claims or requests a reward** (debounced: "Vayu claimed 2 tasks · +35 waiting"); push the kid on approve/reject | UX + market | M (CF) |
-| 4 | **One approvals inbox** (task claims and reward requests together); badge on the Family tab; live listener + pull-to-refresh on `approvals.tsx` | UX | M |
-| 5 | **Contrast:** label text on green/amber buttons and pills → `colors.text` (fills unchanged); active tab label → `textAccent`. Light `textMuted` `#9CA3AF` is about 2.5:1, but changing it is a colour change and **needs your OK** | UX | S |
-| 6 | **Calmer Today header:** move the red **Penalty** pill into the long-press sheet; sort to-do before done; move "Hand phone to…" up near the profile strip | UX | S |
-| 7 | **Scores order:** podium first, then Season/League/Goal | UX | S |
-| 8 | **A rejected claim says why** ("Sent back: missed the floor" + Try again), reusing the reward reason modal | UX | S–M |
-| 9 | **Share card → growth loop:** add the family/league invite code + deep link; at season end, prompt "start Season 2 against another family" | market | S–M |
-| 10 | **Brand hygiene:** one tagline (pick "Your family's weekly showdown." or "Chores, points, wins."); one "League" colour (app orange vs card gold); rename starter "packs" → "starter sets" so they don't clash with bonus chests; voice guide `docs/VOICE.md` | brand | S |
-| 11 | **Icon/splash:** square full-bleed 512 icon (corners are baked in now); keep the foreground inside the 66/108 safe zone (sparkle gets clipped); add a monochrome layer; put the wordmark on the splash | brand | S–M |
-| 12 | **Against novelty fade:** a weekly/season "twist" (double-points category, parents vs kids); a comeback mechanic for last place; parent "thanks!" kudos/stickers on small dailies; teen (no-mascot) look | market | M |
-| 13 | **Gentler kid-facing pushes:** "X just passed you" and streak-loss pushes become parent-opt-in for under-10s | market + brand | S |
-| 14 | **Shorter Create Task:** Title/Difficulty/Assign plus "More options ▾"; sticky Create button | UX | M |
-| 15 | **Kid Mode can spend points** (a "Spend points" sheet); drop the "Request sent" and "Reward approved" alerts in favour of toasts | UX | M |
-| 16 | **Decide the package id before the first upload** (`com.familywin.app` is permanent once published): keep it, or switch to `com.choreleague.app` (new Firebase app + SHA-1s) — G10. Also the store name "Chore League: Family Chores", a support email on our own domain, and a USPTO check in classes 9/42 | brand | — |
+| # | Item | Source | Effort | Status |
+|---|---|---|---|---|
+| 1 | **Privacy for G11:** stop sending `display_name`/task titles to Analytics; settle the Families target-audience declaration; rename and fix the privacy policy and data-safety docs (they still say Lootboard/FamilyWin); fix About contradictions (`about.tsx:25` "children do not sign in" vs own-phone kids; `:35` "no cash" vs allowance payouts) | market + brand | S | ✅ built (analytics, ad ID off, About, policy docs) — target-audience declaration still yours |
+| 2 | **Closed test is the critical path:** new Play accounts need ≥12 testers opted in for 14 straight days. Recruit about 20 families now | market | — | open |
+| 3 | **Push parents when a kid claims or requests a reward** (debounced: "Vayu claimed 2 tasks · +35 waiting"); push the kid on approve/reject | UX + market | M (CF) | ✅ claim push deployed (kid-side approve/reject push not yet) |
+| 4 | **One approvals inbox** (task claims and reward requests together); badge on the Family tab; live listener + pull-to-refresh on `approvals.tsx` | UX | M | ◐ live approvals + Family badge done; merging reward requests into Approvals not yet |
+| 5 | **Contrast:** label text on green/amber buttons and pills → `colors.text` (fills unchanged); active tab label → `textAccent`. Light `textMuted` `#9CA3AF` is about 2.5:1, but changing it is a colour change and **needs your OK** | UX | S | ⏸ needs your OK (colour change); active tab label → textAccent ✅ |
+| 6 | **Calmer Today header:** move the red **Penalty** pill into the long-press sheet; sort to-do before done; move "Hand phone to…" up near the profile strip | UX | S | ◐ to-do first ✅, header pills now icons ✅; Penalty kept 1 tap away; Kid Mode tile not moved |
+| 7 | **Scores order:** podium first, then Season/League/Goal | UX | S | ✅ |
+| 8 | **A rejected claim says why** ("Sent back: missed the floor" + Try again), reusing the reward reason modal | UX | S–M | open |
+| 9 | **Share card → growth loop:** add the family/league invite code + deep link; at season end, prompt "start Season 2 against another family" | market | S–M | open |
+| 10 | **Brand hygiene:** one tagline (pick "Your family's weekly showdown." or "Chores, points, wins."); one "League" colour (app orange vs card gold); rename starter "packs" → "starter sets" so they don't clash with bonus chests; voice guide `docs/VOICE.md` | brand | S | ◐ kinder copy ✅; tagline / League colour need your pick |
+| 11 | **Icon/splash:** square full-bleed 512 icon (corners are baked in now); keep the foreground inside the 66/108 safe zone (sparkle gets clipped); add a monochrome layer; put the wordmark on the splash | brand | S–M | open |
+| 12 | **Against novelty fade:** a weekly/season "twist" (double-points category, parents vs kids); a comeback mechanic for last place; parent "thanks!" kudos/stickers on small dailies; teen (no-mascot) look | market | M | open |
+| 13 | **Gentler kid-facing pushes:** "X just passed you" and streak-loss pushes become parent-opt-in for under-10s | market + brand | S | not yet |
+| 14 | **Shorter Create Task:** Title/Difficulty/Assign plus "More options ▾"; sticky Create button | UX | M | open |
+| 15 | **Kid Mode can spend points** (a "Spend points" sheet); drop the "Request sent" and "Reward approved" alerts in favour of toasts | UX | M | open |
+| 16 | **Decide the package id before the first upload** (`com.familywin.app` is permanent once published): keep it, or switch to `com.choreleague.app` (new Firebase app + SHA-1s) — G10. Also the store name "Chore League: Family Chores", a support email on our own domain, and a USPTO check in classes 9/42 | brand | — | open |
 
 ---
 

@@ -13,6 +13,13 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 68 (2026-11-01) — User bugs + review items done while the user was out
+- **User bugs:** Scores podium showed 0 until refresh — real cause was `CountUp` reading a Reanimated shared value in render (never re-renders); now React-state ticker (+tests). Quest line cut off → shorter labels + Task/Penalty header pills are round icon buttons.
+- **Review items built (no decisions needed):** analytics sends no names/titles; **advertising ID off** (firebase.json `react-native` flags; AD_ID + ADSERVICES permissions removed — verified with aapt); About contradictions fixed; policy/data-safety/site renamed to Chore League; stale "Settings" copy → Family tab; kinder copy (Penalty or bonus, Missed, reminder w/o threat, "Start our league"); Approvals live + pull-to-refresh; Today to-do first; Scores race first; Family tab badge (claims + reward requests) + TalkBack labels; **claim push to parents** (deployed `onCompletionCreated`, ≤1/10 min/family, "Kids' claims" switch).
+- **Tests:** app 477/477, functions emulator 73/73, tsc 0. Commits `1fda11f`…`daa0e4a` + docs.
+- **Not installed:** phone dropped off wireless adb → APK copied to `OneDrive\Desktop\Lootboard.apk` (20:4x). Share cards + header still not eyeballed on device.
+- **Waiting on the user (see EXPERT_REVIEWS):** label-on-green/amber contrast + light textMuted (colour changes), tagline, "League" colour, package id, icon/splash redo, closed-test recruiting, engagement items (twists, comeback, kudos, teen look).
+
 ## Iteration 67 (2026-11-01) — User's pre-G9 list + G9 (review prompt, invite nudge)
 - **Fixed** (`2e3196c`): a weekly task done Saturday showed pending on Sunday (stored weekId is Sunday-start, family week Monday-start → match by family-week date range; monthly too). Scores showed 0s until refresh → board built from the live ledger, spinner until it loads.
 - **Polish** (`c96a55c`): quest line = one short line, tap the ring for the bonus-chest explainer; task packs ask "for whom"; 24 more 3D icons (audit: 0 icon emoji left on flat glyphs); alert titles friendlier + sentence case.

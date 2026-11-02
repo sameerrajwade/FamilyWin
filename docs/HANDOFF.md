@@ -17,7 +17,7 @@
 |---|---|
 | Branch | `main`, local only — **nothing pushed** (ask before pushing) |
 | Working tree | clean. Commits after G8: `2e3196c` weekly tasks + Scores 0s · `c96a55c` polish (quest line, packs for whom, 3D icons, alert wording) · `5132be6` share cards · `4290dd8` G9 nudges/review |
-| App on phone | G1–G8 build (**Chore League**) **installed 2026-11-01 18:14**, launches clean; Scores screenshot ✓ (wordmark fits, Season 1 card, "Challenge another family"). Wireless adb dropped mid-install once — `adb reconnect offline` fixed it |
+| App on phone | build from 19:27 installed; **newer build (all of iteration 68) NOT installed** — phone left wireless adb; APK at `OneDrive\Desktop\Lootboard.apk`. Install with `adb install -r` when it's back |
 | Prod Firebase | `familywin-35a97`. Rules + **12 functions** deployed on **Node 22** (Node 20 was decommissioned 2026-10-30). Last deploy: G7 rules + `createLeague`/`joinLeague`/`leaveLeague` + `onTransactionCreated` |
 | Tests | app **34 suites / 479**; `tsc` 0 app-source errors; emulator: rules **54/54**, functions **70/70** |
 | Phone | Pixel 10 Pro over wireless adb. If it drops off: user re-enables *Wireless debugging*; meanwhile copy the APK to `OneDrive\Desktop\Lootboard.apk` |
@@ -25,7 +25,8 @@
 | Pricing | **None.** Lootboard Plus was removed entirely (G1) |
 
 ### First thing to do in a new session
-1. Expert reviews DONE → `docs/EXPERT_REVIEWS_2026-11-01.md` (consensus table of 16 items). Walk the user through it and get decisions; then build the agreed items before G10.
+1. Install the Desktop APK when the phone is back; screenshot Today header, Scores podium, a share card.
+   Then walk the user through the **decisions** left in `docs/EXPERT_REVIEWS_2026-11-01.md` (status column) — everything not needing a decision is built.
 2. G10 package rename / permissions (+ the `lootboard` scheme/slug).
 3. Ask the user to try the league on device (Family → Family league → Start; needs a 2nd family/test account to see a real race).
 4. After 01:00 UTC each night: `firebase functions:log --only dailyStreakCheck --project familywin-35a97` → confirm the F2 rewrite ran clean (it never paid bonuses before).
