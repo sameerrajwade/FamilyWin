@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
-import { firestore } from '@/lib/fb';
 import { useAuthStore, useFamilyStore, usePointsStore } from '@/store';
-import { Col, getFamilyMembers, getCurrentWeekId, getWeekCompletions, getMemberPersonalBest } from '@/lib/firebase';
+import { getFamilyMembers, getCurrentWeekId, getPeriodCompletions, getMemberPersonalBest } from '@/lib/firebase';
+import { familyPeriod, dayKey } from '@/lib/completionMatch';
 import { buildLeaderboard, computeCrowns, getWeekLabel, getCurrentWeekRange, getLevel } from '@/lib/pointsEngine';
 import { useMemberLevels } from '@/lib/memberLevels';
 import { SeasonCard } from '@/components/ui/Season';
@@ -43,29 +43,39 @@ export default function LeaderboardScreen() {
   const { start } = getCurrentWeekRange(family?.weekStartDay ?? 1);
   const weekLabel = getWeekLabel(start);
 
+  // The family ledger is kept LIVE app-wide (lib/memberLevels, one listener in
+  // tabs/_layout). The board is built from it, so it's correct the moment it
+  // shows — it used to run its own one-off query and could paint 0 points for
+  // everyone until a manual refresh (user report 2026-11-01).
+  const ledger = useMemberLevels((s) => s.txns);
+  const ledgerLoaded = useMemberLevels((s) => s.loaded);
+
   const loadLeaderboard = useCallback(async () => {
     if (!family?.id || !currentMember?.id) return;
+    if (!ledgerLoaded) return; // keep the spinner until the live ledger has arrived
     try {
       // Prefer the shared members cache (Phase 4 read-min); only fetch if the
       // store is still cold (first paint before the listener populated it).
       const membersList = members.length > 0 ? members : await getFamilyMembers(family.id);
 
-      const weekStart = new Date(start);
-      const txSnap = await Col.transactions(family.id)
-        .where('createdAt', '>=', firestore.Timestamp.fromDate(weekStart))
-        .get();
+      const { start: weekStart } = getCurrentWeekRange(family.weekStartDay ?? 1);
 
       // Exclude 'redemption' transactions — those are reward spends and must NOT
       // reduce a member's leaderboard rank (earned points stay earned).
       const totals: Record<string, number> = {};
-      for (const doc of txSnap.docs) {
-        const d = doc.data();
-        if (d.source === 'redemption') continue;
-        totals[d.memberId] = (totals[d.memberId] ?? 0) + d.delta;
+      for (const t of ledger) {
+        if (t.source === 'redemption' || !t.date || t.date < weekStart) continue;
+        totals[t.memberId] = (totals[t.memberId] ?? 0) + t.delta;
       }
       setWeeklyTotals(totals);
 
-      const completions = await getWeekCompletions(family.id, weekId);
+      // "Done this week" = completions dated inside the FAMILY week (the stored
+      // weekId is Sunday-start, so it reset every Sunday for Monday families).
+      const p = familyPeriod(new Date(), family.weekStartDay ?? 1);
+      const completions = (await getPeriodCompletions(family.id, p.weekIds, p.monthId)).filter((c: any) => {
+        const k = c.completedDate ?? dayKey(c.completedAt);
+        return !!k && k >= p.weekStartKey! && k <= p.weekEndKey!;
+      });
       const taskStats: Record<string, { completed: number; total: number }> = {};
       for (const c of completions) {
         if (!taskStats[c.memberId]) taskStats[c.memberId] = { completed: 0, total: 0 };
@@ -87,17 +97,11 @@ export default function LeaderboardScreen() {
       // Three-crowns row: needs LAST week's earned totals (for "most improved")
       // and any per-member weekly goals (for "goal crusher"). Both degrade
       // gracefully — a fresh family with no history simply shows unawarded slots.
-      const prevStart = new Date(start); prevStart.setDate(prevStart.getDate() - 7);
-      const prevEnd = new Date(start); prevEnd.setMilliseconds(prevEnd.getMilliseconds() - 1);
-      const prevSnap = await Col.transactions(family.id)
-        .where('createdAt', '>=', firestore.Timestamp.fromDate(prevStart))
-        .where('createdAt', '<=', firestore.Timestamp.fromDate(prevEnd))
-        .get();
+      const prevStart = new Date(weekStart); prevStart.setDate(prevStart.getDate() - 7);
       const lastWeekTotals: Record<string, number> = {};
-      for (const doc of prevSnap.docs) {
-        const d = doc.data();
-        if (d.source === 'redemption') continue;
-        lastWeekTotals[d.memberId] = (lastWeekTotals[d.memberId] ?? 0) + d.delta;
+      for (const t of ledger) {
+        if (t.source === 'redemption' || !t.date || t.date < prevStart || t.date >= weekStart) continue;
+        lastWeekTotals[t.memberId] = (lastWeekTotals[t.memberId] ?? 0) + t.delta;
       }
       const goals: Record<string, number> = {};
       for (const m of membersList as any[]) {
@@ -127,19 +131,11 @@ export default function LeaderboardScreen() {
     } finally {
       setIsLoading(false);
     }
-    // `members` is in deps so a rebuild uses the shared cache once it populates
-    // (onSnapshot only changes its identity when members actually change).
-  }, [family?.id, currentMember?.id, weekId, members, competitionMode]);
+    // `members` / `ledger` are in deps: the board rebuilds whenever the live
+    // members cache or the live ledger changes (no separate listener needed).
+  }, [family?.id, family?.weekStartDay, currentMember?.id, weekId, members, competitionMode, ledger, ledgerLoaded]);
 
-  useEffect(() => {
-    loadLeaderboard();
-    if (!family?.id) return;
-    const unsubscribe = Col.transactions(family.id)
-      .orderBy('createdAt', 'desc')
-      .limit(1)
-      .onSnapshot(() => { loadLeaderboard(); }, (err) => { if (__DEV__) console.error(err); });
-    return () => unsubscribe();
-  }, [loadLeaderboard, family?.id]);
+  useEffect(() => { loadLeaderboard(); }, [loadLeaderboard]);
 
   // Reload when the tab regains focus — a goal set on a member profile doesn't
   // emit a transaction, so the crowns row would otherwise show stale goal data

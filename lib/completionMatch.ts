@@ -22,6 +22,53 @@ export interface Period {
   todayStr: string; // YYYY-MM-DD
   weekId: string;   // YYYY-WNN
   monthId: string;  // YYYY-MM
+  /**
+   * The FAMILY week (from its weekStartDay), as inclusive YYYY-MM-DD keys.
+   * When present, a weekly task counts as done if it was completed on any day
+   * of this range. Needed because the stored `weekId` uses SUNDAY-start weeks,
+   * so for a Monday-start family a task done on Saturday looked "not done" on
+   * Sunday (bug found 2026-11-01).
+   */
+  weekStartKey?: string;
+  weekEndKey?: string;
+}
+
+/**
+ * The stored completion week id ("YYYY-WNN"). NOTE: Sunday-start numbering —
+ * it does NOT follow the family's weekStartDay; use familyPeriod() for "this
+ * week". lib/firebase getWeekIdForDate delegates here.
+ */
+export function weekIdOf(date: Date): string {
+  const startOfYear = new Date(date.getFullYear(), 0, 1);
+  const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / 86_400_000);
+  const weekNum = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
+  return `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+function keyOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Today's period for matching, built on the FAMILY week, plus the stored week
+ * ids that overlap it (a family week can span two Sunday-start ids) so callers
+ * can load every completion in the family week.
+ */
+export function familyPeriod(now: Date = new Date(), weekStartDay: number = 1): Period & { weekIds: string[] } {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12);
+  const start = new Date(today);
+  start.setDate(today.getDate() - ((today.getDay() - weekStartDay + 7) % 7));
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const weekIds = Array.from(new Set([weekIdOf(start), weekIdOf(end)]));
+  return {
+    todayStr: keyOf(today),
+    weekId: weekIdOf(today),
+    monthId: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`,
+    weekStartKey: keyOf(start),
+    weekEndKey: keyOf(end),
+    weekIds,
+  };
 }
 
 /** A Firestore Timestamp's local calendar day as YYYY-MM-DD (null if absent). */
@@ -48,7 +95,16 @@ export function findCompletionForPeriod<C extends MatchableCompletion>(
   if (recurrence === 'daily') {
     return all.find((c) => (c.completedDate ? c.completedDate === period.todayStr : dayKey(c.completedAt) === period.todayStr)) ?? null;
   }
-  if (recurrence === 'weekly') return all.find((c) => c.weekId === period.weekId) ?? null;
+  if (recurrence === 'weekly') {
+    if (period.weekStartKey && period.weekEndKey) {
+      const { weekStartKey: s, weekEndKey: e } = period;
+      return all.find((c) => {
+        const k = c.completedDate ?? dayKey(c.completedAt);
+        return !!k && k >= s && k <= e;
+      }) ?? null;
+    }
+    return all.find((c) => c.weekId === period.weekId) ?? null;
+  }
   if (recurrence === 'monthly') {
     return all.find((c) => (c.monthId ? c.monthId === period.monthId : monthKey(c.completedAt) === period.monthId)) ?? null;
   }

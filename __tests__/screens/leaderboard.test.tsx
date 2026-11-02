@@ -20,7 +20,8 @@ jest.mock('@/lib/firebase', () => ({
     { id: 'm3', displayName: 'Tommy', avatarEmoji: '🦊', role: 'child', familyId: 'f1', userId: '', isManaged: true, createdAt: {} },
   ]),
   getCurrentWeekId: jest.fn().mockReturnValue('2024-W21'),
-  getWeekCompletions: jest.fn().mockResolvedValue([]),
+  getPeriodCompletions: jest.fn().mockResolvedValue([]),
+  getMemberPersonalBest: jest.fn().mockResolvedValue(0),
   Col: {
     transactions: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),
@@ -66,7 +67,25 @@ describe('LeaderboardScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // The board reads the app-wide LIVE ledger (lib/memberLevels), not a one-off query.
+    const { useMemberLevels } = require('@/lib/memberLevels');
+    const now = { toDate: () => new Date() };
+    act(() => useMemberLevels.getState().setFromTransactions([
+      { memberId: 'm1', delta: 100, source: 'task', createdAt: now },
+      { memberId: 'm2', delta: 75, source: 'task', createdAt: now },
+      { memberId: 'm3', delta: 50, source: 'task', createdAt: now },
+    ]));
     LeaderboardScreen = require('@/app/app/tabs/leaderboard').default;
+  });
+
+  it('waits for the live ledger instead of painting 0 points (user report)', async () => {
+    const { useMemberLevels } = require('@/lib/memberLevels');
+    act(() => useMemberLevels.getState().reset());
+    const { queryAllByText } = render(<LeaderboardScreen />);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(queryAllByText('Tommy')).toHaveLength(0); // still loading — no zero board
+    act(() => useMemberLevels.getState().setFromTransactions([{ memberId: 'm3', delta: 50, source: 'task', createdAt: { toDate: () => new Date() } }]));
+    await waitFor(() => expect(queryAllByText('Tommy').length).toBeGreaterThan(0));
   });
 
   it('renders the This week header', async () => {
@@ -93,8 +112,8 @@ describe('LeaderboardScreen', () => {
   it("in 'kids' mode parents are listed as coaches, not ranked", async () => {
     const { useAuthStore } = require('@/store');
     (useAuthStore as jest.Mock).mockReturnValue({ member: mockMember, family: { ...mockFamily, competitionMode: 'kids' } });
-    const { findByText, queryByText } = render(<LeaderboardScreen />);
-    expect(await findByText('Tommy')).toBeTruthy();
+    const { findByText, findAllByText, queryByText } = render(<LeaderboardScreen />);
+    expect((await findAllByText('Tommy')).length).toBeGreaterThan(0);
     expect(await findByText(/COACHES/)).toBeTruthy();
     expect(queryByText(/\(You\)/)).toBeNull();
     (useAuthStore as jest.Mock).mockReturnValue({ member: mockMember, family: mockFamily });

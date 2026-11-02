@@ -11,7 +11,7 @@ import { router, useFocusEffect } from 'expo-router';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence, withDelay, interpolateColor } from 'react-native-reanimated';
 import { useAuthStore, useTaskStore, useFamilyStore, usePointsStore } from '@/store';
 import {
-  getActiveTasks, getWeekCompletions, completeTask as fbCompleteTask,
+  getActiveTasks, getPeriodCompletions, completeTask as fbCompleteTask,
   undoTaskCompletion, recoverFailedTask,
   getCurrentWeekId, getTodayDateString, getCurrentMonthId,
   Col, deleteTask, getRecentCompletions, uploadCompletionProof,
@@ -23,7 +23,7 @@ import { effectiveAssignee, isDueToday } from '@/lib/rotation';
 import { resolveTaskEmoji } from '@/lib/taskEmoji';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { useReminderStatus } from '@/lib/reminderStatus';
-import { findCompletionForPeriod, dayKey } from '@/lib/completionMatch';
+import { findCompletionForPeriod, dayKey, familyPeriod } from '@/lib/completionMatch';
 import { useKidMode } from '@/lib/kidMode';
 import { isKid } from '@/lib/familyGame';
 import { FamilyGoalBar } from '@/components/ui/FamilyGoal';
@@ -113,6 +113,10 @@ export default function HomeScreen() {
 
   const todayStr = getTodayDateString();
   const monthId = getCurrentMonthId();
+  // The FAMILY week (its weekStartDay) — a weekly task done on any day of it is
+  // done; also lists the stored week ids that overlap it (see completionMatch).
+  const period = familyPeriod(new Date(), family?.weekStartDay ?? 1);
+  const periodKey = `${period.weekIds.join(',')}|${period.monthId}|${period.todayStr}`;
 
   const loadTasks = useCallback(async () => {
     if (!family?.id || !effectiveMember?.id) return;
@@ -121,17 +125,17 @@ export default function HomeScreen() {
       // profile. Listener-driven reloads refresh in place (no blank flash).
       if (!hasLoadedRef.current) setLoadingTasks(true);
 
-      // Fetch tasks + this week's completions.
-      // getWeekCompletions uses a single .where('weekId') — no composite index needed.
+      // Fetch tasks + every completion in the family week and this month
+      // (single-field queries — no composite index needed).
       const [tasks, completions] = await Promise.all([
         getActiveTasks(family.id),
-        getWeekCompletions(family.id, weekId),
+        getPeriodCompletions(family.id, period.weekIds, period.monthId),
       ]);
 
       // Recurrence-aware completion check (shared with Kid Mode — see
       // lib/completionMatch). No Firestore index required.
       const isCompleted = (taskId: string, recurrence: string) =>
-        findCompletionForPeriod(completions, taskId, effectiveMember!.id, recurrence, { todayStr, weekId, monthId });
+        findCompletionForPeriod(completions, taskId, effectiveMember!.id, recurrence, period);
 
       // Join completions onto tasks — scoped to the active profile
       // When viewing another member's profile: show tasks assigned to them
@@ -174,7 +178,7 @@ export default function HomeScreen() {
       hasLoadedRef.current = true;
       setLoadingTasks(false);
     }
-  }, [family?.id, effectiveMember?.id, weekId]);
+  }, [family?.id, effectiveMember?.id, periodKey]);
 
   // Switching profiles should show the skeleton once for the new profile.
   useEffect(() => { hasLoadedRef.current = false; }, [effectiveMember?.id]);
@@ -296,10 +300,10 @@ export default function HomeScreen() {
       .where('isActive', '==', true)
       .onSnapshot(() => { loadTasks(); }, (err) => { if (__DEV__) console.error(err); });
     const unsubCompletions = Col.completions(family.id)
-      .where('weekId', '==', weekId)
+      .where('weekId', 'in', period.weekIds)
       .onSnapshot(() => { loadTasks(); }, (err) => { if (__DEV__) console.error(err); });
     return () => { unsubTasks(); unsubCompletions(); };
-  }, [family?.id, weekId, loadTasks]);
+  }, [family?.id, periodKey, loadTasks]);
 
   // Members come from the shared family-wide listener in tabs/_layout.tsx
   // (Phase 4 read-min) — no per-focus getFamilyMembers refetch here.

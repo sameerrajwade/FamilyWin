@@ -23,10 +23,10 @@ import { useAuthStore, useFamilyStore } from '@/store';
 import { useKidMode } from '@/lib/kidMode';
 import {
   Col, completeTask, withdrawPendingClaim, uploadCompletionProof,
-  getCurrentWeekId, getTodayDateString, getCurrentMonthId,
+  getCurrentWeekId,
   type TaskDoc, type CompletionDoc,
 } from '@/lib/firebase';
-import { findCompletionForPeriod } from '@/lib/completionMatch';
+import { findCompletionForPeriod, familyPeriod } from '@/lib/completionMatch';
 import { effectiveAssignee, isDueToday } from '@/lib/rotation';
 import { getCurrentWeekRange, summarizeMemberPoints } from '@/lib/pointsEngine';
 import { isKid, makeGateQuestion } from '@/lib/familyGame';
@@ -67,7 +67,9 @@ export default function KidModeScreen() {
   const [gateOpen, setGateOpen] = useState(false);
 
   const weekId = getCurrentWeekId();
-  const period = { todayStr: getTodayDateString(), weekId, monthId: getCurrentMonthId() };
+  // Matching uses the FAMILY week (weekly tasks) + this month (monthly tasks).
+  const period = familyPeriod(new Date(), family?.weekStartDay ?? 1);
+  const periodKey = `${period.weekIds.join(',')}|${period.monthId}`;
 
   // Kids can't back out of Kid Mode — only the grown-up gate exits.
   useEffect(() => {
@@ -92,11 +94,23 @@ export default function KidModeScreen() {
       setTasks(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
       setLoaded(true);
     }, () => setLoaded(true));
-    const unsubComps = Col.completions(family.id).where('weekId', '==', weekId).onSnapshot((snap) => {
-      setCompletions(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+    // Two single-field listeners (family week + this month), merged by id.
+    let byWeek: any[] = [], byMonth: any[] = [];
+    const merge = () => {
+      const m = new Map<string, any>();
+      for (const c of [...byWeek, ...byMonth]) m.set(c.id, c);
+      setCompletions(Array.from(m.values()));
+    };
+    const unsubComps = Col.completions(family.id).where('weekId', 'in', period.weekIds).onSnapshot((snap) => {
+      byWeek = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      merge();
     }, () => {});
-    return () => { unsubTasks(); unsubComps(); };
-  }, [family?.id, weekId]);
+    const unsubMonth = Col.completions(family.id).where('monthId', '==', period.monthId).onSnapshot((snap) => {
+      byMonth = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      merge();
+    }, () => {});
+    return () => { unsubTasks(); unsubComps(); unsubMonth(); };
+  }, [family?.id, periodKey]);
 
   // The kid's spendable bank (same single-field listener as Home).
   useEffect(() => {

@@ -9,6 +9,7 @@
 
 import { Timestamp } from '@react-native-firebase/firestore';
 import { firestore, auth, storage, functions } from '@/lib/fb';
+import { weekIdOf } from '@/lib/completionMatch';
 import { missedTaskPenaltyAmount, graceWindowDays, isPenaltyPaused, type MissedPenaltyMode } from '@/lib/pointsEngine';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -69,11 +70,9 @@ export const Col = {
 
 // ─── WEEK HELPERS (unchanged from supabase.ts) ───────────────────────────────
 
+/** Stored completion week id (Sunday-start numbering — see lib/completionMatch weekIdOf). */
 export function getWeekIdForDate(date: Date): string {
-  const startOfYear = new Date(date.getFullYear(), 0, 1);
-  const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / 86_400_000);
-  const weekNum = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
-  return `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  return weekIdOf(date);
 }
 
 export function getCurrentWeekId(): string {
@@ -756,6 +755,27 @@ export async function getWeekCompletions(
 ): Promise<CompletionDoc[]> {
   const snap = await Col.completions(familyId).where('weekId', '==', weekId).get();
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CompletionDoc, 'id'>) }));
+}
+
+/**
+ * Every completion that can matter for "is this task done now?": all stored
+ * week ids overlapping the FAMILY week (lib/completionMatch familyPeriod —
+ * a Monday-start week spans two Sunday-start ids) plus the current month (so a
+ * monthly task done in an earlier week still reads as done). Two single-field
+ * queries, merged by id — no composite index.
+ */
+export async function getPeriodCompletions(
+  familyId: string,
+  weekIds: string[],
+  monthId: string,
+): Promise<CompletionDoc[]> {
+  const [weekSnap, monthSnap] = await Promise.all([
+    Col.completions(familyId).where('weekId', 'in', weekIds).get(),
+    Col.completions(familyId).where('monthId', '==', monthId).get(),
+  ]);
+  const byId = new Map<string, CompletionDoc>();
+  for (const d of [...weekSnap.docs, ...monthSnap.docs]) byId.set(d.id, { id: d.id, ...(d.data() as Omit<CompletionDoc, 'id'>) });
+  return Array.from(byId.values());
 }
 
 /** YYYY-MM-DD in device local time */
