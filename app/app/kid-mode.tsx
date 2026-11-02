@@ -56,6 +56,7 @@ export default function KidModeScreen() {
   // Kids only — never parents, whatever the competition mode.
   const kids = useMemo(() => (members as any[]).filter(isKid), [members]);
   const kid = kids.find((k: any) => k.id === kidId) ?? kids[0] ?? null;
+  const teen = typeof kid?.age === 'number' && kid.age >= 12; // teen style: plain words, no burst
 
   const [tasks, setTasks] = useState<TaskDoc[]>([]);
   const [completions, setCompletions] = useState<CompletionDoc[]>([]);
@@ -163,9 +164,9 @@ export default function KidModeScreen() {
         pointValue: task.pointValue, taskTitle: task.title,
         requiresApproval: true, proofPhotoURL,
       });
-      setConfetti(true);
+      if (!teen) setConfetti(true);
       setTimeout(() => setConfetti(false), 1800);
-      setCheer(CHEERS[Math.floor(Math.random() * CHEERS.length)]);
+      setCheer(teen ? 'Sent for OK.' : CHEERS[Math.floor(Math.random() * CHEERS.length)]);
       setTimeout(() => setCheer(null), 2600);
     } catch {
       Alert.alert('Hmm, that didn’t save', 'Ask a grown-up to check the internet and try again.');
@@ -302,7 +303,7 @@ export default function KidModeScreen() {
                 </View>
                 {state === 'todo' && (
                   <TouchableOpacity style={styles.didItBtn} onPress={() => claim(task)} disabled={!!busyTaskId} accessibilityRole="button" accessibilityLabel={`I did ${task.title}`}>
-                    {busy ? <ActivityIndicator color="#FFF" /> : <Text style={styles.didItText}>I did it!</Text>}
+                    {busy ? <ActivityIndicator color="#FFF" /> : <Text style={styles.didItText}>{teen ? 'Done' : 'I did it!'}</Text>}
                   </TouchableOpacity>
                 )}
                 {state === 'waiting' && (

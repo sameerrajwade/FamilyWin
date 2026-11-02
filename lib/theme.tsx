@@ -133,7 +133,9 @@ const childDarkColors: ThemeColors = {
 // ─── THEME CONTEXT ────────────────────────────────────────────────────────────
 
 export type ThemeMode = 'light' | 'dark' | 'system';
-export type UIMode = 'adult' | 'child';
+// 'teen' (engagement 2026-11-01): the standard look, minus confetti bursts and
+// with plain wording ("Done", not "I did it!") — suggested for ages 12+.
+export type UIMode = 'adult' | 'child' | 'teen';
 
 interface ThemeContextValue {
   colors: ThemeColors;
@@ -141,6 +143,7 @@ interface ThemeContextValue {
   uiMode: UIMode;
   isDark: boolean;
   isChildMode: boolean;
+  isTeenMode: boolean;
   setThemeMode: (mode: ThemeMode) => void;
   setUIMode: (mode: UIMode) => void;
   // Child mode sizing helpers
@@ -202,6 +205,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     (themeMode === 'system' && systemScheme === 'dark');
 
   const isChildMode = uiMode === 'child';
+  const isTeenMode = uiMode === 'teen';
 
   const colors = isChildMode
     ? (isDark ? childDarkColors : childColors)
@@ -216,7 +220,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider value={{
-      colors, themeMode, uiMode, isDark, isChildMode,
+      colors, themeMode, uiMode, isDark, isChildMode, isTeenMode,
       setThemeMode, setUIMode, fontSize, spacing, iconSize,
     }}>
       {hydrated

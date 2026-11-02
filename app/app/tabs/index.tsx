@@ -79,7 +79,7 @@ export default function HomeScreen() {
   // behalf is the parent doing it, so that stays instant.
   const needsParentOk = (task: { requiresApproval?: boolean }) => !!task.requiresApproval || !isParent;
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
-  const { colors, isDark, isChildMode, fontSize } = useTheme();
+  const { colors, isDark, isChildMode, isTeenMode, fontSize } = useTheme();
 
   const [refreshing, setRefreshing] = useState(false);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
@@ -416,7 +416,7 @@ export default function HomeScreen() {
         // success buzz followed by a heavier thump, distinct from a single tap.
         setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}), 140);
         setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}), 300);
-        setShowConfetti(true);
+        if (!isTeenMode) setShowConfetti(true); // teen style: calmer, no burst
         setTimeout(() => { setShowConfetti(false); if (isChildMode) setShowCelebration(true); }, 2400);
         // G9: a happy moment — maybe ask the phone's grown-up for a rating.
         if (isParent && !actingAsMember && !isChildMode) setTimeout(() => maybeAskForReview(), 3000);

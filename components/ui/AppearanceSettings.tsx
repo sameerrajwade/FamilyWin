@@ -10,7 +10,7 @@ import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants
 // Drop this into the Settings screen
 
 export function AppearanceSettings() {
-  const { colors, themeMode, uiMode, isDark, isChildMode, setThemeMode, setUIMode } = useTheme();
+  const { colors, themeMode, uiMode, isDark, isChildMode, isTeenMode, setThemeMode, setUIMode } = useTheme();
 
   async function handleThemeMode(mode: ThemeMode) {
     await Haptics.selectionAsync();
@@ -20,6 +20,11 @@ export function AppearanceSettings() {
   async function handleChildModeToggle(val: boolean) {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setUIMode(val ? 'child' : 'adult');
+  }
+
+  async function handleTeenModeToggle(val: boolean) {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setUIMode(val ? 'teen' : 'adult');
   }
 
   const themeModes: { mode: ThemeMode; label: string; emoji: string }[] = [
@@ -75,6 +80,25 @@ export function AppearanceSettings() {
           onValueChange={handleChildModeToggle}
           trackColor={{ false: colors.border, true: colors.primary }}
           thumbColor={isChildMode ? '#FFFFFF' : '#F3F4F6'}
+        />
+      </View>
+
+      <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+      {/* Teen style (engagement 2026-11-01) — one of Child / Teen / neither */}
+      <View style={styles.row}>
+        <View style={styles.rowLeft}>
+          <Text style={[styles.rowLabel, { color: colors.text }]}>🧢 Teen style</Text>
+          <Text style={[styles.rowSub, { color: colors.textSecondary }]}>
+            {isTeenMode ? 'Calmer: no confetti bursts, plain wording' : 'Suggested for ages 12+'}
+          </Text>
+        </View>
+        <Switch
+          value={isTeenMode}
+          onValueChange={handleTeenModeToggle}
+          trackColor={{ false: colors.border, true: colors.primary }}
+          thumbColor={isTeenMode ? '#FFFFFF' : '#F3F4F6'}
+          accessibilityLabel="Teen style"
         />
       </View>
 
