@@ -689,7 +689,7 @@ export default function HomeScreen() {
                     { text: 'Nice', style: 'cancel' },
                     { text: 'Share 🎉', onPress: () => setShareData({
                       icon: 'trophy', hero: '✅', theme: 'perfect', eyebrow: 'PERFECT DAY',
-                      context: shareContext(family?.name),
+                      context: shareContext(),
                       title: `${who} finished every chore today!`,
                       subtitle: 'All daily tasks done → bonus chest unlocked.',
                       stats: [{ value: `${quest.total}/${quest.total}`, label: 'daily tasks' }, ...(streak > 0 ? [{ value: `${streak}`, label: 'day streak' }] : [])],

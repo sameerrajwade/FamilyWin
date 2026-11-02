@@ -163,7 +163,7 @@ export default function LeaderboardScreen() {
     hero: '🏆',
     theme: 'race',
     eyebrow: 'LIVE STANDINGS',
-    context: shareContext(family?.name, weekLabel),
+    context: shareContext(weekLabel),
     title: leaderIsMe ? `I'm leading our family's chore race!` : `${leader.displayName.split(' ')[0]} leads our family's chore race!`,
     subtitle: leadBy > 0 ? `${leadBy} points ahead — the week ends Sunday night.` : 'Neck and neck — the week ends Sunday night.',
     standings: standingsRows(leaderboard, leader.memberId),

@@ -1,12 +1,18 @@
 import { render } from '@testing-library/react-native';
-import { ShareCardBody, familyLabel, shareContext, standingsRows } from '@/components/ui/ShareCard';
+import { ShareCardBody, shareContext, standingsRows } from '@/components/ui/ShareCard';
 
 describe('share cards', () => {
-  it('names the family once, whatever the family called itself', () => {
-    expect(familyLabel('Rajwade')).toBe('The Rajwade family');
-    expect(familyLabel('Rajwade Family')).toBe('Rajwade Family');
-    expect(familyLabel('')).toBe('Our family');
-    expect(shareContext('Rajwade', 'Oct 27 – Nov 2')).toBe('The Rajwade family · Oct 27 – Nov 2');
+  it('never names the family (privacy) — just the game and the week', () => {
+    expect(shareContext('Oct 27 – Nov 2')).toBe('The family chore game · Oct 27 – Nov 2');
+    expect(shareContext()).toBe('The family chore game');
+  });
+
+  it('shows the top 3 only, never the whole family', () => {
+    const many = ['A', 'B', 'C', 'D', 'E'].map((n, i) => ({ memberId: n, displayName: `${n} Rajwade`, points: 100 - i }));
+    const rows = standingsRows(many, 'A');
+    expect(rows.map((r) => r.name)).toEqual(['A', 'B', 'C']);
+    const { queryByText } = render(<ShareCardBody data={{ icon: 'podium', title: 'x', standings: many.map((m) => ({ name: m.displayName, points: m.points })) }} />);
+    expect(queryByText('D Rajwade')).toBeNull();
   });
 
   it('standings use first names and mark who the card is about', () => {
@@ -24,12 +30,12 @@ describe('share cards', () => {
     const { getByText } = render(
       <ShareCardBody data={{
         icon: 'podium', hero: '🏆', theme: 'race', eyebrow: 'LIVE STANDINGS',
-        context: 'The Rajwade family · Oct 27 – Nov 2',
+        context: 'The family chore game · Oct 27 – Nov 2',
         title: "I'm leading our family's chore race!",
         standings: [{ name: 'Vian', points: 120, highlight: true }, { name: 'Vayu', points: 90 }],
       }} />,
     );
-    expect(getByText('The Rajwade family · Oct 27 – Nov 2')).toBeTruthy();
+    expect(getByText('The family chore game · Oct 27 – Nov 2')).toBeTruthy();
     expect(getByText("I'm leading our family's chore race!")).toBeTruthy();
     expect(getByText('120 pts')).toBeTruthy();
     expect(getByText('Vayu')).toBeTruthy();

@@ -304,7 +304,7 @@ export default function RewardsScreen() {
                       hero: '🎁',
                       theme: 'reward',
                       eyebrow: 'REWARD UNLOCKED',
-                      context: shareContext(family?.name),
+                      context: shareContext(),
                       title: `${who} earned "${rewardTitle}"!`,
                       subtitle: 'Chores done → points earned → reward unlocked.',
                       stats: [{ value: `${pointCost}`, label: 'points spent' }],

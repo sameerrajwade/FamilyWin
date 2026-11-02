@@ -6,7 +6,7 @@
  *
  * Every card answers "what is this?" for someone who has never heard of us:
  * the Chore League wordmark + "the family chore game" line sit on top, the
- * family name and week give the context, and the footer is a challenge
+ * week gives the context (never the family name — privacy), and the footer is a challenge
  * ("Think your family can beat us?") with where to get the app.
  *
  * Each share MOMENT (win, standings, streak, recap, level-up, reward, perfect
@@ -49,14 +49,14 @@ export interface ShareCardData {
   theme?: ShareCardTheme;
   /** Small uppercase chip, e.g. "WIN OF THE WEEK". */
   eyebrow?: string;
-  /** Context line under the wordmark, e.g. "The Rajwade family · Oct 27 – Nov 2". */
+  /** Context line under the wordmark, e.g. "The family chore game · Oct 27 – Nov 2". Never the family name. */
   context?: string;
   /** The headline, e.g. "Sameer won the week!". */
   title: string;
   subtitle?: string;
   /** Up to ~3 big stat tiles (points, streak, tasks…). */
   stats?: ShareCardStat[];
-  /** Live standings for race/win cards (top 4 shown). */
+  /** Live standings for race/win cards (top 3 shown). */
   standings?: ShareCardRow[];
   /** Footer challenge line. */
   cta?: string;
@@ -86,24 +86,24 @@ const CONFETTI: [x: number, y: number, w: number, h: number, c: string, r: numbe
   [0.22, 0.12, 5, 5, Brand.goldHi, 0], [0.72, 0.1, 10, 4, '#FFFFFF', -40],
 ];
 
-/** "Rajwade" → "The Rajwade family"; "Rajwade Family" stays as is. */
-export function familyLabel(name?: string | null): string {
-  const n = (name ?? '').trim();
-  if (!n) return 'Our family';
-  return /family/i.test(n) ? n : `The ${n} family`;
+/**
+ * Context line: "The family chore game · Oct 27 – Nov 2".
+ * PRIVACY (user rule 2026-11-01): share cards never name the family — they go
+ * to people outside it. Only first names of the top 3 ever appear.
+ */
+export function shareContext(when?: string | null): string {
+  return when ? `The family chore game · ${when}` : 'The family chore game';
 }
 
-/** Context line: "The Rajwade family · Oct 27 – Nov 2". */
-export function shareContext(familyName?: string | null, when?: string | null): string {
-  return when ? `${familyLabel(familyName)} · ${when}` : familyLabel(familyName);
-}
+/** Max rows on a shared card — top 3 only, never the whole family. */
+export const SHARE_TOP_N = 3;
 
-/** Leaderboard entries → card standings rows (first names, highlight one id). */
+/** Leaderboard entries → card standings rows: top 3, first names only, highlight one id. */
 export function standingsRows(
   entries: { memberId: string; displayName: string; avatarEmoji?: string | null; points: number }[],
   highlightId?: string | null,
 ): ShareCardRow[] {
-  return entries.slice(0, 4).map((e) => ({
+  return entries.slice(0, SHARE_TOP_N).map((e) => ({
     name: e.displayName.split(' ')[0], points: e.points, emoji: e.avatarEmoji, highlight: e.memberId === highlightId,
   }));
 }
@@ -111,7 +111,7 @@ export function standingsRows(
 /** The capturable branded card. Rendered inside the preview modal. */
 export function ShareCardBody({ data, width = 340 }: { data: ShareCardData; width?: number }) {
   const t = THEMES[data.theme ?? 'race'];
-  const rows = (data.standings ?? []).slice(0, 4);
+  const rows = (data.standings ?? []).slice(0, SHARE_TOP_N);
   return (
     <LinearGradient colors={t.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.card, { width }]}>
       {CONFETTI.map(([x, y, w, h, c, r], i) => (

@@ -80,7 +80,7 @@ export default function FamilyScreen() {
     hero: '🏠',
     theme: 'invite',
     eyebrow: "YOU'RE INVITED",
-    context: shareContext(family.name),
+    context: shareContext(),
     title: 'Come play our family chore game!',
     subtitle: 'Do chores, earn points, win the week. Get the app and join with this code:',
     stats: [{ value: family.inviteCode, label: 'family code' }],
