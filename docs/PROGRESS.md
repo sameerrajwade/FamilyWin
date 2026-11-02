@@ -13,6 +13,14 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 73 (2026-11-02, overnight) — 12 review points, user decisions, push, website
+- **Current State:** APK installed 00:35 (launch ✓, no crash). Functions deployed (onCompletionCreated/Updated, onRedemptionUpdated NEW, onTransactionCreated, weeklyTwistNotice) + rules. GitHub main pushed (71 commits). Tests: app 502, functions 85, rules 61.
+- **Built (review points 1–7, 14–18):** push taps route (FCM onNotificationOpenedApp/getInitialNotification); streak on pill; copy (family code, Family organizer, Not this time, sets, US Behavior, history "Missed (deadline)"); ONE approvals inbox (claims + reward requests, Send back with reason chips, floating sticker bar; lib/pending → same counts everywhere); kid sees "↩️ Sent back: note" + push on decisions; Today one promo slot (kudos>invite>discover>twist), twist needs 2+ players & tour done, no empty bounty box (+ menu); Kid Mode spend sheet + stickers + ✨ chips; Rewards → Approvals link + toast; Create Task "More options" + sticky Create; two-tone splash title, tagline on share cards.
+- **User decisions built:** no "took the lead" push for kids <10 + once/day + new wording; 4 frequent pushes/person/day cap (pushToMember); twist/comeback bonus txs carry bonusKind and are excluded from cash-out (cashablePoints); ✨ replaces 🎲.
+- **Website:** repo sameerrajwade/asavvylabs-site (public, like sofra-site), live at https://sameerrajwade.github.io/asavvylabs-site/ → choreleague.savvylabs.dev after DNS. Shared partials + build checks, CSP, self-hosted font, security.txt, delete-account page, screenshot/video slots. Actions workflow parked in ci/pages.yml (gh token lacks workflow scope).
+- **Docs:** `docs/PENDING.md` (one pending list), `docs/SOFRA_SITE_REVIEW_2026-11-02.md`.
+- **Next Up:** see docs/PENDING.md.
+
 ## Iteration 72 (2026-11-02) — Email verification, weekly twist push, expert re-reviews
 - **Current State:** APK installed 23:58 with email verification + twist push. Rules + `weeklyTwistNotice` deployed. Tests: app 499, functions 82, rules 61.
 - **Email verification** (`0334240`, user picked Firebase's built-in link email): signUp sends the link; new unverified password accounts (created ≥2026-11-02) land on `/auth/verify-email`; rules block creating users/family/member until verified (existing /users docs + Google pass).
