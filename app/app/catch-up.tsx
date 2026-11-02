@@ -210,7 +210,7 @@ function createStyles(colors: ThemeColors) {
     taskTitle: { fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.text },
     taskMeta: { fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.textMuted, marginTop: 3 },
     doneBtn: { backgroundColor: colors.success, borderRadius: BorderRadius.md, paddingHorizontal: 16, paddingVertical: 10, minWidth: 104, alignItems: 'center' },
-    doneBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFFFFF' },
+    doneBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#1A1830' },
     undoBtn: { backgroundColor: colors.danger + '18', borderWidth: 1.5, borderColor: colors.danger + '55', borderRadius: BorderRadius.md, paddingHorizontal: 16, paddingVertical: 9, minWidth: 104, alignItems: 'center' },
     undoBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textDanger },
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, gap: Spacing.sm },

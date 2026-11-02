@@ -32,7 +32,7 @@ export function BrandLockup({ size = 'md', style }: { size?: LockupSize; style?:
   };
   const { mark, font } = cfg[size];
   const loot = isDark ? Brand.purpleLight : Brand.purple;
-  const board = isDark ? Brand.orangeLight : Brand.orange;
+  const board = isDark ? Brand.goldLid : Brand.goldDeep; // gold "League" (user pick 2026-11-01)
   return (
     <View
       style={[styles.row, style]}

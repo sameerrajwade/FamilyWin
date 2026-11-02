@@ -928,6 +928,8 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
   const isDisabled = (isDone && !canTapToUndo) || (isFailed && !canRecover) || isPending || isCompleting || isReadOnly;
   const catColor = CATEGORY_COLORS[task.category] ?? colors.primary;
   const diffColor = task.difficulty === 'easy' ? colors.success : task.difficulty === 'medium' ? colors.warning : colors.danger;
+  // Text on the pill uses the readable text tones (the fill/dot keep diffColor).
+  const diffText = task.difficulty === 'easy' ? colors.textSuccess : task.difficulty === 'medium' ? colors.textWarning : colors.textDanger;
 
   function openEdit() {
     setMenuOpen(false);
@@ -938,7 +940,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
   // Gamified recurrence pill — a live stat, not a grey label.
   const rec = task.recurrence;
   const recPill = rec === 'daily'
-    ? { icon: '🔥', label: streak > 0 ? `${streak}` : 'Daily', color: colors.warning }
+    ? { icon: '🔥', label: streak > 0 ? `${streak}` : 'Daily', color: colors.textWarning }
     : rec === 'weekly'
     ? { icon: '📅', label: 'Weekly', color: colors.textAccent }
     : rec === 'monthly'
@@ -983,7 +985,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
             <View style={styles.taskMeta}>
               <View style={[styles.diffPill, { backgroundColor: diffColor + '20' }]}>
                 <View style={[styles.diffDot, { backgroundColor: diffColor }]} />
-                <Text style={[styles.diffPillText, { color: diffColor }]}>{task.difficulty}</Text>
+                <Text style={[styles.diffPillText, { color: diffText }]}>{task.difficulty}</Text>
               </View>
               <View style={[styles.recPill, { backgroundColor: recPill.color + '1F' }]}>
                 <Text style={styles.recPillIcon}>{recPill.icon}</Text>
@@ -1000,7 +1002,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
           <View style={styles.taskRight}>
             {isCompleting ? <ActivityIndicator color={colors.primary} size="small" /> :
               isDone ? <View style={[styles.statusIcon, { backgroundColor: colors.success }, Shadow.sm]}><Text style={styles.statusIconText}>✓</Text></View> :
-              isPending ? <View style={[styles.pendingPill, { backgroundColor: colors.warning + '22', borderColor: colors.warning }]}><Text style={[styles.pendingPillText, { color: colors.warning }]}>⏳ Pending</Text></View> :
+              isPending ? <View style={[styles.pendingPill, { backgroundColor: colors.warning + '22', borderColor: colors.warning }]}><Text style={[styles.pendingPillText, { color: colors.textWarning }]}>⏳ Pending</Text></View> :
               isFailed ? <View style={[styles.statusIcon, { backgroundColor: colors.warning }]}><Text style={styles.statusIconText}>↻</Text></View> :
               isReadOnly ? <View style={[styles.statusIcon, { backgroundColor: colors.border }]}><Text style={{ fontSize: 16 }}>👁</Text></View> :
               <View style={[styles.rewardChip, { backgroundColor: colors.primary }, Shadow.sm]}>

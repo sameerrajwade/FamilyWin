@@ -189,7 +189,7 @@ export default function ApprovalsScreen() {
           accessibilityLabel={`Approve all ${rows.length}`}
         >
           {approvingAll
-            ? <ActivityIndicator color="#FFF" />
+            ? <ActivityIndicator color={'#1A1830'} />
             : <Text style={styles.approveAllText}>✓ Approve all {rows.length}</Text>}
         </TouchableOpacity>
       )}
@@ -285,7 +285,7 @@ function createStyles(colors: ThemeColors) {
     container: { flex: 1, backgroundColor: colors.background },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.lg },
     approveAllBtn: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md, borderRadius: BorderRadius.lg, paddingVertical: 14, alignItems: 'center', ...Shadow.sm },
-    approveAllText: { color: '#FFFFFF', fontSize: FontSize.md, fontFamily: FontFamily.extraBold },
+    approveAllText: { color: '#1A1830', fontSize: FontSize.md, fontFamily: FontFamily.extraBold },
     backBtn: { flexDirection: 'row', alignItems: 'center', width: 60 },
     backText: { fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: colors.textAccent },
     headerTitle: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold, color: colors.text },
@@ -303,7 +303,7 @@ function createStyles(colors: ThemeColors) {
     rejectBtn: { flex: 1, borderWidth: 1.5, borderRadius: BorderRadius.md, paddingVertical: 11, alignItems: 'center' },
     rejectBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
     approveBtn: { flex: 1, borderRadius: BorderRadius.md, paddingVertical: 11, alignItems: 'center' },
-    approveBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFFFFF' },
+    approveBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#1A1830' },
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, gap: Spacing.sm },
     emptyTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, color: colors.text, marginTop: Spacing.sm },
     emptySub: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },

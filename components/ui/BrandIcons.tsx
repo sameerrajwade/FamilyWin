@@ -183,14 +183,14 @@ export function AppIconTile({ size = 88, name = 'chest', style }: {
   );
 }
 
-// ── Wordmark: "Chore"(purple) + " League"(orange), optional tagline ─────────────
+// ── Wordmark: "Chore"(purple) + " League"(gold — matches the chest; user pick 2026-11-01) ──
 export function Wordmark({ size = 32, tagline = false, onDark = false }: {
   size?: number;
   tagline?: boolean;
   onDark?: boolean;
 }) {
   const loot = onDark ? Brand.purpleLight : Brand.purple;
-  const board = onDark ? Brand.orangeLight : Brand.orange;
+  const board = onDark ? Brand.goldLid : Brand.goldDeep;
   const tagColor = onDark ? Colors.textSecondaryDark : Colors.textSecondary;
   return (
     <View>

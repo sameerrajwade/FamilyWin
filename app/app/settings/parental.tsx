@@ -287,7 +287,7 @@ export default function ParentalControlsScreen() {
           {isFamilyPaused ? (
             <View style={styles.pausedWrap}>
               <View style={[styles.pausedBadge, { backgroundColor: colors.warning + '1E', borderColor: colors.warning + '66' }]}>
-                <Text style={[styles.pausedBadgeText, { color: colors.warning }]}>⏸ Paused {pauseEndLabel}</Text>
+                <Text style={[styles.pausedBadgeText, { color: colors.textWarning }]}>⏸ Paused {pauseEndLabel}</Text>
               </View>
               <TouchableOpacity
                 style={[styles.resumeBtn, { backgroundColor: colors.primary }]}

@@ -200,8 +200,8 @@ export default function DisciplineLogScreen() {
                 <TouchableOpacity style={[styles.typeChip, { backgroundColor: colors.surface, borderColor: colors.border },
                   isBonus && { backgroundColor: colors.success, borderColor: colors.success }]}
                   onPress={() => setIsBonus(true)}>
-                  <Icon name="star" size={20} color={isBonus ? '#FFF' : colors.success} />
-                  <Text style={[styles.typeLabel, { color: isBonus ? '#FFF' : colors.text }]}>Bonus</Text>
+                  <Icon name="star" size={20} color={isBonus ? '#1A1830' : colors.textSuccess} />
+                  <Text style={[styles.typeLabel, { color: isBonus ? '#1A1830' : colors.text }]}>Bonus</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -225,7 +225,7 @@ export default function DisciplineLogScreen() {
                           delayLongPress={350}
                         >
                           <Text style={[styles.reasonChipText, { color: colors.text }]}>{p.emoji} {p.title}</Text>
-                          <Text style={[styles.reasonChipPoints, { color: colors.success }]}>+{p.points} pts</Text>
+                          <Text style={[styles.reasonChipPoints, { color: colors.textSuccess }]}>+{p.points} pts</Text>
                         </TouchableOpacity>
                       );
                     })}

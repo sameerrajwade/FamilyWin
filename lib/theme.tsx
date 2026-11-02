@@ -28,6 +28,11 @@ export interface ThemeColors {
   textAccent: string;
   /** Red TEXT. Same as `danger` in light mode; softened in dark mode. */
   textDanger: string;
+  /** Green / amber TEXT (on a tint or a plain surface). The bright fills read
+   *  1.5–1.7:1 as light-mode text, so light mode uses deeper tones (user-approved
+   *  2026-11-01); dark mode keeps the brand fills, which already pass. */
+  textSuccess: string;
+  textWarning: string;
   border: string;
   borderLight: string;
   tabBar: string;
@@ -54,9 +59,12 @@ const lightColors: ThemeColors = {
   card: '#FFFFFF',
   text: '#1A1830',
   textSecondary: '#6B7280',
-  textMuted: '#9CA3AF',
+  // Hint grey darkened 2026-11-01 (#9CA3AF read 2.5:1 on white → 4.8:1).
+  textMuted: '#6B7280',
   textAccent: '#6C63FF',
   textDanger: '#FF1744',
+  textSuccess: '#127A43',
+  textWarning: '#8A5A00',
   border: '#E7E5F2',
   borderLight: '#F3F2FB',
   tabBar: '#FFFFFF',
@@ -87,6 +95,8 @@ const darkColors: ThemeColors = {
   textMuted: '#A1A7B3',
   textAccent: '#9D97FF',
   textDanger: '#FF8A8A',
+  textSuccess: '#00E676',
+  textWarning: '#FFAB00',
   border: '#2E2B40',
   borderLight: '#242235',
   tabBar: '#1A1826',

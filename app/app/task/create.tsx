@@ -797,7 +797,7 @@ function createStyles(colors: ThemeColors) {
   suggestMeta: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
   suggestReuse: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: colors.textAccent },
   duplicateBox: { marginTop: Spacing.sm, backgroundColor: colors.warning + '15', borderRadius: BorderRadius.md, borderWidth: 1.5, borderColor: colors.warning + '55', padding: Spacing.md },
-  duplicateTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.warning, marginBottom: 6 },
+  duplicateTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: colors.textWarning, marginBottom: 6 },
   duplicateText: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.text, lineHeight: 18, marginBottom: Spacing.sm },
   duplicateBtn: { backgroundColor: colors.warning, borderRadius: BorderRadius.md, paddingVertical: 10, alignItems: 'center' },
   duplicateBtnText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold, color: '#FFF' },

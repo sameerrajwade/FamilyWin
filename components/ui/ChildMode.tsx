@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   },
   childCompleteBtnText: { fontSize: 20, fontFamily: 'Nunito-Black', color: '#FFFFFF', letterSpacing: 0.5 },
   childDoneBadge: { borderRadius: 16, paddingVertical: 12, alignItems: 'center' },
-  childDoneBadgeText: { fontSize: 18, fontFamily: 'Nunito-Bold', color: '#FFFFFF' },
+  childDoneBadgeText: { fontSize: 18, fontFamily: 'Nunito-Bold', color: '#1A1830' },
 
   // Celebration overlay
   celebrationOverlay: {

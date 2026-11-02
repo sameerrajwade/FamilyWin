@@ -497,7 +497,7 @@ export default function OnboardingScreen() {
             <View key={i} style={styles.addedChildRow}>
               <Text style={{ fontSize: 28 }}>{c.emoji}</Text>
               <Text style={{ fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.text, flex: 1 }}>{c.name}</Text>
-              <Text style={{ fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.success }}>✓ Added</Text>
+              <Text style={{ fontSize: FontSize.xs, fontFamily: FontFamily.semiBold, color: colors.textSuccess }}>✓ Added</Text>
             </View>
           ))}
 
@@ -537,8 +537,8 @@ export default function OnboardingScreen() {
             disabled={isAddingChild}
           >
             {isAddingChild
-              ? <ActivityIndicator color="#FFF" />
-              : <Text style={styles.primaryBtnText}>➕ Add This Child</Text>}
+              ? <ActivityIndicator color={'#1A1830'} />
+              : <Text style={[styles.primaryBtnText, { color: '#1A1830' }]}>➕ Add This Child</Text>}
           </TouchableOpacity>
 
           {addedChildren.length > 0 && (

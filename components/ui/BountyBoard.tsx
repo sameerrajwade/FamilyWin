@@ -293,7 +293,7 @@ function createStyles(colors: ThemeColors) {
     notYetBtn: { borderRadius: BorderRadius.full, borderWidth: 1.5, borderColor: colors.border, paddingHorizontal: Spacing.sm, paddingVertical: 7 },
     notYetText: { color: colors.textSecondary, fontFamily: FontFamily.bold, fontSize: FontSize.xs },
     approveBtn: { backgroundColor: colors.success, borderRadius: BorderRadius.full, paddingHorizontal: Spacing.md, paddingVertical: 8 },
-    approveText: { color: '#FFFFFF', fontFamily: FontFamily.extraBold, fontSize: FontSize.sm },
+    approveText: { color: '#1A1830', fontFamily: FontFamily.extraBold, fontSize: FontSize.sm },
     sheetWrap: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
     sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.sm },
     sheetTitle: { fontSize: FontSize.xl, fontFamily: FontFamily.extraBold, color: colors.text },

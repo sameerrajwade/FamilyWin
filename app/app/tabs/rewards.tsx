@@ -412,7 +412,7 @@ export default function RewardsScreen() {
               </View>
               {allowanceOn && (
                 <View style={[styles.cashRow, { borderTopColor: colors.border }]}>
-                  <Text style={[styles.cashValue, { color: colors.success }]}>
+                  <Text style={[styles.cashValue, { color: colors.textSuccess }]}>
                     ≈ {formatCash(cashValue, currency)}
                     <Text style={[styles.pointsHint, { color: colors.textMuted }]}>  ({rate} pts = {currency}1)</Text>
                   </Text>
@@ -747,8 +747,8 @@ function RewardCard({ reward, spendablePoints, isRedeeming, onRedeem, isSaving, 
 function StatusBadge({ status }: { status: string }) {
   const { colors } = useTheme();
   const configs: Record<string, { bg: string; color: string; label: string }> = {
-    pending:  { bg: colors.warning + '22', color: colors.warning, label: 'Pending' },
-    approved: { bg: colors.success + '22', color: colors.success, label: 'Approved' },
+    pending:  { bg: colors.warning + '22', color: colors.textWarning, label: 'Pending' },
+    approved: { bg: colors.success + '22', color: colors.textSuccess, label: 'Approved' },
     rejected: { bg: colors.danger + '22',  color: colors.textDanger,  label: 'Rejected' },
   };
   const cfg = configs[status] ?? { bg: colors.border, color: colors.textMuted, label: status };
@@ -960,7 +960,7 @@ const styles = StyleSheet.create({
   historyTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
   historySubtitle: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 2 },
   approveBtn: { backgroundColor: Colors.success, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.sm, paddingVertical: 8, minWidth: 80, alignItems: 'center' },
-  approveBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: '#FFF' },
+  approveBtnText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: '#1A1830' },
 
   statusBadge: { borderRadius: 20, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
   statusText: { fontSize: FontSize.xs, fontFamily: FontFamily.bold },
