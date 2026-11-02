@@ -235,7 +235,7 @@ export default function OnboardingScreen() {
 
   async function handleJoinFamily() {
     if (!inviteCode.trim() || inviteCode.length < 6) {
-      Alert.alert('Code not found', 'Please enter a valid 6-character invite code.');
+      Alert.alert('Code not found', 'Please enter a valid 6-character family code.');
       return;
     }
     if (!uid) return;
@@ -282,7 +282,7 @@ export default function OnboardingScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace('/app/tabs');
     } catch (error: any) {
-      Alert.alert('Code not found', 'Could not find a family with that invite code.');
+      Alert.alert('Code not found', 'Could not find a family with that family code.');
     } finally {
       setIsLoading(false);
     }
@@ -319,7 +319,7 @@ export default function OnboardingScreen() {
             <Text style={styles.choiceEmoji}>🏠</Text>
             <View style={styles.choiceInfo}>
               <Text style={styles.choiceTitle}>Create a New Family</Text>
-              <Text style={styles.choiceDesc}>Start fresh — you&apos;ll get an invite code to share</Text>
+              <Text style={styles.choiceDesc}>Start fresh — you&apos;ll get a family code to share</Text>
             </View>
             <Text style={styles.choiceArrow}>→</Text>
           </TouchableOpacity>
@@ -327,7 +327,7 @@ export default function OnboardingScreen() {
             <Text style={styles.choiceEmoji}>🔗</Text>
             <View style={styles.choiceInfo}>
               <Text style={styles.choiceTitle}>Join Existing Family</Text>
-              <Text style={styles.choiceDesc}>Enter an invite code from your family admin</Text>
+              <Text style={styles.choiceDesc}>Enter the family code a parent shared with you</Text>
             </View>
             <Text style={styles.choiceArrow}>→</Text>
           </TouchableOpacity>
@@ -384,7 +384,7 @@ export default function OnboardingScreen() {
               <Text style={styles.previewEmoji}>{selectedEmoji}</Text>
               <View>
                 <Text style={styles.previewName}>{displayName}</Text>
-                <Text style={styles.previewRole}>{flow === 'join' ? 'Family member' : 'Admin Parent'}</Text>
+                <Text style={styles.previewRole}>{flow === 'join' ? 'Family member' : 'Family organizer'}</Text>
               </View>
             </View>
           ) : null}
@@ -425,8 +425,8 @@ export default function OnboardingScreen() {
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <StepHeader step={2} total={2} onBack={() => setStep('profile')} />
-          <Text style={styles.stepTitle}>Enter Invite Code</Text>
-          <Text style={styles.stepSubtitle}>Ask your family admin for the 6-character code</Text>
+          <Text style={styles.stepTitle}>Enter family code</Text>
+          <Text style={styles.stepSubtitle}>Ask a parent in your family for the 6-character code</Text>
           <TextInput
             style={[styles.input, styles.codeInput]}
             value={inviteCode} onChangeText={(t) => setInviteCode(t.toUpperCase())}
@@ -447,18 +447,18 @@ export default function OnboardingScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={[styles.stepIcon, { alignItems: 'center' }]}><EmojiIcon emoji="🎉" size={64} /></View>
           <Text style={styles.stepTitle}>Family Created!</Text>
-          <Text style={styles.stepSubtitle}>Your family is ready. Share the invite code or add children now.</Text>
+          <Text style={styles.stepSubtitle}>Your family is ready. Share the family code or add children now.</Text>
           <View style={styles.inviteCodeCard}>
-            <Text style={styles.inviteCodeLabel}>Invite Code (for adults with phones)</Text>
+            <Text style={styles.inviteCodeLabel}>Family code (for grown-ups with phones)</Text>
             <Text style={styles.inviteCode}>{generatedCode}</Text>
             <Text style={styles.inviteCodeHint}>Share this so your spouse or older kids can join</Text>
             <TouchableOpacity
               style={[styles.primaryBtn, { backgroundColor: colors.accent, marginTop: Spacing.md }]}
               onPress={() => Share.share({
-                message: `Join our family on Chore League! 🏆\n\nDownload Chore League and enter invite code: ${generatedCode}\n\nComplete tasks, earn points, and win the week!`,
+                message: `Join our family on Chore League! 🏆\n\nDownload Chore League and enter family code: ${generatedCode}\n\nComplete tasks, earn points, and win the week!`,
               })}
             >
-              <Text style={styles.primaryBtnText}>📤 Share Invite Code</Text>
+              <Text style={styles.primaryBtnText}>📤 Share family code</Text>
             </TouchableOpacity>
           </View>
 

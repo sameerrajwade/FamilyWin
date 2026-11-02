@@ -367,7 +367,7 @@ const WEEKDAY_PLURAL = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursda
 // Strip the boilerplate prefix auto-fail/discipline reasons carry, e.g.
 // "Missed: Make the bed" or "Auto-failed: Dishes" → "Make the bed" / "Dishes".
 function cleanReason(reason: string): string {
-  return reason.replace(/^(missed|auto-?failed|failed|penalty|deducted)\s*[:\-–]\s*/i, '').trim() || reason;
+  return reason.replace(/^(missed(?: \(deadline\))?|auto-?failed|failed|penalty|deducted)\s*[:\-–]\s*/i, '').trim() || reason;
 }
 
 // A reversal (task "Undo") is bookkeeping — it cancels an earlier completion and

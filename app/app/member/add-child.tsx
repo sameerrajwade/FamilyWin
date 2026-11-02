@@ -132,7 +132,7 @@ export default function AddChildScreen() {
               • {displayName.trim() || 'The child'} will appear on the leaderboard and can be assigned tasks.{'\n'}
               • From the Home screen, tap the profile banner to switch to their view.{'\n'}
               • When you mark a task done in their view, points go to them.{'\n'}
-              • If they get a phone later, they can claim this profile by joining with your invite code.
+              • If they get a phone later, they can claim this profile by joining with your family code.
             </Text>
           </View>
 

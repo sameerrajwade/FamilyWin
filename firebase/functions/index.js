@@ -114,7 +114,7 @@ async function awardForCompletion(familyId, completionId, c) {
     }
     if (penalty <= 0) return;
     delta = -penalty;
-    reason = c.penaltyKind === 'autofail' ? `Auto-failed: ${title}` : `Missed: ${title}`;
+    reason = c.penaltyKind === 'autofail' ? `Missed (deadline): ${title}` : `Missed: ${title}`;
   } else {
     // Phase D2 — fairness lock: a pending claim freezes the task's point value
     // at claim time (stampLockedPoints, below). If present we award THAT, so a

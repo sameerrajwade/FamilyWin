@@ -448,7 +448,7 @@ export default function RewardsScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Available Rewards</Text>
                 {isParent && rewards.length > 0 && (
                   <TouchableOpacity onPress={() => router.push('/app/reward/packs' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={[styles.packsLink, { color: colors.textAccent }]}>🎁 Packs</Text>
+                    <Text style={[styles.packsLink, { color: colors.textAccent }]}>🎁 Ideas</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -457,7 +457,7 @@ export default function RewardsScreen() {
                   <EmptyState
                     emoji="🎁"
                     title="No rewards yet"
-                    subtitle={isParent ? 'Add a ready-made reward pack, or create your own.' : 'Ask a parent to add rewards'}
+                    subtitle={isParent ? 'Add a ready-made reward set, or create your own.' : 'Ask a parent to add rewards'}
                     colors={colors}
                   />
                   {isParent && (
@@ -466,7 +466,7 @@ export default function RewardsScreen() {
                       onPress={() => router.push('/app/reward/packs' as any)}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.packsCtaText}>🎁 Browse reward packs</Text>
+                      <Text style={styles.packsCtaText}>🎁 Browse reward sets</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -749,7 +749,7 @@ function StatusBadge({ status }: { status: string }) {
   const configs: Record<string, { bg: string; color: string; label: string }> = {
     pending:  { bg: colors.warning + '22', color: colors.textWarning, label: 'Pending' },
     approved: { bg: colors.success + '22', color: colors.textSuccess, label: 'Approved' },
-    rejected: { bg: colors.danger + '22',  color: colors.textDanger,  label: 'Rejected' },
+    rejected: { bg: colors.danger + '22',  color: colors.textDanger,  label: 'Not this time' },
   };
   const cfg = configs[status] ?? { bg: colors.border, color: colors.textMuted, label: status };
   return (

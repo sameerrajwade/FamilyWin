@@ -1,6 +1,6 @@
-# FamilyWin 🏆
+# Chore League 🏆
 
-**Turn household chores into a family game.** FamilyWin is a mobile app where
+**Turn household chores into a family game.** Chore League is a mobile app where
 family members complete daily and weekly tasks to earn points. Whoever has the
 most points when the week ends (Sunday midnight) wins — with a live
 leaderboard, a rewards store kids can redeem points in, and parental tools for

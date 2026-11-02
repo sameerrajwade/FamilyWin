@@ -63,3 +63,14 @@ describe('G4: every reminder is on by default, each type can be switched off', (
     expect(scheduledTypes()).toEqual([]);
   });
 });
+
+describe('tapping a notification opens the right screen', () => {
+  const { routeForPushData } = require('@/lib/notifications');
+  it('server pushes and local reminders map to screens', () => {
+    expect(routeForPushData({ screen: 'approvals' })).toBe('/app/approvals');
+    expect(routeForPushData({ screen: 'tasks', twist: 'team-week' })).toBe('/app/tabs');
+    expect(routeForPushData({ screen: 'leaderboard' })).toBe('/app/tabs/leaderboard');
+    expect(routeForPushData({})).toBeNull();
+    expect(routeForPushData(null)).toBeNull();
+  });
+});

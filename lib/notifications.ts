@@ -323,3 +323,19 @@ export function setupNotificationListeners(
   };
 }
 
+
+// ─── Where a tapped notification goes ────────────────────────────────────────
+/**
+ * Maps a notification's data.screen to a route. Used for BOTH local
+ * reminders (Expo) and server pushes (FCM: kid claims, weekly twist, Sunday
+ * results, overtaken) — server pushes used to just open the app.
+ */
+export function routeForPushData(data: Record<string, unknown> | null | undefined): string | null {
+  switch (data?.screen) {
+    case 'leaderboard': return '/app/tabs/leaderboard';
+    case 'tasks': return '/app/tabs';
+    case 'report': return '/app/report';
+    case 'approvals': return '/app/approvals';
+    default: return null;
+  }
+}

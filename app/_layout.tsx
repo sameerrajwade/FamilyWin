@@ -1,4 +1,4 @@
-import { useEffect, useState, Component } from 'react';
+import { useEffect, useRef, useState, Component } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring,
@@ -10,12 +10,12 @@ import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth } from '@/lib/fb';
+import { auth, messaging } from '@/lib/fb';
 import { getUserFamilyAndMember } from '@/lib/firebase';
 import { configureGoogleSignIn } from '@/lib/googleAuth';
 import { setupAppCheck } from '@/lib/appCheck';
 import { useAuthStore } from '@/store';
-import { setupNotificationListeners } from '@/lib/notifications';
+import { setupNotificationListeners, routeForPushData } from '@/lib/notifications';
 import { registerBackgroundTasks } from '@/lib/backgroundTasks';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChestMark } from '@/components/ui/BrandIcons';
@@ -412,15 +412,25 @@ function InnerLayout() {
         if (__DEV__) console.log('Notification:', notification.request.content.title);
       },
       (response) => {
-        const data = response.notification.request.content.data as Record<string, string>;
-        if (data?.screen === 'leaderboard') router.push('/app/tabs/leaderboard');
-        if (data?.screen === 'tasks') router.push('/app/tabs');
-        if (data?.screen === 'report') router.push('/app/report' as any);
-        if (data?.screen === 'approvals') router.push('/app/approvals' as any);
+        const to = routeForPushData(response.notification.request.content.data as Record<string, string>);
+        if (to) router.push(to as any);
       },
     );
-    return cleanup;
+    // Server (FCM) pushes: app in the background → onNotificationOpenedApp;
+    // app was closed → getInitialNotification (routed once navigation is ready).
+    let offOpened: (() => void) | undefined;
+    try {
+      offOpened = messaging().onNotificationOpenedApp((msg: any) => {
+        const to = routeForPushData(msg?.data);
+        if (to) router.push(to as any);
+      });
+      messaging().getInitialNotification().then((msg: any) => {
+        launchPushRoute.current = routeForPushData(msg?.data);
+      }).catch(() => {});
+    } catch { /* messaging unavailable (tests/emulator) */ }
+    return () => { cleanup(); offOpened?.(); };
   }, []);
+  const launchPushRoute = useRef<string | null>(null);
 
   // Navigate only when BOTH fonts are loaded AND the navigation container is mounted.
   // useRootNavigationState().key is undefined until Expo Router's Stack is registered —
@@ -434,6 +444,12 @@ function InnerLayout() {
       router.replace(pendingRoute as any);
       setPendingRoute(null);
       setHasNavigated(true);
+      // Opened by tapping a server push while the app was closed → go there next.
+      const pushTo = launchPushRoute.current;
+      if (pushTo && pendingRoute === '/app/tabs') {
+        launchPushRoute.current = null;
+        setTimeout(() => router.push(pushTo as any), 50);
+      }
       // Unmount splash overlay after exit animation (500ms) completes
       setTimeout(() => setShowSplash(false), 520);
     }

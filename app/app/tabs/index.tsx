@@ -822,7 +822,7 @@ export default function HomeScreen() {
           {isLoadingTasks ? <LoadingSkeletons /> :
             todaysTasks.length === 0 ? (
               <SlideIn delay={250}>
-                <EmptyState brandIcon="chest" title="No tasks today!" subtitle="Kick-start the week with a ready-made starter pack, or add your own." action={{ label: '📦 Browse starter packs', onPress: () => router.push('/app/task/packs' as any) }} />
+                <EmptyState brandIcon="chest" title="No tasks today!" subtitle="Kick-start the week with a ready-made starter set, or add your own." action={{ label: '📦 Browse starter sets', onPress: () => router.push('/app/task/packs' as any) }} />
                 {isParent && (
                   <TouchableOpacity style={styles.emptyAltBtn} onPress={() => router.push('/app/task/create')} activeOpacity={0.7}>
                     <Text style={[styles.emptyAltBtnText, { color: colors.textAccent }]}>＋ Or create a single task</Text>
@@ -846,7 +846,7 @@ export default function HomeScreen() {
                   + (task.completion?.status ? ':' + task.completion.status : '');
                 return (
                   <SlideIn key={cardKey} delay={120 + i * 50}>
-                    <AdultTaskCard twistChip={twistChipFor(twist, task as any, todayStr)} task={task} onComplete={handleCompleteTask} onUndo={handleUndoTask} onRecover={handleRecoverTask} onDelete={handleDeleteTask} isCompleting={completingTaskId === task.id} colors={colors} fontSize={fontSize} isReadOnly={isReadOnly} isParent={isParent} weekProgress={weekProgress} />
+                    <AdultTaskCard twistChip={twistChipFor(twist, task as any, todayStr)} task={task} onComplete={handleCompleteTask} onUndo={handleUndoTask} onRecover={handleRecoverTask} onDelete={handleDeleteTask} isCompleting={completingTaskId === task.id} colors={colors} fontSize={fontSize} isReadOnly={isReadOnly} isParent={isParent} streak={streak} weekProgress={weekProgress} />
                   </SlideIn>
                 );
               })

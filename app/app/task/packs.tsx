@@ -89,7 +89,7 @@ export default function TaskPacksScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <ScreenHeader variant="modal" title="Starter Packs" />
+      <ScreenHeader variant="modal" title="Starter sets" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Text style={[styles.intro, { color: colors.textSecondary }]}>

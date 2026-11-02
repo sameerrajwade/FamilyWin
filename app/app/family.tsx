@@ -85,7 +85,7 @@ export default function FamilyScreen() {
     subtitle: 'Do chores, earn points, win the week. Get the app and join with this code:',
     stats: [{ value: family.inviteCode, label: 'family code' }],
     cta: 'Join us on Chore League',
-    shareMessage: `Join our family on Chore League! 🏆\n\nInvite code: ${family.inviteCode}\n\nGet the app: ${APP_STORE_URL}\n\nComplete tasks, earn points, and win the week!`,
+    shareMessage: `Join our family on Chore League! 🏆\n\nFamily code: ${family.inviteCode}\n\nGet the app: ${APP_STORE_URL}\n\nComplete tasks, earn points, and win the week!`,
   } : null;
 
   async function handleShareInvite() {
@@ -98,7 +98,7 @@ export default function FamilyScreen() {
     if (!family?.inviteCode) return;
     await Clipboard.setStringAsync(family.inviteCode);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert('Copied! 📋', `Invite code "${family.inviteCode}" copied.`);
+    Alert.alert('Copied! 📋', `Family code "${family.inviteCode}" copied.`);
   }
 
   async function handleChangeRole(target: MemberDoc, newRole: MemberDoc['role']) {
@@ -185,7 +185,7 @@ export default function FamilyScreen() {
         {/* Invite card */}
         <View style={[styles.inviteCard, { backgroundColor: colors.primary }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.inviteLabel}>Invite Code</Text>
+            <Text style={styles.inviteLabel}>Family code</Text>
             <Text style={styles.inviteCode}>{family?.inviteCode}</Text>
             <Text style={styles.inviteHint}>Share so others with phones can join</Text>
           </View>
@@ -287,7 +287,7 @@ export default function FamilyScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.switchTitle, { color: colors.text }]}>Switch to another family</Text>
                   <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
-                    Joined the wrong household, or made a duplicate? Move to a family with their invite code.
+                    Joined the wrong household, or made a duplicate? Move to a family with their family code.
                   </Text>
                 </View>
                 <Icon name="chevron-forward" size={20} color={colors.textMuted} />
@@ -778,7 +778,7 @@ function SwitchFamilyModal({ currentFamilyName, onClose, onSubmit, colors }: {
   const [error, setError] = useState<string | null>(null);
 
   async function handleConfirm() {
-    if (code.trim().length < 6) { setError('Enter the full 6-character invite code.'); return; }
+    if (code.trim().length < 6) { setError('Enter the full 6-character family code.'); return; }
     try {
       setBusy(true);
       setError(null);
@@ -797,7 +797,7 @@ function SwitchFamilyModal({ currentFamilyName, onClose, onSubmit, colors }: {
           <View style={styles.modalHandle} />
           <Text style={[styles.modalTitle, { color: colors.text }]}>Switch to another family</Text>
           <Text style={[styles.modalSub, { color: colors.textSecondary }]}>
-            Enter the invite code of the family you want to move to.
+            Enter the family code of the family you want to move to.
           </Text>
 
           <View style={[styles.switchWarn, { backgroundColor: colors.warning + '18', borderColor: colors.warning + '55' }]}>

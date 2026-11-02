@@ -200,7 +200,7 @@ export default function ManageScreen() {
                     onPress={() => openTaskEditor(t)} onLongPress={() => taskMenu(t)} last={i === tasks.length - 1} styles={styles} />
                 ))}
               </View>
-              <PackLink label="Browse starter task packs" onPress={() => router.push('/app/task/packs' as any)} styles={styles} />
+              <PackLink label="Browse starter task sets" onPress={() => router.push('/app/task/packs' as any)} styles={styles} />
             </>
           )}
 
@@ -214,7 +214,7 @@ export default function ManageScreen() {
                     onPress={() => openReward(r)} onLongPress={() => openReward(r)} last={i === rewards.length - 1} styles={styles} />
                 ))}
               </View>
-              <PackLink label="Browse reward packs" onPress={() => router.push('/app/reward/packs' as any)} styles={styles} />
+              <PackLink label="Browse reward sets" onPress={() => router.push('/app/reward/packs' as any)} styles={styles} />
             </>
           )}
 

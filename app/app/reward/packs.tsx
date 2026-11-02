@@ -66,7 +66,7 @@ export default function RewardPacksScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <ScreenHeader variant="modal" title="Reward Packs" />
+      <ScreenHeader variant="modal" title="Reward sets" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Text style={[styles.intro, { color: colors.textSecondary }]}>

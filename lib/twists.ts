@@ -33,7 +33,7 @@ export const TWISTS: Twist[] = [
   { id: 'team-week', emoji: '🤝', title: 'Team week', blurb: 'Kids vs grown-ups: team totals on Scores.', kind: 'team' },
   { id: 'weekend-warriors', emoji: '🏖️', title: 'Weekend warriors', blurb: 'Saturday and Sunday tasks pay +50%.', kind: 'weekend', multiplier: 1.5 },
   { id: 'healthy-habits', emoji: '🪥', title: 'Healthy habits', blurb: 'Hygiene tasks pay double this week.', kind: 'category', category: 'hygiene', multiplier: 2 },
-  { id: 'kindness-week', emoji: '💛', title: 'Kindness week', blurb: 'Behaviour tasks pay double this week.', kind: 'category', category: 'behavior', multiplier: 2 },
+  { id: 'kindness-week', emoji: '💛', title: 'Kindness week', blurb: 'Behavior tasks pay double this week.', kind: 'category', category: 'behavior', multiplier: 2 },
 ];
 
 const DAY_MS = 86_400_000;
@@ -128,7 +128,7 @@ export const TWIST_HOW: Record<string, { how: string; example: string }> = {
     example: 'Example: “Brush teeth” is worth 10 → you get 20.',
   },
   'kindness-week': {
-    how: 'Every Behaviour task (helping, being kind, good manners) pays twice its points this week. Look for the 🎲 ×2 tag on Today.',
+    how: 'Every Behavior task (helping, being kind, good manners) pays twice its points this week. Look for the 🎲 ×2 tag on Today.',
     example: 'Example: “Help set the table” is worth 10 → you get 20.',
   },
 };
