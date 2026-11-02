@@ -35,6 +35,9 @@ import { streakWithShields, activeDayKeys, STREAK_WINDOW_DAYS, SHIELD_MIN_ACTIVE
 import { SavingGoalRow } from '@/components/ui/SavingGoal';
 import { BountyBoard } from '@/components/ui/BountyBoard';
 import { DiscoverCard } from '@/components/ui/DiscoverCard';
+import { InviteNudge } from '@/components/ui/InviteNudge';
+import { maybeAskForReview } from '@/lib/nudgeStore';
+import { discoverCardToShow } from '@/lib/starterKit';
 import { useMemberLevels } from '@/lib/memberLevels';
 import { LevelUpReveal } from '@/components/ui/LevelPerks';
 import { questProgress, questLabel, questExplainer } from '@/lib/surprisePacks';
@@ -407,6 +410,8 @@ export default function HomeScreen() {
         setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}), 300);
         setShowConfetti(true);
         setTimeout(() => { setShowConfetti(false); if (isChildMode) setShowCelebration(true); }, 2400);
+        // G9: a happy moment — maybe ask the phone's grown-up for a rating.
+        if (isParent && !actingAsMember && !isChildMode) setTimeout(() => maybeAskForReview(), 3000);
       }
       // Surprise packs (C8): a parent's completion may have finished the day.
       // The reveal itself plays from <SurprisePackReveal> when the pack lands.
@@ -840,6 +845,9 @@ export default function HomeScreen() {
 
         {/* G6: a feature skipped at setup, back one at a time from week 2 (parents). */}
         {isParent && !actingAsMember && <DiscoverCard style={styles.section} />}
+
+        {/* G9: alone in the family? One gentle "better together" card (never with Discover). */}
+        {isParent && !actingAsMember && !discoverCardToShow((family as any)?.discover) && <InviteNudge style={styles.section} />}
 
         {/* E4 bounties: "first to wash the car +100" — under today's tasks. */}
         <BountyBoard

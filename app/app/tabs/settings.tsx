@@ -30,6 +30,7 @@ import { Icon } from '@/components/ui/Icon';
 import { BrandLogo } from '@/components/ui/BrandIcons';
 import { AvatarPicker } from '@/components/ui/AvatarPicker';
 import { SettingsGroup, NavRow } from '@/components/ui/SettingsUI';
+import { useNudges, sendFeedback, rateApp } from '@/lib/nudgeStore';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { useTheme } from '@/lib/theme';
 
@@ -274,8 +275,20 @@ export default function SettingsScreen() {
             icon="sparkles-outline"
             label="Replay walkthrough"
             subtitle="See the welcome tour again"
-            isLast
             onPress={() => { requestTour(); router.push('/app/tabs' as any); }}
+          />
+          <NavRow
+            icon="chatbubble-ellipses-outline"
+            label="Send feedback"
+            subtitle="Ideas, bugs, anything — we read every one"
+            onPress={() => sendFeedback()}
+          />
+          <NavRow
+            icon="star-outline"
+            label="Rate Chore League"
+            subtitle="Help other families find the game"
+            isLast
+            onPress={() => { useNudges.getState().answerReview('love'); rateApp(); }}
           />
         </SettingsGroup>
 

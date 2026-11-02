@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
@@ -48,6 +48,11 @@ export default function FamilyScreen() {
   const [showEditMember, setShowEditMember] = useState<MemberDoc | null>(null);
   const [showSwitchFamily, setShowSwitchFamily] = useState(false);
   const [showInviteCard, setShowInviteCard] = useState(false);
+  // Today's "Better together" card opens straight into the invite card.
+  const { invite } = useLocalSearchParams<{ invite?: string }>();
+  useEffect(() => {
+    if (invite === '1' && family?.inviteCode) setShowInviteCard(true);
+  }, [invite, family?.inviteCode]);
 
   // Every parent has FULL family-admin access (add/promote/demote/edit members,
   // weekly reset, etc.) — not just the family creator (admin_parent). A parent

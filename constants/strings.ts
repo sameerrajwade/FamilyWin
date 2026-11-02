@@ -10,6 +10,9 @@ export const IOS_STORE_URL = '';
 // exists). Swap to "Google Play & App Store" once IOS_STORE_URL is set.
 export const STORE_TAGLINE = 'Free on Google Play';
 
+// Where feedback and support emails go (Help & Legal, the review prompt).
+export const SUPPORT_EMAIL = 'sameerrajwade@gmail.com';
+
 /** The best available store link for text-share fallbacks. */
 export const bestStoreUrl = (): string => APP_STORE_URL || IOS_STORE_URL;
 

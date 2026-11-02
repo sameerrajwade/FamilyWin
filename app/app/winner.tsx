@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { maybeAskForReview } from '@/lib/nudgeStore';
 import { firestore } from '@/lib/fb';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/store';
@@ -101,7 +102,9 @@ export default function WinnerScreen() {
       setShowConfetti(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       const t = setTimeout(() => setShowConfetti(false), 3000);
-      return () => clearTimeout(t);
+      // G9: a won week is a happy moment — maybe ask for a rating after the confetti.
+      const ask = setTimeout(() => maybeAskForReview(), 3500);
+      return () => { clearTimeout(t); clearTimeout(ask); };
     }
   }, [loading, hasWinner]);
 

@@ -8,10 +8,10 @@ import { View, Text, TouchableOpacity, Share, Linking, StyleSheet } from 'react-
 import { SettingsScaffold, SettingsGroup, NavRow } from '@/components/ui/SettingsUI';
 import { useTheme, type ThemeColors } from '@/lib/theme';
 import { Icon } from '@/components/ui/Icon';
-import { APP_STORE_URL } from '@/constants/strings';
+import { APP_STORE_URL, SUPPORT_EMAIL } from '@/constants/strings';
 import { FontFamily, FontSize, Spacing } from '@/constants/theme';
 
-const SUPPORT_EMAIL = 'sameerrajwade@gmail.com';
+
 
 const FAQ: { q: string; a: string }[] = [
   { q: 'How do points work?', a: 'Each task is worth points by difficulty — Easy 10, Medium 25, Hard 50. Complete tasks to earn them. The member with the most points when the week resets wins the week.' },

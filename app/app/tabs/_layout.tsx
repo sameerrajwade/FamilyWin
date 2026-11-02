@@ -16,6 +16,7 @@ import { useMemberLevels } from '@/lib/memberLevels';
 import { ensureReminders, pauseReminders } from '@/lib/notifications';
 import { useReminderStatus } from '@/lib/reminderStatus';
 import { useKidMode } from '@/lib/kidMode';
+import { useNudges } from '@/lib/nudgeStore';
 
 interface TabIconProps {
   icon: IconName;
@@ -58,6 +59,9 @@ export default function AppTabsLayout() {
       );
     return () => unsub();
   }, [family?.id, setMembers]);
+
+  // G9: count app opens (the review ask waits for the 4th) — once per launch.
+  useEffect(() => { useNudges.getState().appOpened(); }, []);
 
   // E3: everyone's lifetime level for the avatar frames (one listener app-wide).
   useEffect(() => {
