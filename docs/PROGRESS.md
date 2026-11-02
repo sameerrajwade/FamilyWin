@@ -13,6 +13,12 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 71 (2026-11-01) — Auth emails say "Chore League"
+- The app sends no verification email — only password reset (`lib/firebase.ts` sendPasswordResetEmail). All Auth templates use %APP_NAME% = the project's **public-facing name** (still the FamilyWin-era value).
+- Done via Identity Toolkit admin API (CLI login): **senderDisplayName = "Chore League"** on reset / verify / change-email / 2FA templates. Subjects + bodies are locked by Firebase (EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED) — they keep %APP_NAME%.
+- **User step:** Firebase console → Project settings → General → Public-facing name → "Chore League" (needs their Google sign-in). Then every subject/body reads Chore League.
+- Package rename: on hold (not needed for emails).
+
 ## Iteration 70 (2026-11-01) — Icon A + tagline C; quieter weekly twist
 - **User picked icon A + tagline C** → `65ead28`: glossy 3D crowned chest. ONE source drawing `scripts/brand/chest-a.svgfrag`; `node scripts/brand/render-icons.js` (headless Chrome, transparent) renders store icon, adaptive fg/bg/monochrome, all launcher mipmaps (PNG replaced the old webp), Android 12 splash logo, in-app `assets/brand/chest-3d.png` (ChestMark now an Image). Tagline "Do chores. Win the week." everywhere.
 - **User feedback: Team week banner unexplained + noisy** → `50ec30c`: plain-language how-it-works + example per twist (TWIST_HOW); pop-up once per week on Today; Today = one line with ✕ (hidden for the week); Scores keeps the line with team totals.

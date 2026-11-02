@@ -25,7 +25,7 @@
 | Pricing | **None.** Lootboard Plus was removed entirely (G1) |
 
 ### First thing to do in a new session
-1. Icon A + tagline C are DONE (iteration 70; re-render with `node scripts/brand/render-icons.js`). Still waiting on the user: **package rename** (`com.familywin.app` → `com.choreleague.app`) — they wanted it for verification emails, but those come from Firebase Auth templates + project public name; confirm before doing it (needs a new Firebase Android app, SHA-1s, google-services.json, everyone reinstalls).
+1. Icon A + tagline C are DONE (iteration 70; re-render with `node scripts/brand/render-icons.js`). Auth emails: sender name set to "Chore League" (iteration 71); the user still has to set **Project settings → Public-facing name = Chore League** in the console (subjects/bodies use it). Package rename is ON HOLD (not needed for emails; decide before the first Play upload).
 2. G10 package rename / permissions (+ the `lootboard` scheme/slug).
 3. Ask the user to try the league on device (Family → Family league → Start; needs a 2nd family/test account to see a real race).
 4. After 01:00 UTC each night: `firebase functions:log --only dailyStreakCheck --project familywin-35a97` → confirm the F2 rewrite ran clean (it never paid bonuses before).
