@@ -57,9 +57,11 @@ describe('Family tab', () => {
     expect((await b.findAllByText(/^Coach · Lv \d/)).length).toBe(2);
   });
 
-  it('surfaces waiting claims with a count for parents', async () => {
+  it('surfaces everything waiting (tasks + rewards) with the same count as the badge', async () => {
+    const { usePending } = require('@/lib/pending');
+    usePending.getState().set({ claims: 2, rewards: 1 });
     const { findByText } = render(<FamilyTab />);
-    expect(await findByText('2 claims waiting for your OK')).toBeTruthy();
+    expect(await findByText('2 tasks · 1 reward waiting for your OK')).toBeTruthy();
   });
 
   it('gives parents the game setup: tasks, rewards, penalties, rules, history', async () => {

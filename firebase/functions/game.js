@@ -308,7 +308,47 @@ function twistNoticeDue(family, local) {
   return twist ? { weekKey, twist } : null;
 }
 
+// ─── Push etiquette (user decisions 2026-11-02) ──────────────────────────────
+/** Max "frequent" server pushes per person per day (claims, results, passed-you). */
+const DAILY_PUSH_CAP = 4;
+
+/** Next push-counter state, or null when today's cap is reached. */
+function pushBudget(cfg, todayKey, cap = DAILY_PUSH_CAP) {
+  const count = cfg && cfg.pushDay === todayKey ? (cfg.pushCount || 0) : 0;
+  if (count >= cap) return null;
+  return { pushDay: todayKey, pushCount: count + 1 };
+}
+
+/**
+ * "Someone took the lead" push: never to a kid under 10 (or a kid with no age
+ * set), and at most once a day per person.
+ */
+function overtakenAllowed(member, cfg, todayKey) {
+  if (!member) return false;
+  const kid = member.isManaged === true || member.role === 'child';
+  if (kid && !(typeof member.age === 'number' && member.age >= 10)) return false;
+  if (cfg && cfg.lastOvertakenDay === todayKey) return false;
+  return true;
+}
+
+/** Text for the kid when a parent decides their claim / reward request. */
+function decisionPushText(kind, approved, title, extra) {
+  const t = title || (kind === 'reward' ? 'your reward' : 'your task');
+  if (kind === 'claim') {
+    return approved
+      ? { title: `✅ Approved: ${t}`, body: extra > 0 ? `+${extra} points are yours. Nice work!` : 'Nice work!' }
+      : { title: `↩️ Sent back: ${t}`, body: extra ? `Note: ${extra}. Have another go!` : 'Have another go!' };
+  }
+  return approved
+    ? { title: `🎁 Approved: ${t}`, body: 'Enjoy it — you earned it!' }
+    : { title: `Not this time: ${t}`, body: extra ? `Note: ${extra}. Your points are still yours.` : 'Your points are still yours.' };
+}
+
 module.exports = {
+  DAILY_PUSH_CAP,
+  pushBudget,
+  overtakenAllowed,
+  decisionPushText,
   twistNoticeDue,
   TWIST_NOTICE_HOUR,
   TWISTS,

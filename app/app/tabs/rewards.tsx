@@ -26,7 +26,7 @@ import { Sounds } from '@/lib/sounds';
 import { SlideIn, ScalePress } from '@/components/ui/Animations';
 import { Col, getActiveRewards, requestRedemption, approveRedemption, rejectRedemption, createReward, deactivateReward, getFamilyMembers, requestPayout, setSavingFor } from '@/lib/firebase';
 import { SavingGoalCard } from '@/components/ui/SavingGoal';
-import { pointsToCash, formatCash, pointsForOneUnit, DEFAULT_ALLOWANCE_RATE } from '@/lib/pointsEngine';
+import { pointsToCash, formatCash, pointsForOneUnit, DEFAULT_ALLOWANCE_RATE, cashablePoints } from '@/lib/pointsEngine';
 import { ShareCardModal, shareContext, type ShareCardData } from '@/components/ui/ShareCard';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { rewardIcon } from '@/lib/rewardIcon';
@@ -55,6 +55,8 @@ export default function RewardsScreen() {
   // bankBalance: all-time balance from Firestore (for "can afford" and savings)
   const weekPoints = weeklyTotals[effectiveMember?.id ?? ''] ?? 0;
   const [bankBalance, setBankBalance] = useState<number | null>(null);
+  // Pocket money excludes twist/comeback bonus points (lib/pointsEngine cashablePoints).
+  const [cashable, setCashable] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -85,6 +87,7 @@ export default function RewardsScreen() {
           (sum, d) => sum + ((d.data().delta as number) ?? 0), 0,
         );
         setBankBalance(allTimeBalance);
+        setCashable(cashablePoints(txSnap.docs.map((d) => d.data() as any)));
 
         // Also update Zustand weeklyTotals for this member from a fresh weekly query
         const now = new Date();
@@ -200,22 +203,25 @@ export default function RewardsScreen() {
   const allowanceOn = !!family?.allowanceEnabled;
   const rate = family?.allowancePointsPerUnit ?? DEFAULT_ALLOWANCE_RATE;
   const currency = family?.allowanceCurrency ?? '$';
-  const cashValue = pointsToCash(spendablePoints, rate);
-  const canCashOut = allowanceOn && spendablePoints >= pointsForOneUnit(rate);
+  const cashPoints = Math.min(spendablePoints, cashable ?? spendablePoints);
+  const cashValue = pointsToCash(cashPoints, rate);
+  const canCashOut = allowanceOn && cashPoints >= pointsForOneUnit(rate);
 
   async function handleCashOut() {
     if (!effectiveMember?.id || !family?.id) return;
     const name = actingAsMember ? actingAsMember.displayName.split(' ')[0] : 'You';
     Alert.alert(
       `Cash out ${formatCash(cashValue, currency)}?`,
-      `${name} will request ${spendablePoints} pts (${formatCash(cashValue, currency)}). A parent approves it, then the points are spent.`,
+      `${name} will request ${cashPoints} pts (${formatCash(cashValue, currency)}). A parent approves it, then the points are spent.${cashPoints < spendablePoints ? `
+
+Bonus points from weekly twists stay for rewards and the race — they don’t turn into cash.` : ''}`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Request payout',
           onPress: async () => {
             try {
-              await requestPayout({ familyId: family.id, memberId: effectiveMember.id, points: spendablePoints, cashAmount: cashValue, currency });
+              await requestPayout({ familyId: family.id, memberId: effectiveMember.id, points: cashPoints, cashAmount: cashValue, currency });
               await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Alert.alert('Payout requested 💸', 'A parent will approve it from the Rewards screen.');
               loadData();

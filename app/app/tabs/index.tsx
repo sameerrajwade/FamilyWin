@@ -37,6 +37,7 @@ import { BountyBoard } from '@/components/ui/BountyBoard';
 import { DiscoverCard } from '@/components/ui/DiscoverCard';
 import { InviteNudge } from '@/components/ui/InviteNudge';
 import { TwistBanner } from '@/components/ui/TwistBanner';
+import { usePending, pendingLabel } from '@/lib/pending';
 import { KudosToast } from '@/components/ui/Kudos';
 import { twistForWeek, weekStartKeyOf, twistChipFor } from '@/lib/twists';
 import { maybeAskForReview } from '@/lib/nudgeStore';
@@ -89,7 +90,10 @@ export default function HomeScreen() {
   const [pointBurstVisible, setPointBurstVisible] = useState(false);
   const [pointBurstKey, setPointBurstKey] = useState(0);
   const [weeklyPoints, setWeeklyPoints] = useState(0);
-  const [pendingApprovals, setPendingApprovals] = useState(0);
+  // Same totals as the Family-tab badge (lib/pending).
+  const pendingClaims = usePending((s) => s.claims);
+  const pendingRewards = usePending((s) => s.rewards);
+  const pendingApprovals = pendingClaims + pendingRewards;
   const [streak, setStreak] = useState(0);
   const [shields, setShields] = useState(0);
   const [showTour, setShowTour] = useState(false);
@@ -164,7 +168,11 @@ export default function HomeScreen() {
         })
         .map((task) => {
           const c = isCompleted(task.id, task.recurrence);
-          return { ...task, completion: c ? { id: c.id, wasAutoFailed: c.wasAutoFailed, pointsAwarded: c.pointsAwarded, completedDate: c.completedDate ?? dayKey(c.completedAt), completedAt: c.completedAt, status: c.status } : null };
+          // A claim a parent sent back today (and not redone): show their note.
+          const back = !c ? completions.find((x: any) => x.taskId === task.id && x.memberId === effectiveMember.id
+            && x.status === 'rejected' && (x.completedDate ?? dayKey(x.completedAt)) === period.todayStr) : null;
+          const sentBack = back ? ((back as any).rejectionReason || 'Have another go') : null;
+          return { ...task, sentBack, completion: c ? { id: c.id, wasAutoFailed: c.wasAutoFailed, pointsAwarded: c.pointsAwarded, completedDate: c.completedDate ?? dayKey(c.completedAt), completedAt: c.completedAt, status: c.status } : null };
         });
 
       // To-do first, then waiting for OK, then done — same order as Kid Mode,
@@ -176,9 +184,6 @@ export default function HomeScreen() {
       // Phase 4.3: family-wide count of completions awaiting a parent's approval
       // (reuses the week's completions we already fetched → refreshes with the
       // same live listener). Only parents act on these.
-      if (isParent) {
-        setPendingApprovals(completions.filter((c) => c.status === 'pending').length);
-      }
 
       // NOTE: weeklyPoints is intentionally NOT computed here. A dedicated
       // transactions onSnapshot listener (below) owns it and keeps it live with
@@ -781,11 +786,11 @@ export default function HomeScreen() {
                 onPress={() => router.push('/app/approvals' as any)}
                 activeOpacity={0.85}
                 accessibilityRole="button"
-                accessibilityLabel={`${pendingApprovals} completions awaiting approval`}
+                accessibilityLabel={pendingLabel(pendingClaims, pendingRewards)}
               >
                 <Icon name="checkmark-done-circle-outline" size={22} color={colors.primary} />
                 <Text style={[styles.catchUpTitle, { color: colors.text, flex: 1 }]}>
-                  {pendingApprovals} {pendingApprovals === 1 ? 'claim' : 'claims'} waiting for your OK
+                  {pendingLabel(pendingClaims, pendingRewards)}
                 </Text>
                 <Icon name="chevron-forward" size={20} color={colors.textMuted} />
               </TouchableOpacity>
@@ -990,6 +995,11 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
           </View>
           <View style={styles.taskInfo}>
             <Text numberOfLines={1} style={[styles.taskTitle, { color: colors.text, fontSize: fontSize(FontSize.md) }, isDone && { opacity: 0.55, textDecorationLine: 'line-through' }]}>{task.title}</Text>
+            {(task as any).sentBack && !isDone ? (
+              <Text numberOfLines={1} style={{ fontSize: FontSize.xs, fontFamily: FontFamily.bold, color: colors.textWarning, marginTop: 1 }}>
+                ↩️ Sent back: {(task as any).sentBack}
+              </Text>
+            ) : null}
             <View style={styles.taskMeta}>
               <View style={[styles.diffPill, { backgroundColor: diffColor + '20' }]}>
                 <View style={[styles.diffDot, { backgroundColor: diffColor }]} />
@@ -1001,7 +1011,7 @@ function AdultTaskCard({ task, onComplete, onUndo, onRecover, onDelete, isComple
               </View>
               {twistChip && !isDone ? (
                 <View style={[styles.recPill, { backgroundColor: colors.primary + '1F' }]} accessibilityLabel={`Weekly twist: ${twistChip} points`}>
-                  <Text style={styles.recPillIcon}>🎲</Text>
+                  <Text style={styles.recPillIcon}>✨</Text>
                   <Text style={[styles.recPillText, { color: colors.textAccent }]}>{twistChip}</Text>
                 </View>
               ) : null}

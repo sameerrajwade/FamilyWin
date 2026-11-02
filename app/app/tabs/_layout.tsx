@@ -17,6 +17,7 @@ import { ensureReminders, pauseReminders } from '@/lib/notifications';
 import { useReminderStatus } from '@/lib/reminderStatus';
 import { useKidMode } from '@/lib/kidMode';
 import { useNudges } from '@/lib/nudgeStore';
+import { usePending } from '@/lib/pending';
 
 interface TabIconProps {
   icon: IconName;
@@ -201,9 +202,9 @@ export default function AppTabsLayout() {
   useEffect(() => {
     if (!family?.id || !isParent) { setPendingClaims(0); setPendingRewards(0); return; }
     const off1 = Col.completions(family.id).where('status', '==', 'pending')
-      .onSnapshot((snap: any) => setPendingClaims(snap.size ?? snap.docs.length), () => {});
+      .onSnapshot((snap: any) => { const n = snap.size ?? snap.docs.length; setPendingClaims(n); usePending.getState().set({ claims: n }); }, () => {});
     const off2 = Col.redemptions(family.id).where('status', '==', 'pending')
-      .onSnapshot((snap: any) => setPendingRewards(snap.size ?? snap.docs.length), () => {});
+      .onSnapshot((snap: any) => { const n = snap.size ?? snap.docs.length; setPendingRewards(n); usePending.getState().set({ rewards: n }); }, () => {});
     return () => { off1(); off2(); };
   }, [family?.id, isParent]);
   const waiting = pendingClaims + pendingRewards;

@@ -1116,11 +1116,14 @@ export async function rejectCompletion(params: {
   familyId: string;
   completionId: string;
   approvedBy: string;
+  /** "Send back" reason the kid sees on the task (optional). */
+  reason?: string | null;
 }): Promise<void> {
   await Col.completions(params.familyId).doc(params.completionId).update({
     status: 'rejected',
     approvedBy: params.approvedBy,
     approvedAt: firestore.Timestamp.now(),
+    ...(params.reason ? { rejectionReason: params.reason.slice(0, 80) } : {}),
   });
 }
 

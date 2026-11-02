@@ -398,7 +398,7 @@ export default function ParentalControlsScreen() {
         <SettingsBlock>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, paddingRight: Spacing.md }}>
-              <Text style={[styles.blockLabel, { color: colors.text }]}>🎲 Weekly twist</Text>
+              <Text style={[styles.blockLabel, { color: colors.text }]}>✨ Weekly twist</Text>
               <Text style={[styles.blockHint, { color: colors.textSecondary }]}>A new twist each week, like double points for chores or an early-bird bonus. You can skip any week from the banner.</Text>
             </View>
             <Switch

@@ -29,6 +29,7 @@ const {
   streakWithShields, reachedMilestones, STREAK_WINDOW_DAYS, shouldAutoApprove,
   shouldSendClaimPush, claimPushText, claimRecipients,
   weekStartKeyOf, twistForWeek, twistBonus, comebackIds, comebackBonus, comebackActive, twistNoticeDue,
+  pushBudget, overtakenAllowed, decisionPushText,
 } = require('./game');
 const league = require('./league');
 
@@ -139,7 +140,7 @@ async function awardForCompletion(familyId, completionId, c) {
   });
   for (const x of extras) {
     batch.set(txCol(familyId).doc(), {
-      familyId, memberId: c.memberId, delta: x.delta, reason: `${x.reason}: ${title}`, source: 'bonus', referenceId: completionId, createdAt,
+      familyId, memberId: c.memberId, delta: x.delta, reason: `${x.reason}: ${title}`, source: 'bonus', bonusKind: x.kind, referenceId: completionId, createdAt,
     });
   }
   await batch.commit();
@@ -166,9 +167,9 @@ async function engagementBonuses(familyId, c, award, category) {
         localHour = localParts(when, tz).hour;
       }
       const b = twistBonus(twist, { award, category, dateKey, localHour });
-      if (b > 0) out.push({ delta: b, reason: `${twist.emoji} ${twist.title}` });
+      if (b > 0) out.push({ delta: b, reason: `${twist.emoji} ${twist.title}`, kind: 'twist' });
     }
-    if (comebackActive(family, c.memberId, dateKey)) out.push({ delta: comebackBonus(award), reason: '🚀 Comeback boost' });
+    if (comebackActive(family, c.memberId, dateKey)) out.push({ delta: comebackBonus(award), reason: '🚀 Comeback boost', kind: 'comeback' });
     return out;
   } catch (err) {
     console.error(`engagement bonus skipped family=${familyId}:`, err && err.message);
@@ -247,6 +248,40 @@ async function stampLockedPoints(familyId, completionId, c) {
 }
 
 /**
+ * Send ONE push to ONE member's device if they allow it: enabled, not switched
+ * off (`offField`), has a token, and under today's cap (DAILY_PUSH_CAP, counted
+ * on their notificationConfigs doc in their own timezone). Returns true if sent.
+ */
+async function pushToMember(familyId, memberId, { offField, title, body, data, extraUpdate }) {
+  const cfgRef = db.collection('families').doc(familyId).collection('notificationConfigs').doc(memberId);
+  let token = null;
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(cfgRef);
+    if (!snap.exists) return;
+    const c = snap.data();
+    if (c.enabled === false || (offField && c[offField] === true) || !c.pushToken) return;
+    const today = localDateKey(new Date(), c.timezone || 'UTC');
+    const next = pushBudget(c, today);
+    if (!next) return;
+    tx.set(cfgRef, { ...next, ...(extraUpdate ? extraUpdate(today) : {}) }, { merge: true });
+    token = c.pushToken;
+  });
+  if (!token) return false;
+  try {
+    await getMessaging().send({
+      notification: { title, body },
+      data: data || {},
+      android: { channelId: 'alerts', priority: 'high' },
+      token,
+    });
+    return true;
+  } catch (err) {
+    console.error(`push failed family=${familyId} member=${memberId}:`, err && err.message);
+    return false;
+  }
+}
+
+/**
  * Tell the parents a kid's claim is waiting (UX review 2026-11-01). Throttled to
  * one push per family per 10 min (families/{id}/meta/claimPush.lastSentAt).
  * Each parent can switch it off: notificationConfigs.claimsOff.
@@ -269,20 +304,7 @@ async function notifyParentsOfClaim(familyId, c, points, taskTitle) {
   const { title, body } = claimPushText(kid && kid.displayName, taskTitle, points);
   for (const parent of claimRecipients(members)) {
     if (parent.id === c.memberId) continue;
-    const cfg = await familyRef.collection('notificationConfigs').doc(parent.id).get();
-    if (!cfg.exists) continue;
-    const n = cfg.data();
-    if (n.enabled === false || n.claimsOff === true || !n.pushToken) continue;
-    try {
-      await getMessaging().send({
-        notification: { title, body },
-        data: { screen: 'approvals', memberId: c.memberId || '' },
-        android: { channelId: 'alerts', priority: 'high' },
-        token: n.pushToken,
-      });
-    } catch (err) {
-      console.error(`claim push failed family=${familyId} parent=${parent.id}:`, err && err.message);
-    }
+    await pushToMember(familyId, parent.id, { offField: 'claimsOff', title, body, data: { screen: 'approvals', memberId: c.memberId || '' } });
   }
 }
 
@@ -332,6 +354,35 @@ exports.onCompletionUpdated = onDocumentUpdated(
     } else if (now === 'rejected') {
       await reverseForCompletion(familyId, completionId, after);
     }
+
+    // A parent decided a waiting claim → tell the kid (own phone only; the
+    // server auto-approve of small tasks stays quiet).
+    if (was === 'pending' && (now === 'approved' || now === 'rejected') && after.approvedBy !== 'auto') {
+      try {
+        const taskSnap = await db.collection('families').doc(familyId).collection('tasks').doc(after.taskId).get();
+        const title = taskSnap.exists ? taskSnap.data().title : null;
+        const pts = typeof after.lockedPoints === 'number' ? after.lockedPoints : (taskSnap.exists ? taskSnap.data().pointValue || 0 : 0);
+        const msg = decisionPushText('claim', now === 'approved', title, now === 'approved' ? pts : after.rejectionReason);
+        await pushToMember(familyId, after.memberId, { offField: 'claimsOff', ...msg, data: { screen: 'tasks' } });
+      } catch (err) {
+        console.error(`claim decision push failed family=${familyId}:`, err && err.message);
+      }
+    }
+  },
+);
+
+// Kid hears back when a parent decides a reward / pocket-money request.
+exports.onRedemptionUpdated = onDocumentUpdated(
+  'families/{familyId}/redemptions/{redemptionId}',
+  async (event) => {
+    const before = event.data && event.data.before && event.data.before.data();
+    const after = event.data && event.data.after && event.data.after.data();
+    if (!before || !after || before.status !== 'pending') return;
+    if (after.status !== 'approved' && after.status !== 'rejected') return;
+    const { familyId } = event.params;
+    const title = after.kind === 'payout' ? 'pocket money' : (after.rewardTitle || null);
+    const msg = decisionPushText('reward', after.status === 'approved', title, after.rejectionReason);
+    await pushToMember(familyId, after.memberId, { offField: 'claimsOff', ...msg, data: { screen: 'tasks' } });
   },
 );
 
@@ -433,32 +484,23 @@ exports.onTransactionCreated = onDocumentCreated(
     const actorName = (actor && actor.displayName ? actor.displayName : 'Someone').split(' ')[0];
     const actorNow = totals[actorId] || 0;
 
-    // Notify each passed member on their own device (if they allow push).
+    // Notify each passed member on their own device — kinder wording, never a
+    // kid under 10, at most once a day per person, inside the daily push cap.
     for (const memberId of passed) {
-      const cfg = await db
-        .collection('families').doc(familyId)
-        .collection('notificationConfigs').doc(memberId).get();
-      if (!cfg.exists) continue;
-      const c = cfg.data();
-      // G4: each person can switch this push off in Settings → Notifications.
-      if (c.enabled === false || c.overtakenOff === true || !c.pushToken) continue;
+      const m = members.find((x) => x.id === memberId);
       const theirPoints = totals[memberId] || 0;
       const gap = actorNow - theirPoints;
-      try {
-        await getMessaging().send({
-          notification: {
-            title: `${actorName} just passed you!`,
-            body: gap <= 0
-              ? `You're tied — do a task to pull back ahead.`
-              : `${actorName} is ${gap} pt${gap === 1 ? '' : 's'} ahead. Do a task to retake the lead!`,
-          },
-          data: { screen: 'leaderboard', actorId, memberId },
-          android: { channelId: 'alerts', priority: 'high' },
-          token: c.pushToken,
-        });
-      } catch (err) {
-        console.error(`overtaken push failed family=${familyId} member=${memberId}:`, err && err.message);
-      }
+      const cfgSnap = await db.collection('families').doc(familyId).collection('notificationConfigs').doc(memberId).get();
+      const cfg = cfgSnap.exists ? cfgSnap.data() : null;
+      const today = localDateKey(new Date(), (cfg && cfg.timezone) || 'UTC');
+      if (!overtakenAllowed(m, cfg, today)) continue;
+      await pushToMember(familyId, memberId, {
+        offField: 'overtakenOff',
+        title: `${actorName} just took the lead 👀`,
+        body: gap <= 0 ? 'It’s a tie — one task puts you back in front.' : `${actorName} is ${gap} pt${gap === 1 ? '' : 's'} ahead. One task could change that!`,
+        data: { screen: 'leaderboard', actorId, memberId },
+        extraUpdate: (day) => ({ lastOvertakenDay: day }),
+      });
     }
   },
 );
@@ -659,7 +701,7 @@ exports.weeklyTwistNotice = onSchedule('5 * * * *', async () => {
       const { twist } = due;
       await getMessaging().sendEachForMulticast({
         tokens,
-        notification: { title: `🎲 This week's twist: ${twist.title}`, body: `${twist.blurb} Tap to see how it works.` },
+        notification: { title: `✨ This week's twist: ${twist.title}`, body: `${twist.blurb} Tap to see how it works.` },
         data: { screen: 'tasks', twist: twist.id },
         android: { channelId: 'alerts', priority: 'high' },
       });

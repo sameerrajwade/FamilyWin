@@ -303,6 +303,22 @@ export const LEVEL_TIERS: readonly { floor: number; title: string; emoji: string
 /** Default allowance rate: 300 points = 1 currency unit (user choice, 2026-10-31). */
 export const DEFAULT_ALLOWANCE_RATE = 300;
 
+/**
+ * Points that can become pocket money (user decision 2026-11-02): weekly-twist
+ * and comeback bonus points count for the race, levels and rewards, but NOT for
+ * cash. Cashable = balance − every twist/comeback bonus ever earned (never < 0).
+ */
+export function cashablePoints(txns: { delta?: number; bonusKind?: string | null }[]): number {
+  let balance = 0;
+  let engagementBonus = 0;
+  for (const t of txns) {
+    const d = t.delta || 0;
+    balance += d;
+    if (t.bonusKind === 'twist' || t.bonusKind === 'comeback') engagementBonus += d;
+  }
+  return Math.max(0, balance - engagementBonus);
+}
+
 export function pointsToCash(points: number, pointsPerUnit: number): number {
   if (!pointsPerUnit || pointsPerUnit <= 0) return 0;
   return Math.max(0, points) / pointsPerUnit;

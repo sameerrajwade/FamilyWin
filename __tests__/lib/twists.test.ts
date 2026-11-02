@@ -80,3 +80,12 @@ describe('server bonus maths (firebase/functions/game.js)', () => {
     expect(server.comebackBonus(100)).toBe(5);
   });
 });
+
+describe('pocket money excludes twist/comeback bonus points (user decision 2026-11-02)', () => {
+  const { cashablePoints } = require('@/lib/pointsEngine');
+  it('balance minus engagement bonuses, never below zero', () => {
+    expect(cashablePoints([{ delta: 100 }, { delta: 20, bonusKind: 'twist' }, { delta: 3, bonusKind: 'comeback' }])).toBe(100);
+    expect(cashablePoints([{ delta: 10, bonusKind: 'twist' }, { delta: -50 }])).toBe(0);
+    expect(cashablePoints([{ delta: 60 }, { delta: 40, bonusKind: null }])).toBe(100);
+  });
+});

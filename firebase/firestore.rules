@@ -155,7 +155,7 @@ service cloud.firestore {
         // the onCompletionUpdated Cloud Function, not the client.
         allow update: if isFamilyMember(familyId) && isParent(familyId)
           && request.resource.data.diff(resource.data)
-               .affectedKeys().hasOnly(['status', 'approvedBy', 'approvedAt'])
+               .affectedKeys().hasOnly(['status', 'approvedBy', 'approvedAt', 'rejectionReason'])
           && request.resource.data.status in ['approved', 'rejected'];
         // A member can undo (delete) their own completion; parents can also
         // undo on behalf of managed children. The app additionally enforces

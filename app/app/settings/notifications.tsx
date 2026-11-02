@@ -179,12 +179,12 @@ export default function NotificationsScreen() {
         )}
         <NavRow
           icon="trending-up-outline"
-          label="Someone passed you"
-          subtitle="When a family member overtakes you this week"
-          right={<TimeAndSwitch on={prefs.overtaken} onToggle={(v) => toggle('overtaken', v)} label="Someone passed you" styles={styles} colors={colors} />}
+          label="Someone takes the lead"
+          subtitle="Once a day at most · never for kids under 10"
+          right={<TimeAndSwitch on={prefs.overtaken} onToggle={(v) => toggle('overtaken', v)} label="Someone takes the lead" styles={styles} colors={colors} />}
         />
         <NavRow
-          icon="dice-outline"
+          icon="sparkles-outline"
           label="Weekly twist"
           subtitle="Once a week, the morning your family's week starts"
           right={<TimeAndSwitch on={prefs.twists} onToggle={(v) => toggle('twists', v)} label="Weekly twist" styles={styles} colors={colors} />}

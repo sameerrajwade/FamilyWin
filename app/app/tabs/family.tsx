@@ -9,12 +9,11 @@
  *   • Game rules: who competes, penalties, pause, allowance, weekly reset
  * ─────────────────────────────────────────────────────────────────────────────
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Col } from '@/lib/firebase';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { useTheme } from '@/lib/theme';
 import { useKidMode } from '@/lib/kidMode';
@@ -27,6 +26,7 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { FamilyGoalCard, useFamilyWeekTotals } from '@/components/ui/FamilyGoal';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '@/constants/theme';
+import { usePending, pendingLabel } from '@/lib/pending';
 
 export default function FamilyTab() {
   const { member, family } = useAuthStore();
@@ -37,13 +37,10 @@ export default function FamilyTab() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isParent = member?.role === 'parent' || member?.role === 'admin_parent';
   const { thisWeek } = useFamilyWeekTotals(family?.id, family?.weekStartDay ?? 1);
-  const [pending, setPending] = useState(0);
-
-  useEffect(() => {
-    if (!family?.id || !isParent) return;
-    return Col.completions(family.id).where('status', '==', 'pending')
-      .onSnapshot((snap) => setPending(snap.size), () => {});
-  }, [family?.id, isParent]);
+  // Same totals as the Family-tab badge (lib/pending, fed by tabs/_layout).
+  const pendingClaims = usePending((s) => s.claims);
+  const pendingRewards = usePending((s) => s.rewards);
+  const pending = pendingClaims + pendingRewards;
 
   const kids = (members as any[]).filter(isKid);
   const players = new Set(competitors(members as any[], family?.competitionMode).map((m: any) => m.id));
@@ -69,8 +66,8 @@ export default function FamilyTab() {
 
         {isParent && (
           <View style={styles.group}>
-            <Row icon="checkmark-done-circle-outline" label={pending > 0 ? `${pending} ${pending === 1 ? 'claim' : 'claims'} waiting for your OK` : 'Approvals'}
-              sub={pending > 0 ? 'Approve them all in one tap' : 'Nothing waiting right now'}
+            <Row icon="checkmark-done-circle-outline" label={pending > 0 ? pendingLabel(pendingClaims, pendingRewards) : 'Approvals'}
+              sub={pending > 0 ? 'Tasks and reward requests, in one place' : 'Nothing waiting right now'}
               badge={pending > 0 ? String(pending) : undefined}
               onPress={() => router.push('/app/approvals' as any)} styles={styles} colors={colors} />
             <Row icon="stats-chart-outline" label="This week’s report" sub="Chores handled, time saved, who to cheer on"

@@ -104,7 +104,7 @@ export function comebackActive(
  */
 export const TWIST_HOW: Record<string, { how: string; example: string }> = {
   'double-chores': {
-    how: 'Every task in the Chores category pays twice its points this week. Look for the 🎲 ×2 tag on Today.',
+    how: 'Every task in the Chores category pays twice its points this week. Look for the ✨ ×2 tag on Today.',
     example: 'Example: “Load the dishwasher” is worth 10 → you get 20.',
   },
   'early-bird': {
@@ -112,7 +112,7 @@ export const TWIST_HOW: Record<string, { how: string; example: string }> = {
     example: 'Example: make your bed at 7:30am → 10 + 5 = 15 points.',
   },
   'homework-heroes': {
-    how: 'Every Homework task pays 50% more this week. Look for the 🎲 +50% tag on Today.',
+    how: 'Every Homework task pays 50% more this week. Look for the ✨ +50% tag on Today.',
     example: 'Example: “Reading 20 min” is worth 25 → you get 38.',
   },
   'team-week': {
@@ -124,11 +124,11 @@ export const TWIST_HOW: Record<string, { how: string; example: string }> = {
     example: 'Example: a 10-point task on Saturday → 15 points.',
   },
   'healthy-habits': {
-    how: 'Every Hygiene task (teeth, shower, hair…) pays twice its points this week. Look for the 🎲 ×2 tag on Today.',
+    how: 'Every Hygiene task (teeth, shower, hair…) pays twice its points this week. Look for the ✨ ×2 tag on Today.',
     example: 'Example: “Brush teeth” is worth 10 → you get 20.',
   },
   'kindness-week': {
-    how: 'Every Behavior task (helping, being kind, good manners) pays twice its points this week. Look for the 🎲 ×2 tag on Today.',
+    how: 'Every Behavior task (helping, being kind, good manners) pays twice its points this week. Look for the ✨ ×2 tag on Today.',
     example: 'Example: “Help set the table” is worth 10 → you get 20.',
   },
 };

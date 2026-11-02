@@ -212,3 +212,25 @@ describe('weekly twist notice (once, on the family week-start day)', () => {
     expect(twistNoticeDue({ weekStartDay: 1, twistSkip: { '2026-11-02': true } }, { dateKey: '2026-11-02', hour: 12 })).toBeNull();
   });
 });
+
+describe('push etiquette (user decisions 2026-11-02)', () => {
+  const { pushBudget, overtakenAllowed, decisionPushText, DAILY_PUSH_CAP } = require(path.join(__dirname, '../../firebase/functions/game'));
+  test('at most 4 frequent pushes per person per day; resets the next day', () => {
+    let cfg = {};
+    for (let i = 0; i < DAILY_PUSH_CAP; i++) { const n = pushBudget(cfg, '2026-11-02'); expect(n).not.toBeNull(); cfg = { ...cfg, ...n }; }
+    expect(pushBudget(cfg, '2026-11-02')).toBeNull();
+    expect(pushBudget(cfg, '2026-11-03')).toEqual({ pushDay: '2026-11-03', pushCount: 1 });
+  });
+  test('"took the lead": never a kid under 10 (or with no age), once a day', () => {
+    expect(overtakenAllowed({ role: 'child', age: 7 }, {}, 'd')).toBe(false);
+    expect(overtakenAllowed({ role: 'child' }, {}, 'd')).toBe(false);
+    expect(overtakenAllowed({ role: 'child', age: 11 }, {}, 'd')).toBe(true);
+    expect(overtakenAllowed({ role: 'parent' }, {}, 'd')).toBe(true);
+    expect(overtakenAllowed({ role: 'parent' }, { lastOvertakenDay: 'd' }, 'd')).toBe(false);
+  });
+  test('the kid hears back kindly', () => {
+    expect(decisionPushText('claim', true, 'Make my bed', 10)).toEqual({ title: '✅ Approved: Make my bed', body: '+10 points are yours. Nice work!' });
+    expect(decisionPushText('claim', false, 'Make my bed', 'Needs a redo').body).toBe('Note: Needs a redo. Have another go!');
+    expect(decisionPushText('reward', false, 'Ice cream', null).body).toBe('Your points are still yours.');
+  });
+});
