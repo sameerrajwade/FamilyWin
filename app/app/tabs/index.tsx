@@ -731,8 +731,7 @@ export default function HomeScreen() {
                     accessibilityRole="button"
                     activeOpacity={0.85}
                   >
-                    <Icon name="add-circle" size={15} color="#FFFFFF" />
-                    <Text style={styles.actionPillText}>Task</Text>
+                    <Icon name="add" size={20} color="#FFFFFF" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionPill, { backgroundColor: colors.danger + '18', borderWidth: 1.5, borderColor: colors.danger }]}
@@ -741,8 +740,7 @@ export default function HomeScreen() {
                     accessibilityRole="button"
                     activeOpacity={0.85}
                   >
-                    <Icon name="warning" size={15} color={colors.danger} />
-                    <Text style={[styles.actionPillText, { color: colors.textDanger }]}>Penalty</Text>
+                    <Icon name="warning" size={17} color={colors.danger} />
                   </TouchableOpacity>
                 </>
               )}
@@ -1122,8 +1120,7 @@ const styles = StyleSheet.create({
   topWash: { position: 'absolute', top: 0, left: 0, right: 0, height: 280 },
   pointBurstContainer: { position: 'absolute', top: 120, left: 0, right: 0, alignItems: 'center', zIndex: 100 },
   brandRow: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
-  actionPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: BorderRadius.full, ...Shadow.sm },
-  actionPillText: { color: '#FFFFFF', fontFamily: FontFamily.extraBold, fontSize: FontSize.xs },
+  actionPill: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, ...Shadow.sm },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
   shieldChip: { flexDirection: 'row', alignItems: 'center', gap: 3, borderWidth: 1, borderRadius: BorderRadius.full, paddingHorizontal: 7, paddingVertical: 3 },
   shieldCount: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold },

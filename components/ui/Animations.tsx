@@ -259,27 +259,34 @@ interface CountUpProps {
   suffix?: string;
 }
 
+/**
+ * Ticks the number up through React state. (It used to read a Reanimated shared
+ * value during render — those changes never re-render, so the podium showed 0
+ * until something else refreshed the screen. User report 2026-11-01.)
+ * Always lands exactly on `value`.
+ */
 export function CountUp({ value, duration = 1200, style, prefix = '', suffix = '' }: CountUpProps) {
-  const animValue = useSharedValue(0);
-  const displayValue = useSharedValue(0);
+  const [shown, setShown] = React.useState(0);
+  const fromRef = useRef(0);
 
   useEffect(() => {
-    animValue.value = withTiming(value, {
-      duration,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [value]);
+    const from = fromRef.current;
+    if (from === value || duration <= 0) { fromRef.current = value; setShown(value); return; }
+    const start = Date.now();
+    let frame: ReturnType<typeof requestAnimationFrame>;
+    const tick = () => {
+      const t = Math.min(1, (Date.now() - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      const v = t >= 1 ? value : Math.round(from + (value - from) * eased);
+      fromRef.current = v;
+      setShown(v);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value, duration]);
 
-  const animStyle = useAnimatedStyle(() => {
-    displayValue.value = Math.round(animValue.value);
-    return {};
-  });
-
-  return (
-    <Animated.Text style={[style, animStyle]}>
-      {prefix}{Math.round(animValue.value)}{suffix}
-    </Animated.Text>
-  );
+  return <Animated.Text style={style}>{prefix}{shown}{suffix}</Animated.Text>;
 }
 
 // ─── SHIMMER LOADING ──────────────────────────────────────────────────────────

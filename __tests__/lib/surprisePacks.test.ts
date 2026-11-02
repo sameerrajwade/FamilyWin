@@ -118,10 +118,10 @@ describe('questProgress / questLabel (E1 daily quest ring)', () => {
   it('labels each state', () => {
     expect(questLabel(questProgress([]))).toMatch(/make today count/);
     expect(questLabel(questProgress([T({}), T(null)]))).toBe('1 of 2 daily done');
-    expect(questLabel(questProgress([T({}), T({ status: 'pending' })]))).toBe('All done · 1 waiting for OK');
-    expect(questLabel(questProgress([T({}), T({})]))).toBe('All done · bonus chest earned 🎉');
+    expect(questLabel(questProgress([T({}), T({ status: 'pending' })]))).toBe('Done · 1 waiting for OK');
+    expect(questLabel(questProgress([T({}), T({})]))).toBe('All done · chest earned 🎉');
     // One short line — never the old two-line wording.
-    for (const l of [questLabel(questProgress([T({}), T(null)])), questLabel(questProgress([T({}), T({})]))]) expect(l.length).toBeLessThanOrEqual(32);
+    for (const l of [questLabel(questProgress([T({}), T(null)])), questLabel(questProgress([T({}), T({})]))]) expect(l.length).toBeLessThanOrEqual(26);
     expect(questExplainer().body).toContain('+5–20');
   });
 });

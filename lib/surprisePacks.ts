@@ -123,8 +123,8 @@ export function questProgress(
  */
 export function questLabel(p: QuestProgress): string {
   if (p.total === 0) return "Let's make today count 💪";
-  if (p.complete) return 'All done · bonus chest earned 🎉';
-  if (p.approved + p.pending === p.total) return `All done · ${p.pending} waiting for OK`;
+  if (p.complete) return 'All done · chest earned 🎉';
+  if (p.approved + p.pending === p.total) return `Done · ${p.pending} waiting for OK`;
   return `${p.approved + p.pending} of ${p.total} daily done`;
 }
 
