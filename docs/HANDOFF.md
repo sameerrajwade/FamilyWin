@@ -17,7 +17,7 @@
 |---|---|
 | Branch | `main`, local only — **nothing pushed** (ask before pushing) |
 | Working tree | clean. Commits after G8: `2e3196c` weekly tasks + Scores 0s · `c96a55c` polish (quest line, packs for whom, 3D icons, alert wording) · `5132be6` share cards · `4290dd8` G9 nudges/review |
-| App on phone | build from 19:27 installed; **newer build (all of iteration 68) NOT installed** — phone left wireless adb; APK at `OneDrive\Desktop\Lootboard.apk`. Install with `adb install -r` when it's back |
+| App on phone | iteration-68 build **installed 2026-11-01 22:48**, launches clean; Today ✓ (quest line fits: "All done · chest earned 🎉", round + / ⚠ buttons, weekly tasks done). Scores + share card not yet screenshotted |
 | Prod Firebase | `familywin-35a97`. Rules + **12 functions** deployed on **Node 22** (Node 20 was decommissioned 2026-10-30). Last deploy: G7 rules + `createLeague`/`joinLeague`/`leaveLeague` + `onTransactionCreated` |
 | Tests | app **34 suites / 479**; `tsc` 0 app-source errors; emulator: rules **54/54**, functions **70/70** |
 | Phone | Pixel 10 Pro over wireless adb. If it drops off: user re-enables *Wireless debugging*; meanwhile copy the APK to `OneDrive\Desktop\Lootboard.apk` |
