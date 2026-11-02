@@ -14,7 +14,7 @@ event logging, and push notifications.
 
 **Status (2026-10-31):** Live in daily use by the Rajwade family on a Pixel
 (Firebase project `familywin-35a97`, release APKs side-loaded). Brand name in
-the UI is **Lootboard**. Work is tracked in `docs/PROGRESS.md` (read it first);
+the UI is **Chore League** (renamed from Lootboard on 2026-11-01; internal ids — `lootboard` scheme/slug, `LootboardMark`, storage keys — kept on purpose). Work is tracked in `docs/PROGRESS.md` (read it first);
 the remaining roadmap is Phases C–G (trust/clean-up → one server deploy batch →
 engagement loops → seasons/metrics → Play Store launch).
 

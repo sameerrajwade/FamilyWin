@@ -13,6 +13,13 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 66 (2026-11-01) — App renamed to **Chore League** (G8 done)
+- **User decision:** "stick with league for app name, domain name we can tweak later".
+- **Renamed** (commit `4ca0aa9`): home-screen label (app.json name + android `strings.xml` app_name), two-tone wordmark Chore|League (app bar, logo, share cards), splash/onboarding/welcome copy, notification titles, share messages, permission prompts, About/Settings, error screen. **Kept on purpose:** `lootboard` scheme + slug (G10 with the package rename), welcome-tour storage key, `LootboardMark` identifiers. CLAUDE.md brand line updated.
+- **Quick fix bundled:** quest line now "N of M daily done today · bonus chest +5–20" (fits two lines; range no longer cut off).
+- **Tests:** app 34 suites / 479 green, tsc 0. APK installed 18:14 (adb went offline mid-install → `adb reconnect offline` → reinstall OK); Scores screenshot ✓.
+- **Next Up:** G9 store review prompt → G10 package rename/permissions → G11 privacy/Families (with user) → G12 store assets → G13 signing (user) → G14 closed test → G15 iOS. Quick fix left: packs "for whom".
+
 ## Iteration 65 (2026-11-01) — G8 name check: "Chore League" (research only, no code)
 - **Stores:** Play Store exact search "chore league" = no results; unquoted search shows only other chore apps (Chorsee, MyChoreBoard, Chorly, S'moresUp…). Apple search page unreachable from here; web search found no iOS "Chore League" either.
 - **USPTO (official tmsearch, in the built-in browser):** no CHORE LEAGUE filing. Method verified with a control (CHORE WARS ranks #1, live). The `?q=` URL form does NOT search — use the search box. Nearest live marks: CHORE (Levy Inc., payroll 35/42), CHORE WARS / CHORE BOY / CHORE SAVERS (cleaning) — none in kids' apps/games.

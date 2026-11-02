@@ -2,11 +2,11 @@
 
 > **New session? Start here.** Read this file, then `CLAUDE.md` (gotchas 9–16
 > matter), then the top entries of `docs/PROGRESS.md`. Say:
-> *"Read docs/HANDOFF.md and continue with G8."*
+> *"Read docs/HANDOFF.md and continue with G9."*
 >
-> Last updated: **2026-11-01** — Phases A–F and G1–G7 done, committed, deployed
-> and installed on the Pixel. **Next: G8 name check ("Chore League")**, then
-> the quick fixes in §4 and G9–G15.
+> Last updated: **2026-11-01** — Phases A–F and G1–G8 done, committed, deployed
+> and installed on the Pixel. The app is now **Chore League**. **Next: G9**
+> (store review prompt), the remaining quick fix in §4, then G10–G15.
 
 ---
 
@@ -15,8 +15,8 @@
 | Thing | State |
 |---|---|
 | Branch | `main`, local only — **nothing pushed** (ask before pushing) |
-| Working tree | clean (everything committed; last code commit `0d4c544` G7, docs after) |
-| App on phone | G1–G7 build **installed 2026-11-01 14:04**, launches clean (league screens not yet opened on device) |
+| Working tree | clean (everything committed; last code commit `4ca0aa9` G8 rename, docs after) |
+| App on phone | G1–G8 build (**Chore League**) **installed 2026-11-01 18:14**, launches clean; Scores screenshot ✓ (wordmark fits, Season 1 card, "Challenge another family"). Wireless adb dropped mid-install once — `adb reconnect offline` fixed it |
 | Prod Firebase | `familywin-35a97`. Rules + **12 functions** deployed on **Node 22** (Node 20 was decommissioned 2026-10-30). Last deploy: G7 rules + `createLeague`/`joinLeague`/`leaveLeague` + `onTransactionCreated` |
 | Tests | app **34 suites / 479**; `tsc` 0 app-source errors; emulator: rules **54/54**, functions **70/70** |
 | Phone | Pixel 10 Pro over wireless adb. If it drops off: user re-enables *Wireless debugging*; meanwhile copy the APK to `OneDrive\Desktop\Lootboard.apk` |
@@ -24,8 +24,8 @@
 | Pricing | **None.** Lootboard Plus was removed entirely (G1) |
 
 ### First thing to do in a new session
-1. **G8 name check**: search Play Store / App Store / USPTO for "Chore League" (+ close variants), report back, and only rename once the user confirms.
-2. Knock out the quick fixes in §4 (quest-line truncation is visible on the phone).
+1. **G9 store review prompt** (needs `expo-store-review` → native rebuild).
+2. Remaining quick fix in §4: task packs "for whom" picker.
 3. Ask the user to try the league on device (Family → Family league → Start; needs a 2nd family/test account to see a real race).
 4. After 01:00 UTC each night: `firebase functions:log --only dailyStreakCheck --project familywin-35a97` → confirm the F2 rewrite ran clean (it never paid bonuses before).
 5. **Never tap the phone UI while the user may be holding it** — screenshots only.
@@ -59,8 +59,8 @@
 | # | Task | Size | State |
 |---|---|---|---|
 | G1–G7 | see §2 | — | ✅ |
-| **G8** | **Name** ⏳ **checked 2026-11-01, awaiting user go-ahead**: "Chore League" looks available — no Play Store app (exact search empty), no App Store/web hits, **no USPTO filing** (official tmsearch, verified by a CHORE WARS control search). Nearest marks: CHORE (Levy Inc., live, payroll services 35/42), CHORE WARS / CHORE BOY (cleaning products) — none in kids' apps/games. ⚠️ **choreleague.com is registered** (IONOS, created 2026-01-10, no site served). Free: **choreleague.app**, thechoreleague.com, choreleagueapp.com. Recommend: user buys choreleague.app (+ a .com variant), considers an intent-to-use trademark filing (classes 9/41/42) with a lawyer's clearance, then we rename app name / wordmark / copy / notifications / share text / store listing (package rename is G10). Keep the chest mark | S–M | before G12 |
-| G9 | **Store review prompt**: after 3rd–5th open, right after a happy moment; native sheet (`expo-store-review`, needs native rebuild) with store-URL fallback; **max 3 asks, never after rated** | M | |
+| G8 | **Name** ✅ `4ca0aa9` — **renamed to Chore League** (user: "stick with league for app name, domain later"). Research: "Chore League" looks available — no Play Store app (exact search empty), no App Store/web hits, **no USPTO filing** (official tmsearch, verified by a CHORE WARS control search). Nearest marks: CHORE (Levy Inc., live, payroll services 35/42), CHORE WARS / CHORE BOY (cleaning products) — none in kids' apps/games. ⚠️ **choreleague.com is registered** (IONOS, created 2026-01-10, no site served). Free: **choreleague.app**, thechoreleague.com, choreleagueapp.com. Recommend: user buys choreleague.app (+ a .com variant), considers an intent-to-use trademark filing (classes 9/41/42) with a lawyer's clearance, then we rename app name / wordmark / copy / notifications / share text / store listing (package rename is G10). Keep the chest mark | S–M | before G12 |
+| **G9** | ⏳ **next** — **Store review prompt**: after 3rd–5th open, right after a happy moment; native sheet (`expo-store-review`, needs native rebuild) with store-URL fallback; **max 3 asks, never after rated** | M | |
 | G10 | Package rename, strip unused permissions, versionCode scheme (`docs/PHASE0_CHECKLIST.md`) | M | |
 | G11 | Privacy policy URL, Data Safety form, **COPPA / Designed-for-Families** (invite-code self-join), advertising-ID decision (`docs/DATA_SAFETY.md`, `docs/TARGET_AUDIENCE_COPPA.md`) — **review together with the user** | M | |
 | G12 | Store assets: icon 512, feature graphic, screenshots in this order: weekly showdown + crowns, Kid Mode, saving up, Parent Report; Play internal testing track | M | |
@@ -80,7 +80,6 @@ User chose the recommendations: **score = average points per competing player** 
 ---
 
 ## 4. Quick fixes / backlog (small, do anytime)
-- **Quest line truncates on the phone**: "0 of 6 daily done today · finish them for a bonus chest …" cuts off before "(+5–20)". Shorten in `lib/surprisePacks.questLabel` (e.g. "0 of 6 daily done · bonus chest +5–20") and update its test.
 - **Task packs screen assigns "whole family" (`assignedTo: null`) → managed kids never see pack tasks.** Add a "for whom" picker (each kid / everyone) to `app/app/task/packs.tsx` (`createTasksFromPack` already accepts `assignedTo`).
 - Monthly tasks completed in an earlier week of the month may show as not done (Home loads only this week's completions) — also affects the bonus-chest "day complete".
 - `firebase-functions` 5.1.1 → latest (CLI warns; breaking changes — separate task, run the emulator suites after).
@@ -113,7 +112,7 @@ User chose the recommendations: **score = average points per competing player** 
 - **Positioning:** "the family league where parents play too". Target: parents of 2+ kids aged 6–12. Pitch: "Stop nagging. Start a family league."
 - **Android first**; iOS once the product is settled (G15).
 - **No pricing at all** (Plus removed).
-- **Name:** user likes "Chore League" — pending availability check (G8). Chest mark stays.
+- **Name: Chore League** (renamed 2026-11-01, G8). Chest mark stays. **Domain later** (choreleague.com is taken; .app and .com variants free). Internal ids (`lootboard` scheme/slug, package) change with G10.
 - Icons: Fluent 3D. Dark mode: lighter **text** tokens only; fills keep brand purple. Never change brand colours/fonts.
 - **Reminders:** all on by default; each type can be switched off (morning plan, evening check-in, weekly report, someone passed you, Sunday results). Quiet hours move reminders, never cancel.
 - **Approvals:** every kid claim goes through approval, but families can auto-approve small tasks (Off/10/25/50; starter families get 10). "Needs approval"/"photo proof" tasks always wait for a parent.
