@@ -24,7 +24,7 @@ import { FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
 const INTRO_KEY = (week: string) => `twist_intro_${week}`;
 const HIDE_KEY = (week: string) => `twist_hide_${week}`;
 
-export function TwistBanner({ memberId, totals, dismissible = false, showIntro = false, style }: {
+export function TwistBanner({ memberId, totals, dismissible = false, showIntro = false, hideLine = false, style }: {
   /** Whose comeback boost to show (the profile being viewed). */
   memberId?: string | null;
   /** This week's earned totals — enables the team-week score line. */
@@ -33,6 +33,8 @@ export function TwistBanner({ memberId, totals, dismissible = false, showIntro =
   dismissible?: boolean;
   /** Today: pop the explanation once at the start of each twist week. */
   showIntro?: boolean;
+  /** Another card holds Today's single promo slot → no line (pop-up still works). */
+  hideLine?: boolean;
   style?: any;
 }) {
   const { colors } = useTheme();
@@ -90,7 +92,7 @@ export function TwistBanner({ memberId, totals, dismissible = false, showIntro =
 
   return (
     <>
-      {hidden === false && (
+      {hidden === false && !hideLine && (
         <View style={[styles.line, style]}>
           <TouchableOpacity style={styles.lineMain} onPress={() => setOpen(true)} activeOpacity={0.85}
             accessibilityRole="button" accessibilityLabel={`This week's twist: ${line}. Tap to see how it works.`}>

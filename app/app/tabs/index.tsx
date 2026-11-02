@@ -38,7 +38,10 @@ import { DiscoverCard } from '@/components/ui/DiscoverCard';
 import { InviteNudge } from '@/components/ui/InviteNudge';
 import { TwistBanner } from '@/components/ui/TwistBanner';
 import { usePending, pendingLabel } from '@/lib/pending';
-import { KudosToast } from '@/components/ui/Kudos';
+import { KudosToast, useNewestKudos } from '@/components/ui/Kudos';
+import { useNudges } from '@/lib/nudgeStore';
+import { inviteNudgeToShow } from '@/lib/nudges';
+import { competitors } from '@/lib/familyGame';
 import { twistForWeek, weekStartKeyOf, twistChipFor } from '@/lib/twists';
 import { maybeAskForReview } from '@/lib/nudgeStore';
 import { discoverCardToShow } from '@/lib/starterKit';
@@ -97,6 +100,9 @@ export default function HomeScreen() {
   const [streak, setStreak] = useState(0);
   const [shields, setShields] = useState(0);
   const [showTour, setShowTour] = useState(false);
+  // The weekly twist waits until the welcome tour is done (UX review 2026-11-02).
+  const [tourDone, setTourDone] = useState(false);
+  const [bountyNonce, setBountyNonce] = useState(0);
   const [lifetimePoints, setLifetimePoints] = useState(0);
   // Undo state — cleared after 5 seconds
   const [undoTask, setUndoTask] = useState<{ id: string; title: string; txId: string; completionId: string; points: number } | null>(null);
@@ -212,6 +218,7 @@ export default function HomeScreen() {
       try {
         const seen = await AsyncStorage.getItem('lootboard_welcome_tour_v1');
         if (!cancelled && !seen) setShowTour(true);
+        if (!cancelled && seen) setTourDone(true);
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
@@ -225,6 +232,7 @@ export default function HomeScreen() {
 
   const dismissTour = useCallback(() => {
     setShowTour(false);
+    setTourDone(true);
     AsyncStorage.setItem('lootboard_welcome_tour_v1', '1').catch(() => {});
   }, []);
 
@@ -603,6 +611,16 @@ export default function HomeScreen() {
     return `${totalCount} tasks today. Let's crush it! 🚀`;
   };
 
+  // ── Today's single promo slot ──
+  const newestKudos = useNewestKudos(effectiveMember?.id);
+  const nudgeState = useNudges();
+  const parentHere = isParent && !actingAsMember;
+  const inviteKind = parentHere ? inviteNudgeToShow(members as any[], nudgeState.invite, nudgeState.firstSeenAt ? new Date(nudgeState.firstSeenAt) : null) : null;
+  const discoverItem = parentHere ? discoverCardToShow((family as any)?.discover) : null;
+  const promo: 'kudos' | 'invite' | 'discover' | 'twist' =
+    newestKudos.kudos ? 'kudos' : inviteKind ? 'invite' : discoverItem ? 'discover' : 'twist';
+  const twistReady = competitors(members as any[], (family as any)?.competitionMode).length >= 2;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -739,7 +757,15 @@ export default function HomeScreen() {
                 <>
                   <TouchableOpacity
                     style={[styles.actionPill, { backgroundColor: colors.primary }]}
-                    onPress={() => router.push({ pathname: '/app/task/create' as any, params: actingAsMember ? { defaultAssignee: actingAsMember.id } : {} })}
+                    onPress={() => {
+                      const newTask = () => router.push({ pathname: '/app/task/create' as any, params: actingAsMember ? { defaultAssignee: actingAsMember.id } : {} });
+                      if (actingAsMember) { newTask(); return; }
+                      Alert.alert('Add something', undefined, [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: '🎯 Post a bounty', onPress: () => setBountyNonce((n) => n + 1) },
+                        { text: '＋ New task', onPress: newTask },
+                      ]);
+                    }}
                     accessibilityLabel="Create new task"
                     accessibilityRole="button"
                     activeOpacity={0.85}
@@ -767,10 +793,13 @@ export default function HomeScreen() {
           spendable={lifetimePoints}
           onAffordable={celebrateAffordable}
         />
-        {/* Weekly twist + comeback boost (engagement, 2026-11-01) */}
-        <TwistBanner memberId={effectiveMember?.id} dismissible showIntro style={styles.section} />
-        {/* Kudos sticker from a grown-up (praise, never points) */}
-        <KudosToast memberId={effectiveMember?.id} style={styles.section} />
+        {/* ONE promo slot (UX review 2026-11-02): sticker > invite > discover > twist. */}
+        {promo === 'kudos' && <KudosToast memberId={effectiveMember?.id} state={newestKudos} style={styles.section} />}
+        {promo === 'invite' && <InviteNudge style={styles.section} />}
+        {promo === 'discover' && <DiscoverCard style={styles.section} />}
+        {/* The twist waits for 2+ players and a finished welcome tour; its once-a-week
+            pop-up still shows even when another card holds the slot. */}
+        {twistReady && <TwistBanner memberId={effectiveMember?.id} dismissible showIntro={tourDone && !showTour} style={styles.section} hideLine={promo !== 'twist'} />}
         {isChildMode && (
           <SlideIn delay={100}>
             <View style={styles.mascotSection}>
@@ -858,11 +887,6 @@ export default function HomeScreen() {
             )}
         </View>
 
-        {/* G6: a feature skipped at setup, back one at a time from week 2 (parents). */}
-        {isParent && !actingAsMember && <DiscoverCard style={styles.section} />}
-
-        {/* G9: alone in the family? One gentle "better together" card (never with Discover). */}
-        {isParent && !actingAsMember && !discoverCardToShow((family as any)?.discover) && <InviteNudge style={styles.section} />}
 
         {/* E4 bounties: "first to wash the car +100" — under today's tasks. */}
         <BountyBoard
@@ -873,6 +897,7 @@ export default function HomeScreen() {
           needsOk={!isParent}
           members={members as any[]}
           style={styles.section}
+          composeNonce={bountyNonce}
         />
 
         {/* Secondary actions live BELOW the tasks as small side-by-side tiles,

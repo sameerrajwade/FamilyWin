@@ -31,8 +31,10 @@ import { FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
 const POINT_CHOICES = [25, 50, 100, 200];
 
 export function BountyBoard({
-  familyId, actor, viewerId, canManage, needsOk, members, style,
+  familyId, actor, viewerId, canManage, needsOk, members, style, composeNonce = 0,
 }: {
+  /** Bump to open the "post a bounty" composer from outside (Today's + button). */
+  composeNonce?: number;
   familyId?: string;
   /** Who would claim it: the profile on screen (a kid in Kid Mode). */
   actor?: { id: string; displayName?: string } | null;
@@ -50,6 +52,7 @@ export function BountyBoard({
   const [all, setAll] = useState<BountyDoc[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
+  useEffect(() => { if (composeNonce > 0) setComposing(true); }, [composeNonce]);
 
   useEffect(() => {
     if (!familyId) return;
@@ -105,6 +108,20 @@ export function BountyBoard({
 
   if (!familyId) return null;
   if (list.length === 0 && !canManage) return null;
+  const composer = canManage && viewerId ? (
+    <BountyComposer
+      visible={composing}
+      onClose={() => setComposing(false)}
+      onPost={async (title, points, emoji) => {
+        await postBounty({ familyId, title, points, emoji, createdBy: viewerId });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      }}
+      styles={styles}
+      colors={colors}
+    />
+  ) : null;
+  // No bounties yet → no empty box on Today (UX review); post from the + button.
+  if (list.length === 0) return composer;
 
   return (
     <View style={style}>
@@ -175,18 +192,7 @@ export function BountyBoard({
         );
       })}
 
-      {canManage && viewerId && (
-        <BountyComposer
-          visible={composing}
-          onClose={() => setComposing(false)}
-          onPost={async (title, points, emoji) => {
-            await postBounty({ familyId, title, points, emoji, createdBy: viewerId });
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-          }}
-          styles={styles}
-          colors={colors}
-        />
-      )}
+      {composer}
     </View>
   );
 }

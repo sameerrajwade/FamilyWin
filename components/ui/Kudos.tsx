@@ -56,10 +56,8 @@ export function StickerPicker({ onPick, size = 34, disabled }: { onPick: (s: Kud
 const SEEN_KEY = (memberId: string) => `kudos_seen_${memberId}`;
 const TOAST_WINDOW_MS = 2 * 86_400_000;
 
-/** The newest sticker for this player (last 2 days), until they close it. */
-export function KudosToast({ memberId, style }: { memberId?: string | null; style?: any }) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+/** The newest unseen sticker for this player (last 2 days), or null. */
+export function useNewestKudos(memberId?: string | null): { kudos: KudosDoc | null; markSeen: () => void } {
   const list = useKudos(memberId);
   const [seenId, setSeenId] = useState<string | null | undefined>(undefined);
   useEffect(() => {
@@ -67,10 +65,23 @@ export function KudosToast({ memberId, style }: { memberId?: string | null; styl
     AsyncStorage.getItem(SEEN_KEY(memberId)).then((v) => setSeenId(v)).catch(() => setSeenId(null));
   }, [memberId]);
   const k = list[0];
-  if (!memberId || seenId === undefined || !k || k.id === seenId) return null;
-  const at = k.createdAt?.toMillis?.() ?? Date.now();
-  if (Date.now() - at > TOAST_WINDOW_MS) return null;
-  const close = () => { setSeenId(k.id); AsyncStorage.setItem(SEEN_KEY(memberId), k.id).catch(() => {}); };
+  const fresh = !!k && Date.now() - (k.createdAt?.toMillis?.() ?? Date.now()) <= TOAST_WINDOW_MS;
+  const kudos = memberId && seenId !== undefined && k && k.id !== seenId && fresh ? k : null;
+  const markSeen = () => { if (k && memberId) { setSeenId(k.id); AsyncStorage.setItem(SEEN_KEY(memberId), k.id).catch(() => {}); } };
+  return { kudos, markSeen };
+}
+
+/** The newest sticker for this player (last 2 days), until they close it. */
+export function KudosToast({ memberId, style, state }: {
+  memberId?: string | null; style?: any;
+  /** Pass the parent's useNewestKudos() result to share one listener. */
+  state?: { kudos: KudosDoc | null; markSeen: () => void };
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const own = useNewestKudos(state ? null : memberId);
+  const { kudos: k, markSeen: close } = state ?? own;
+  if (!k) return null;
   return (
     <View style={[styles.toast, style]} accessibilityLabel={`${k.fromName} sent you a sticker`}>
       <EmojiIcon emoji={k.emoji} size={40} />
