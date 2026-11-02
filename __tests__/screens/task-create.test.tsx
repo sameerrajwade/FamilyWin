@@ -51,8 +51,15 @@ describe('CreateTaskScreen', () => {
     expect(await findByPlaceholderText('e.g. Clean your room')).toBeTruthy();
   });
 
+  it('keeps the extras under "More options" for a new task', async () => {
+    const { findByText, queryByText } = render(<CreateTaskScreen />);
+    expect(await findByText('More options ▾')).toBeTruthy();
+    expect(queryByText('Homework')).toBeNull();
+  });
+
   it('renders category chips', async () => {
-    const { findByText } = render(<CreateTaskScreen />);
+    const { findByText, getByText } = render(<CreateTaskScreen />);
+    fireEvent.press(await findByText('More options ▾'));
     expect(await findByText('Chores')).toBeTruthy();
     expect(await findByText('Homework')).toBeTruthy();
   });
@@ -79,6 +86,7 @@ describe('CreateTaskScreen', () => {
 
   it('renders auto-fail time options', async () => {
     const { findByText } = render(<CreateTaskScreen />);
+    fireEvent.press(await findByText('More options ▾'));
     expect(await findByText('6PM')).toBeTruthy();
     expect(await findByText('8PM')).toBeTruthy();
   });

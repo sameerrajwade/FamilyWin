@@ -42,6 +42,9 @@ import { SavingGoalRow } from '@/components/ui/SavingGoal';
 import { BountyBoard } from '@/components/ui/BountyBoard';
 import { LevelUpReveal } from '@/components/ui/LevelPerks';
 import { BrandLogo } from '@/components/ui/BrandIcons';
+import { KudosToast } from '@/components/ui/Kudos';
+import { SpendSheet } from '@/components/ui/SpendSheet';
+import { twistForWeek, weekStartKeyOf, twistChipFor } from '@/lib/twists';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 
 type KidTask = TaskDoc & { completion: CompletionDoc | null };
@@ -64,6 +67,7 @@ export default function KidModeScreen() {
   const [loaded, setLoaded] = useState(false);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const [confetti, setConfetti] = useState(false);
+  const [spendOpen, setSpendOpen] = useState(false);
   const [cheer, setCheer] = useState<string | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
 
@@ -208,6 +212,7 @@ export default function KidModeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Confetti visible={confetti} count={70} />
+      {family?.id && kid && <SpendSheet visible={spendOpen} onClose={() => setSpendOpen(false)} familyId={family.id} kid={kid} spendable={spendable} colors={colors} />}
       {/* Packs land when a grown-up approves — the kid opens it right here. */}
       <SurprisePackReveal familyId={family?.id} memberId={kid.id} name={first} />
       <LevelUpReveal member={kid} perks={family?.levelPerks} />
@@ -245,10 +250,11 @@ export default function KidModeScreen() {
             </View>
           </View>
           <View style={styles.heroStats}>
-            <View style={styles.heroStat}>
+            {/* Tap to spend (UX review 2026-11-02: kids couldn't ask for a reward here). */}
+            <TouchableOpacity style={styles.heroStat} onPress={() => setSpendOpen(true)} accessibilityRole="button" accessibilityLabel={`${spendable} points to spend. Tap to spend.`}>
               <Text style={styles.heroNum}>{spendable}</Text>
-              <Text style={styles.heroLabel}>points to spend</Text>
-            </View>
+              <Text style={styles.heroLabel}>points to spend ›</Text>
+            </TouchableOpacity>
             <View style={styles.heroStat}>
               <Text style={styles.heroNum}>{waitingPts > 0 ? `+${waitingPts}` : '0'}</Text>
               <Text style={styles.heroLabel}>waiting for OK</Text>
@@ -275,6 +281,9 @@ export default function KidModeScreen() {
           }}
         />
 
+        {/* A sticker from a grown-up (praise, never points). */}
+        <KudosToast memberId={kid.id} style={{ marginTop: Spacing.md }} />
+
         {waitingPts > 0 && (
           <View style={styles.nudge}>
             <EmojiIcon emoji="⏳" size={26} />
@@ -299,7 +308,7 @@ export default function KidModeScreen() {
                 <View style={styles.cardIcon}><EmojiIcon emoji={resolveTaskEmoji(task as any)} size={44} /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardTitle, state === 'done' && { opacity: 0.6 }]} numberOfLines={2}>{task.title}</Text>
-                  <Text style={styles.cardPts}>+{task.pointValue} points{(task as any).requiresPhoto ? '  ·  📸 photo' : ''}</Text>
+                  <Text style={styles.cardPts}>+{task.pointValue} points{(task as any).requiresPhoto ? '  ·  📸 photo' : ''}{(() => { const chip = twistChipFor(twistForWeek(weekStartKeyOf(period.todayStr, family?.weekStartDay ?? 1), family as any), task as any, period.todayStr); return chip ? `  ·  ✨ ${chip} this week` : ''; })()}</Text>
                 </View>
                 {state === 'todo' && (
                   <TouchableOpacity style={styles.didItBtn} onPress={() => claim(task)} disabled={!!busyTaskId} accessibilityRole="button" accessibilityLabel={`I did ${task.title}`}>

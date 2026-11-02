@@ -48,6 +48,8 @@ export default function CreateTaskScreen() {
   }>();
 
   const isEditMode = !!taskId;
+  // Editing shows everything; a new task starts with just the basics.
+  const [showMore, setShowMore] = useState(isEditMode);
   const editData = taskData ? (() => { try { return JSON.parse(taskData); } catch { return null; } })() : null;
 
   const [title, setTitle] = useState(editData?.title ?? '');
@@ -359,42 +361,6 @@ export default function CreateTaskScreen() {
               )}
             </View>
 
-            {/* Description */}
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.text }]}>Description (optional)</Text>
-              <TextInput
-                style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Add more details..."
-                placeholderTextColor={colors.textMuted}
-                multiline
-                numberOfLines={3}
-                maxLength={200}
-              />
-            </View>
-
-            {/* Category */}
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.text }]}>Category</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.chipRow}>
-                  {CATEGORIES.map((cat) => (
-                    <TouchableOpacity
-                      key={cat}
-                      style={[styles.chip, category === cat && styles.chipSelected]}
-                      onPress={() => setCategory(cat)}
-                    >
-                      <Text style={styles.chipEmoji}>{CATEGORY_ICONS[cat]}</Text>
-                      <Text style={[styles.chipText, category === cat && styles.chipTextSelected]}>
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-
             {/* Difficulty */}
             <View style={styles.field}>
               <Text style={[styles.label, { color: colors.text }]}>Difficulty & Points</Text>
@@ -473,6 +439,57 @@ export default function CreateTaskScreen() {
                 )}
               </View>
             )}
+
+            {/* Progressive disclosure (UX review 2026-11-02): title, difficulty,
+                repeats and who → everything else under "More options". */}
+            <TouchableOpacity onPress={() => setShowMore((v) => !v)} style={{ paddingVertical: Spacing.sm, marginBottom: Spacing.sm }}
+              accessibilityRole="button" accessibilityState={{ expanded: showMore }}>
+              <Text style={{ fontSize: FontSize.md, fontFamily: FontFamily.bold, color: colors.textAccent }}>
+                {showMore ? 'Fewer options ▴' : 'More options ▾'}
+              </Text>
+              {!showMore && (
+                <Text style={{ fontSize: FontSize.xs, fontFamily: FontFamily.regular, color: colors.textMuted, marginTop: 2 }}>
+                  Description, category, approval, photo proof, points, deadline
+                </Text>
+              )}
+            </TouchableOpacity>
+            {showMore && (
+              <>
+            {/* Description */}
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.text }]}>Description (optional)</Text>
+              <TextInput
+                style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Add more details..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                numberOfLines={3}
+                maxLength={200}
+              />
+            </View>
+
+            {/* Category */}
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.text }]}>Category</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.chipRow}>
+                  {CATEGORIES.map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[styles.chip, category === cat && styles.chipSelected]}
+                      onPress={() => setCategory(cat)}
+                    >
+                      <Text style={styles.chipEmoji}>{CATEGORY_ICONS[cat]}</Text>
+                      <Text style={[styles.chipText, category === cat && styles.chipTextSelected]}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
 
             {/* Rotate turns — cycle the chore through the selected members */}
             {isParent && assignedTo.length >= 2 && (
@@ -625,23 +642,29 @@ export default function CreateTaskScreen() {
               </View>
             </View>
 
-            {/* Submit */}
-            <TouchableOpacity
-              style={[styles.createButton, isLoading && styles.buttonDisabled]}
-              onPress={handleSave}
-              disabled={isLoading || isDeleting}
-              activeOpacity={0.8}
-              accessibilityLabel={isEditMode ? 'Save task changes' : 'Create task'}
-              accessibilityRole="button"
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.createButtonText}>{isEditMode ? '✏️ Save Changes' : '✅ Create Task'}</Text>
-              )}
-            </TouchableOpacity>
+              </>
+            )}
+
           </View>
         </ScrollView>
+        {/* Sticky footer: Create is always one tap away. */}
+        <View style={[styles.stickyFooter, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+          {/* Submit */}
+          <TouchableOpacity
+            style={[styles.createButton, isLoading && styles.buttonDisabled]}
+            onPress={handleSave}
+            disabled={isLoading || isDeleting}
+            activeOpacity={0.8}
+            accessibilityLabel={isEditMode ? 'Save task changes' : 'Create task'}
+            accessibilityRole="button"
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.createButtonText}>{isEditMode ? '✏️ Save Changes' : '✅ Create Task'}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -650,6 +673,7 @@ export default function CreateTaskScreen() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  stickyFooter: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.md, borderTopWidth: 1 },
   headerLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   header: {
     flexDirection: 'row',

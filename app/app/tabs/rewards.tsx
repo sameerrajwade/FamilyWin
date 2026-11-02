@@ -17,7 +17,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Pressable, StyleSheet,
   RefreshControl, ActivityIndicator, Alert, Modal,
-  TextInput, KeyboardAvoidingView, Platform,
+  TextInput, KeyboardAvoidingView, Platform, ToastAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
@@ -262,7 +262,9 @@ Bonus points from weekly twists stay for rewards and the race — they don’t t
                 pointCost: reward.pointCost,
                 rewardTitle: reward.title,
               });
-              Alert.alert('Request sent 🎉', 'A parent will approve your reward soon.');
+              // A quiet toast instead of an OK-to-dismiss alert (UX review 2026-11-02).
+              if (Platform.OS === 'android') ToastAndroid.show('Request sent 🎉 A parent will see it in Approvals.', ToastAndroid.SHORT);
+              else Alert.alert('Request sent 🎉', 'A parent will approve your reward soon.');
               loadData();
             } catch {
               Alert.alert('That didn’t work', 'Could not submit redemption request.');
@@ -388,6 +390,17 @@ Bonus points from weekly twists stay for rewards and the race — they don’t t
               </TouchableOpacity>
             )}
           </View>
+          {isParent && pendingRedemptions.length > 0 && (
+            <TouchableOpacity
+              style={[styles.pointsCard, { backgroundColor: colors.success + '14', borderColor: colors.success + '55', paddingVertical: 12 }]}
+              onPress={() => router.push('/app/approvals' as any)}
+              accessibilityRole="button"
+            >
+              <Text style={{ fontSize: FontSize.md, fontFamily: FontFamily.extraBold, color: colors.text }}>
+                🎁 {pendingRedemptions.length} reward {pendingRedemptions.length === 1 ? 'request' : 'requests'} waiting — review in Approvals ›
+              </Text>
+            </TouchableOpacity>
+          )}
           {/* Primary: all-time bank balance (for spending) — full width */}
           <View style={[styles.pointsCard, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '44' }]}>
               <View style={styles.pointsRow}>
@@ -499,43 +512,7 @@ Bonus points from weekly twists stay for rewards and the race — they don’t t
               )}
             </View>
 
-            {/* Pending approvals — parents only */}
-            {isParent && pendingRedemptions.length > 0 && (
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  ⏳ Pending Approvals ({pendingRedemptions.length})
-                </Text>
-                {pendingRedemptions.map((r) => (
-                  <View key={r.id} style={[styles.historyRow, styles.pendingRow, { backgroundColor: colors.surface }]}>
-                    <Avatar emoji={r.memberEmoji ?? '👤'} photoURL={r.memberPhotoURL} size={28} memberId={r.memberId} />
-                    <View style={styles.historyInfo}>
-                      <Text style={[styles.historyTitle, { color: colors.text }]}>{r.memberName} wants</Text>
-                      <Text style={[styles.historySubtitle, { color: colors.textSecondary }]}>
-                        {r.rewardTitle} · {r.rewardCost} pts
-                      </Text>
-                    </View>
-                    <View style={{ gap: 6 }}>
-                      <TouchableOpacity
-                        style={styles.approveBtn}
-                        onPress={() => handleApprove(r.id, r.memberId, r.rewardCost ?? 0, r.memberName, r.rewardTitle, r.isPayout)}
-                        accessibilityLabel={`Approve ${r.rewardTitle} for ${r.memberName}`}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.approveBtnText}>✓ Approve</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.approveBtn, { backgroundColor: colors.danger }]}
-                        onPress={() => handleReject(r.id, r.memberName)}
-                        accessibilityLabel={`Reject ${r.rewardTitle} for ${r.memberName}`}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.approveBtnText}>✗ Reject</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
+            {/* Reward requests now live in the ONE Approvals inbox (UX review 2026-11-02). */}
 
             {/* Redemption history */}
             {redemptions.length > 0 && (
