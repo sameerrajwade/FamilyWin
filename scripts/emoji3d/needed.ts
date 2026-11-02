@@ -8,7 +8,11 @@ const REWARD = ['📱', '🎮', '🍿', '🍦', '🍽️', '💵', '🌙', '🧸
 const UI = ['🔥', '📅', '🗓️', '⚡', '🏆', '🥇', '🥈', '🥉', '💰', '💸', '🎯', '⭐', '🌟', '🔄', '📸', '🪙', '💎', '🛡️', '🏅', '👑', '✅'];
 // Emoji the OLD detector may have saved on existing tasks (still rendered).
 const LEGACY = ['☀️', '🎶', '🥞', '🦷', '🫧', '📌', '🙂', '👤'];
+// Polish pass 2026-11-01: icons that were still falling back to flat glyphs —
+// reward/task pack icons, penalty presets, crowns/insights, onboarding roles.
+const POLISH = ['🧒', '👩‍💼', '⚖️', '📈', '📉', '💫', '👨‍👩‍👧', '👨‍👩‍👧‍👦', '➕', '➡️', '🙈', '😤', '🕐',
+  '🍬', '🛝', '🎢', '🎬', '🗺️', '🏖️', '🎧', '🏠', '🚀', '✨', '🧸'];
 
-const all = Array.from(new Set([...ALL_TASK_EMOJI, ...AVATAR_EMOJIS, ...REWARD, ...UI, ...LEGACY]));
+const all = Array.from(new Set([...ALL_TASK_EMOJI, ...AVATAR_EMOJIS, ...REWARD, ...UI, ...LEGACY, ...POLISH]));
 writeFileSync(process.argv[2] ?? 'scripts/emoji3d/needed.json', JSON.stringify(all));
 console.log(all.length, 'emoji');

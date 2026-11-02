@@ -117,15 +117,23 @@ export function questProgress(
   return { total, approved, pending, complete: total > 0 && approved === total };
 }
 
-/** One line under the greeting that tells the player what the ring means. */
+/**
+ * ONE short line under the greeting (user: two lines read as noise). The ring
+ * shows the progress; tapping it explains the bonus chest (questExplainer).
+ */
 export function questLabel(p: QuestProgress): string {
   if (p.total === 0) return "Let's make today count 💪";
-  if (p.complete) return 'Daily tasks done — bonus chest earned! 🎉';
-  if (p.approved + p.pending === p.total) {
-    return `Daily tasks done — ${p.pending} waiting for an OK, then your bonus chest`;
-  }
-  // Short enough to fit two lines beside the ring (the longer wording cut off the range on a Pixel).
-  return `${p.approved + p.pending} of ${p.total} daily done today · bonus chest +${DAILY_PACK.min}–${DAILY_PACK.max}`;
+  if (p.complete) return 'All done · bonus chest earned 🎉';
+  if (p.approved + p.pending === p.total) return `All done · ${p.pending} waiting for OK`;
+  return `${p.approved + p.pending} of ${p.total} daily done`;
+}
+
+/** What the ring means — shown when it's tapped. */
+export function questExplainer(): { title: string; body: string } {
+  return {
+    title: '🎁 Bonus chest',
+    body: `Finish every daily task today (approved by a grown-up) and a bonus chest opens: +${DAILY_PACK.min}–${DAILY_PACK.max} points.\n\nDo it all 7 days for a perfect-week chest: +${WEEKLY_PACK.min}–${WEEKLY_PACK.max}.\n\nWeekly and monthly tasks don't count toward it.`,
+  };
 }
 
 /** Perfect week = a daily pack on every one of the week's 7 days. */

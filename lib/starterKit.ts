@@ -91,6 +91,19 @@ export function customStarterTasks(title: string, forEachKid: boolean, kids: Sta
   return [{ ...base, key: `custom:all:${clean}`, assignedTo: null, forLabel: 'Everyone' }];
 }
 
+/**
+ * Who a pack's tasks are for (Packs screen). 'each' = one copy per kid
+ * assigned to that kid (managed kids only see tasks assigned to THEM), a kid's
+ * id = just that kid, 'all' = one shared whole-family task.
+ */
+export type ForWhom = 'each' | 'all' | string;
+
+export function expandForWhom<T extends object>(rows: T[], forWhom: ForWhom, kids: { id: string }[]): (T & { assignedTo: string | null })[] {
+  if (forWhom === 'all' || (forWhom === 'each' && kids.length === 0)) return rows.map((r) => ({ ...r, assignedTo: null }));
+  if (forWhom === 'each') return kids.flatMap((k) => rows.map((r) => ({ ...r, assignedTo: k.id })));
+  return rows.map((r) => ({ ...r, assignedTo: forWhom }));
+}
+
 /** Small tasks auto-approved for a family set up with the starter kit (G5). */
 export const STARTER_AUTO_APPROVE = 10;
 

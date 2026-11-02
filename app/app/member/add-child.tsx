@@ -37,7 +37,7 @@ export default function AddChildScreen() {
 
   async function handleSave() {
     if (!displayName.trim()) {
-      Alert.alert('Missing Name', "Please enter the child's name.");
+      Alert.alert('Add a name', "Please enter the child's name.");
       return;
     }
     if (!family?.id) return;
@@ -63,7 +63,7 @@ export default function AddChildScreen() {
         [{ text: 'Great!', onPress: () => router.back() }],
       );
     } catch (error: any) {
-      Alert.alert('Error', error?.message ?? 'Could not add child. Please try again.');
+      Alert.alert('That didn’t work', error?.message ?? 'Could not add child. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -9,7 +9,9 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useAuthStore } from '@/store';
+import { useAuthStore, useFamilyStore } from '@/store';
+import { isKid } from '@/lib/familyGame';
+import { expandForWhom, type ForWhom } from '@/lib/starterKit';
 import { createTasksFromPack } from '@/lib/firebase';
 import { detectTaskEmoji } from '@/lib/taskEmoji';
 import { EmojiIcon } from '@/components/ui/EmojiIcon';
@@ -24,11 +26,16 @@ const recurrenceLabel: Record<string, string> = { daily: '🔄 daily', weekly: '
 
 export default function TaskPacksScreen() {
   const { family, member } = useAuthStore();
+  const { members } = useFamilyStore();
   const { colors } = useTheme();
+  const kids = useMemo(() => (members as any[]).filter(isKid), [members]);
 
   // Everything starts selected; we track only what the user turns OFF.
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
   const [applyingPack, setApplyingPack] = useState<string | null>(null);
+  // Who the tasks are for. Default "each kid" — kid profiles only see tasks
+  // assigned to THEM, so whole-family pack tasks never reached them before.
+  const [forWhom, setForWhom] = useState<ForWhom>(kids.length > 0 ? 'each' : 'all');
 
   const toggle = (k: string) => {
     setDeselected((prev) => {
@@ -61,16 +68,20 @@ export default function TaskPacksScreen() {
         taskEmoji: detectTaskEmoji(t.title, t.category),
       }));
     if (rows.length === 0) { Alert.alert('Nothing selected', 'Pick at least one task to add.'); return; }
+    const assigned = expandForWhom(rows, forWhom, kids);
+    const forLabel = forWhom === 'all' || kids.length === 0 ? 'the whole family'
+      : forWhom === 'each' ? (kids.length === 1 ? kids[0].displayName.split(' ')[0] : 'each kid')
+      : (kids.find((k: any) => k.id === forWhom)?.displayName ?? 'them').split(' ')[0];
     try {
       setApplyingPack(packId);
-      await createTasksFromPack(family.id, member.id, rows);
+      await createTasksFromPack(family.id, member.id, assigned);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Added! 🎉', `${rows.length} task${rows.length > 1 ? 's' : ''} added to your family.`, [
+      Alert.alert('Added! 🎉', `${rows.length} task${rows.length > 1 ? 's' : ''} added for ${forLabel}.`, [
         { text: 'Great', onPress: () => router.back() },
       ]);
     } catch (e) {
       if (__DEV__) console.error('[Packs] apply failed', e);
-      Alert.alert('Error', 'Could not add these tasks. Please try again.');
+      Alert.alert('That didn’t work', 'Could not add these tasks. Please try again.');
     } finally {
       setApplyingPack(null);
     }
@@ -85,10 +96,34 @@ export default function TaskPacksScreen() {
           Seed a full week of tasks in one tap. Tap any task to include or skip it — you can edit or delete them later.
         </Text>
 
+        {kids.length > 0 && (
+          <View style={styles.forWrap}>
+            <Text style={[styles.forLabel, { color: colors.text }]}>Add these tasks for</Text>
+            <View style={styles.forChips}>
+              {[{ id: 'each', label: kids.length === 1 ? kids[0].displayName.split(' ')[0] : 'Each kid' },
+                ...(kids.length > 1 ? kids.map((k: any) => ({ id: k.id, label: k.displayName.split(' ')[0] })) : []),
+                { id: 'all', label: 'Everyone' }].map((o) => {
+                const on = forWhom === o.id;
+                return (
+                  <TouchableOpacity key={o.id} onPress={() => { setForWhom(o.id); Haptics.selectionAsync(); }}
+                    style={[styles.forChip, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + '18' : 'transparent' }]}
+                    accessibilityRole="radio" accessibilityState={{ selected: on }}>
+                    <Text style={[styles.forChipText, { color: on ? colors.textAccent : colors.textSecondary }]}>{o.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={[styles.forHint, { color: colors.textMuted }]}>
+              {forWhom === 'all' ? 'Shared tasks show for grown-ups with their own login, not on kid profiles.'
+                : forWhom === 'each' && kids.length > 1 ? 'Each kid gets their own copy to tick off.' : 'Only they will see these tasks.'}
+            </Text>
+          </View>
+        )}
+
         {TASK_PACKS.map((pack) => (
           <View key={pack.id} style={[styles.card, { backgroundColor: colors.surface }, Shadow.sm]}>
             <View style={styles.cardHead}>
-              <Text style={styles.packEmoji}>{pack.emoji}</Text>
+              <EmojiIcon emoji={pack.emoji} size={36} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.packName, { color: colors.text }]}>{pack.name}</Text>
                 <Text style={[styles.packBlurb, { color: colors.textSecondary }]}>{pack.blurb}</Text>
@@ -143,6 +178,12 @@ const styles = StyleSheet.create({
   card: { borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.lg },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
   packEmoji: { fontSize: 34 },
+  forWrap: { marginBottom: Spacing.lg, gap: Spacing.sm },
+  forLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.extraBold },
+  forChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  forChip: { borderWidth: 1.5, borderRadius: BorderRadius.full, paddingHorizontal: Spacing.md, paddingVertical: 7 },
+  forChipText: { fontSize: FontSize.sm, fontFamily: FontFamily.bold },
+  forHint: { fontSize: FontSize.xs, fontFamily: FontFamily.regular },
   packName: { fontSize: FontSize.lg, fontFamily: FontFamily.extraBold },
   packBlurb: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, marginTop: 1 },
   taskList: { marginBottom: Spacing.sm },

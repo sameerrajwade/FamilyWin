@@ -81,7 +81,7 @@ describe('DisciplineLogScreen — Parent', () => {
     const { findByText } = render(<DisciplineScreen />);
     const submitBtn = await findByText('Apply Penalty');
     await act(async () => { fireEvent.press(submitBtn); });
-    expect(Alert.alert).toHaveBeenCalledWith('Select Member', 'Please select a family member.');
+    expect(Alert.alert).toHaveBeenCalledWith('Pick someone', 'Please select a family member.');
   });
 
   it('shows error when no reason entered', async () => {

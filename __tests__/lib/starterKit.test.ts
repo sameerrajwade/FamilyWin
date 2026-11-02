@@ -72,3 +72,21 @@ describe('discover more (G6)', () => {
     expect(discoverCardToShow(undefined, day(100))).toBeNull();
   });
 });
+
+describe('expandForWhom (task packs "for whom")', () => {
+  const { expandForWhom } = require('@/lib/starterKit');
+  const rows = [{ title: 'Make my bed' }, { title: 'Brush my teeth' }];
+  const kids = [{ id: 'vian' }, { id: 'vayu' }];
+  it('"each kid" makes one assigned copy per kid', () => {
+    const out = expandForWhom(rows, 'each', kids);
+    expect(out).toHaveLength(4);
+    expect(out.map((r: any) => r.assignedTo)).toEqual(['vian', 'vian', 'vayu', 'vayu']);
+  });
+  it('a single kid gets just their own copies', () => {
+    expect(expandForWhom(rows, 'vayu', kids).map((r: any) => r.assignedTo)).toEqual(['vayu', 'vayu']);
+  });
+  it('"everyone" (or no kids yet) makes shared tasks', () => {
+    expect(expandForWhom(rows, 'all', kids).every((r: any) => r.assignedTo === null)).toBe(true);
+    expect(expandForWhom(rows, 'each', []).every((r: any) => r.assignedTo === null)).toBe(true);
+  });
+});

@@ -92,7 +92,7 @@ describe('CreateTaskScreen', () => {
     const { findByText } = render(<CreateTaskScreen />);
     const submitBtn = await findByText('✅ Create Task');
     await act(async () => { fireEvent.press(submitBtn); });
-    expect(Alert.alert).toHaveBeenCalledWith('Missing Title', 'Please enter a task title.');
+    expect(Alert.alert).toHaveBeenCalledWith('Add a title', 'Please enter a task title.');
   });
 
   it('does NOT submit when title is whitespace only', async () => {
@@ -101,7 +101,7 @@ describe('CreateTaskScreen', () => {
     await act(async () => { fireEvent.changeText(input, '   '); });
     const submitBtn = await findByText('✅ Create Task');
     await act(async () => { fireEvent.press(submitBtn); });
-    expect(Alert.alert).toHaveBeenCalledWith('Missing Title', 'Please enter a task title.');
+    expect(Alert.alert).toHaveBeenCalledWith('Add a title', 'Please enter a task title.');
   });
 
   it('calls Col.tasks.add after entering title and pressing submit', async () => {

@@ -31,6 +31,7 @@ import { ensureReminders, DEFAULT_EVENING_REMINDER, DEFAULT_MORNING_REMINDER } f
 import { AvatarPicker } from '@/components/ui/AvatarPicker';
 import { useAuthStore, useFamilyStore } from '@/store';
 import { StarterSetup } from '@/components/ui/StarterSetup';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { FontFamily, FontSize, Spacing, BorderRadius, Shadow, AVATAR_EMOJIS } from '@/constants/theme';
 import { useTheme, type ThemeColors } from '@/lib/theme';
 
@@ -80,12 +81,12 @@ export default function OnboardingScreen() {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permission.granted) {
           if (permission.canAskAgain === false) {
-            Alert.alert('Permission Needed', 'Please enable photo access in Settings to add a profile photo.', [
+            Alert.alert('Permission needed', 'Please enable photo access in Settings to add a profile photo.', [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
             ]);
           } else {
-            Alert.alert('Permission Needed', 'Permission is required to select a photo.');
+            Alert.alert('Permission needed', 'Permission is required to select a photo.');
           }
           return;
         }
@@ -98,14 +99,14 @@ export default function OnboardingScreen() {
       }
 
       if (!uri) {
-        Alert.alert('No Photo', 'No photo was selected.');
+        Alert.alert('No photo', 'No photo was selected.');
         return;
       }
       setUri(uri);
       Haptics.selectionAsync();
     } catch (err: any) {
       if (__DEV__) console.error('[Onboarding Photo Pick]', err);
-      Alert.alert('Error', 'Could not open the photo picker.');
+      Alert.alert('That didn’t work', 'Could not open the photo picker.');
     }
   }
 
@@ -123,7 +124,7 @@ export default function OnboardingScreen() {
 
   function handleProfileNext() {
     if (!displayName.trim()) {
-      Alert.alert('Missing Name', 'Please enter your display name.');
+      Alert.alert('Add a name', 'Please enter your display name.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -131,7 +132,7 @@ export default function OnboardingScreen() {
   }
 
   async function handleCreateFamily() {
-    if (!familyName.trim()) { Alert.alert('Missing Name', 'Please enter your family name.'); return; }
+    if (!familyName.trim()) { Alert.alert('Add a name', 'Please enter your family name.'); return; }
     if (!uid) return;
     try {
       setIsLoading(true);
@@ -181,7 +182,7 @@ export default function OnboardingScreen() {
       setStep('done');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
-      Alert.alert('Error', error?.message ?? 'Could not create family.');
+      Alert.alert('That didn’t work', error?.message ?? 'Could not create family.');
     } finally {
       setIsLoading(false);
     }
@@ -200,7 +201,7 @@ export default function OnboardingScreen() {
   }
 
   async function handleAddChild() {
-    if (!childName.trim()) { Alert.alert('Missing Name', 'Please enter a name for the child.'); return; }
+    if (!childName.trim()) { Alert.alert('Add a name', 'Please enter a name for the child.'); return; }
     if (!createdFamilyId) return;
     try {
       setIsAddingChild(true);
@@ -226,7 +227,7 @@ export default function OnboardingScreen() {
       setChildPhotoUri(null);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
-      Alert.alert('Error', error?.message ?? 'Could not add child profile.');
+      Alert.alert('That didn’t work', error?.message ?? 'Could not add child profile.');
     } finally {
       setIsAddingChild(false);
     }
@@ -234,7 +235,7 @@ export default function OnboardingScreen() {
 
   async function handleJoinFamily() {
     if (!inviteCode.trim() || inviteCode.length < 6) {
-      Alert.alert('Invalid Code', 'Please enter a valid 6-character invite code.');
+      Alert.alert('Code not found', 'Please enter a valid 6-character invite code.');
       return;
     }
     if (!uid) return;
@@ -281,7 +282,7 @@ export default function OnboardingScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace('/app/tabs');
     } catch (error: any) {
-      Alert.alert('Invalid Code', 'Could not find a family with that invite code.');
+      Alert.alert('Code not found', 'Could not find a family with that invite code.');
     } finally {
       setIsLoading(false);
     }
@@ -311,7 +312,7 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.centered}>
-          <Text style={styles.stepEmoji}>👨‍👩‍👧‍👦</Text>
+          <View style={styles.stepIcon}><EmojiIcon emoji="👨‍👩‍👧‍👦" size={64} /></View>
           <Text style={styles.stepTitle}>Welcome to Chore League!</Text>
           <Text style={styles.stepSubtitle}>Set up your family to get started</Text>
           <TouchableOpacity style={styles.choiceCard} onPress={handleChoiceCreate} activeOpacity={0.85}>
@@ -444,7 +445,7 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={[styles.stepEmoji, { textAlign: 'center' }]}>🎉</Text>
+          <View style={[styles.stepIcon, { alignItems: 'center' }]}><EmojiIcon emoji="🎉" size={64} /></View>
           <Text style={styles.stepTitle}>Family Created!</Text>
           <Text style={styles.stepSubtitle}>Your family is ready. Share the invite code or add children now.</Text>
           <View style={styles.inviteCodeCard}>
@@ -575,6 +576,7 @@ function createStyles(colors: ThemeColors) {
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
   scrollContent: { flexGrow: 1, padding: Spacing.lg, paddingBottom: Spacing.xxl },
   stepEmoji: { fontSize: 56, marginBottom: Spacing.md },
+  stepIcon: { marginBottom: Spacing.md },
   stepTitle: { fontSize: FontSize.xxl, fontFamily: FontFamily.extraBold, color: colors.text, textAlign: 'center', marginBottom: Spacing.xs },
   stepSubtitle: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl },
   stepHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg },

@@ -145,7 +145,7 @@ export default function CreateTaskScreen() {
 
   async function handleSave() {
     if (!title.trim()) {
-      Alert.alert('Missing Title', 'Please enter a task title.');
+      Alert.alert('Add a title', 'Please enter a task title.');
       return;
     }
     if (!family?.id || !member?.id) return;
@@ -224,7 +224,7 @@ export default function CreateTaskScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (error) {
-      Alert.alert('Error', `Could not ${isEditMode ? 'update' : 'create'} task. Please try again.`);
+      Alert.alert('That didn’t work', `Could not ${isEditMode ? 'update' : 'create'} task. Please try again.`);
       if (__DEV__) console.error(error);
     } finally {
       setIsLoading(false);
@@ -247,7 +247,7 @@ export default function CreateTaskScreen() {
               await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
               router.back();
             } catch {
-              Alert.alert('Error', 'Could not delete task. Please try again.');
+              Alert.alert('That didn’t work', 'Could not delete task. Please try again.');
             } finally {
               setIsDeleting(false);
             }

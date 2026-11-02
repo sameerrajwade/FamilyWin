@@ -45,7 +45,7 @@ export default function ParentalControlsScreen() {
       await setAllowanceSettings(family.id, next);
       setFamily({ ...family, ...next } as any);
       Haptics.selectionAsync();
-    } catch { Alert.alert('Error', 'Could not update allowance settings.'); }
+    } catch { Alert.alert('That didn’t work', 'Could not update allowance settings.'); }
   }
 
   // Every parent is a co-admin (not just the family creator) — the weekly-reset
@@ -63,7 +63,7 @@ export default function ParentalControlsScreen() {
       await setMissedTaskPenalty(family.id, mode);
     } catch {
       setFamily({ ...family, missedTaskPenalty: prev });
-      Alert.alert('Error', 'Could not update the missed-task penalty setting.');
+      Alert.alert('That didn’t work', 'Could not update the missed-task penalty setting.');
     }
   }
 
@@ -76,7 +76,7 @@ export default function ParentalControlsScreen() {
       await setCompetitionMode(family.id, mode);
     } catch {
       setFamily({ ...family, competitionMode: prev });
-      Alert.alert('Error', 'Could not update who competes.');
+      Alert.alert('That didn’t work', 'Could not update who competes.');
     }
   }
 
@@ -89,7 +89,7 @@ export default function ParentalControlsScreen() {
       await setAutoApproveUnder(family.id, points);
     } catch {
       setFamily({ ...family, autoApproveUnder: prev });
-      Alert.alert('Error', 'Could not update approvals.');
+      Alert.alert('That didn’t work', 'Could not update approvals.');
     }
   }
 
@@ -101,7 +101,7 @@ export default function ParentalControlsScreen() {
       await setLevelPerks(family.id, next);
     } catch {
       setFamily({ ...family, levelPerks: prev });
-      Alert.alert('Error', 'Could not save the level perks.');
+      Alert.alert('That didn’t work', 'Could not save the level perks.');
     }
   }
 
@@ -115,7 +115,7 @@ export default function ParentalControlsScreen() {
       await setMissedTaskDeadline(family.id, hour);
     } catch {
       setFamily({ ...family, missedTaskDeadlineHour: prev });
-      Alert.alert('Error', 'Could not update the deadline time.');
+      Alert.alert('That didn’t work', 'Could not update the deadline time.');
     }
   }
 
@@ -128,7 +128,7 @@ export default function ParentalControlsScreen() {
       await setFamilyPenaltyPause(family.id, until);
     } catch {
       setFamily({ ...family, penaltyPausedUntil: prev });
-      Alert.alert('Error', 'Could not update the pause.');
+      Alert.alert('That didn’t work', 'Could not update the pause.');
     }
   }
 
@@ -140,7 +140,7 @@ export default function ParentalControlsScreen() {
       await updateFamilyWeekStartDay(family.id, day);
       setFamily({ ...family, weekStartDay: day });
     } catch {
-      Alert.alert('Error', 'Could not update weekly reset day.');
+      Alert.alert('That didn’t work', 'Could not update weekly reset day.');
       setWeekStartDay(family.weekStartDay ?? 1);
     }
   }

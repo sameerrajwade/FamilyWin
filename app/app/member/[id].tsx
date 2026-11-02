@@ -75,7 +75,7 @@ export default function MemberProfileScreen() {
       { text: 'Photo Library', onPress: () => InteractionManager.runAfterInteractions(() => pickAndUpload('library')) },
     ];
     if (member.photoURL) {
-      Alert.alert('Profile Photo', `Update or remove the photo for ${member.displayName}?`, [
+      Alert.alert('Profile photo', `Update or remove the photo for ${member.displayName}?`, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Remove Photo', style: 'destructive', onPress: doRemovePhoto },
         { text: 'Change Photo', onPress: () => Alert.alert('Change Photo', 'Choose a source', sourceButtons) },
@@ -103,7 +103,7 @@ export default function MemberProfileScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {
       const detail = err?.code || err?.message || String(err);
-      Alert.alert('Upload Failed', `Could not upload photo.\n\n(${detail})`);
+      Alert.alert('Upload didn’t work', `Could not upload photo.\n\n(${detail})`);
     } finally {
       setIsUploadingPhoto(false);
       pickerBusyRef.current = false;
@@ -194,7 +194,7 @@ export default function MemberProfileScreen() {
       setShowGoalModal(false);
     } catch (e) {
       if (__DEV__) console.error('[Goal] save failed', e);
-      Alert.alert('Error', 'Could not save the goal. Please try again.');
+      Alert.alert('That didn’t work', 'Could not save the goal. Please try again.');
     } finally {
       setSavingGoal(false);
     }
@@ -207,7 +207,7 @@ export default function MemberProfileScreen() {
     try {
       await setMemberPenaltyPause(family.id, id, until);
     } catch {
-      Alert.alert('Error', 'Could not update the pause. Please try again.');
+      Alert.alert('That didn’t work', 'Could not update the pause. Please try again.');
     }
   }
 
@@ -232,7 +232,7 @@ export default function MemberProfileScreen() {
               setAllTimePoints(0);
               Alert.alert('Done', `${first}'s points were reset to zero.`);
             } catch {
-              Alert.alert('Error', 'Could not reset points. Please try again.');
+              Alert.alert('That didn’t work', 'Could not reset points. Please try again.');
             } finally {
               setBusy(false);
             }

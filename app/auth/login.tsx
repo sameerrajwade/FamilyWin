@@ -34,7 +34,7 @@ export default function LoginScreen() {
       await sendPasswordReset(email.trim());
       Alert.alert('Email Sent ✉️', `We sent a password reset link to ${email.trim()}. Check your inbox.`);
     } catch {
-      Alert.alert('Error', 'Could not send reset email. Make sure the email address is correct.');
+      Alert.alert('That didn’t work', 'Could not send reset email. Make sure the email address is correct.');
     } finally {
       setIsForgotLoading(false);
     }
@@ -43,7 +43,7 @@ export default function LoginScreen() {
   // ── Email / password login ─────────────────────────────────────────────────
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('A few things missing', 'Please fill in all fields');
       return;
     }
     try {
@@ -51,7 +51,7 @@ export default function LoginScreen() {
       await signIn(email.trim().toLowerCase(), password);
       // Auth state listener in _layout.tsx handles navigation
     } catch {
-      Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
+      Alert.alert('Couldn’t sign in', 'Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }

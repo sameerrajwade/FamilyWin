@@ -58,7 +58,7 @@ export default function RewardPacksScreen() {
       ]);
     } catch (e) {
       if (__DEV__) console.error('[RewardPacks] apply failed', e);
-      Alert.alert('Error', 'Could not add these rewards. Please try again.');
+      Alert.alert('That didn’t work', 'Could not add these rewards. Please try again.');
     } finally {
       setApplyingPack(null);
     }

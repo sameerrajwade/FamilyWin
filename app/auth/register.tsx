@@ -23,15 +23,15 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in all fields.');
+      Alert.alert('A few things missing', 'Please fill in all fields.');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Password Mismatch', 'Passwords do not match.');
+      Alert.alert('Passwords don’t match', 'Passwords do not match.');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+      Alert.alert('Password too short', 'Password must be at least 6 characters.');
       return;
     }
     try {
@@ -39,7 +39,7 @@ export default function RegisterScreen() {
       await signUp(email.trim().toLowerCase(), password);
       // _layout.tsx auth listener routes new user to /auth/onboarding
     } catch (error: any) {
-      Alert.alert('Sign Up Failed', error?.message ?? 'Please try again.');
+      Alert.alert('Couldn’t sign up', error?.message ?? 'Please try again.');
     } finally {
       setIsLoading(false);
     }

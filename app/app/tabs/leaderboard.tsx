@@ -12,6 +12,7 @@ import { LeagueCard } from '@/components/ui/League';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow, Gradients } from '@/constants/theme';
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { BrandBar } from '@/components/ui/Brand';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -219,7 +220,7 @@ export default function LeaderboardScreen() {
             {/* Nobody to play with yet (a lone account) */}
             {members.length <= 1 && (
               <View style={styles.emptyPodium}>
-                <Text style={styles.emptyPodiumEmoji}>👨‍👩‍👧‍👦</Text>
+                <View style={{ marginBottom: Spacing.md }}><EmojiIcon emoji="👨‍👩‍👧‍👦" size={64} /></View>
                 <Text style={[styles.emptyPodiumTitle, { color: colors.text }]}>Invite your family!</Text>
                 <Text style={[styles.emptyPodiumSub, { color: colors.textSecondary }]}>
                   The leaderboard comes alive when more members join. Share your invite code from Settings.

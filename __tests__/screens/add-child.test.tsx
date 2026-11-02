@@ -82,7 +82,7 @@ describe('AddChildScreen', () => {
     const { findByText } = render(<AddChildScreen />);
     const saveBtn = await findByText(/Add .* to Family/);
     await act(async () => { fireEvent.press(saveBtn); });
-    expect(Alert.alert).toHaveBeenCalledWith('Missing Name', expect.any(String));
+    expect(Alert.alert).toHaveBeenCalledWith('Add a name', expect.any(String));
   });
 
   it('calls createManagedMember with correct data', async () => {

@@ -71,7 +71,7 @@ export default function SettingsScreen() {
             if (uri) await doUploadPhoto(uri);
           } catch (err) {
             if (__DEV__) console.error('[Photo Library]', err);
-            Alert.alert('Library Error', 'Could not open your photo library. Please try again.');
+            Alert.alert('Couldn’t open photos', 'Could not open your photo library. Please try again.');
           }
         },
       },
@@ -85,7 +85,7 @@ export default function SettingsScreen() {
             setProfilePhotoURL(undefined);
             updateMember(member!.id, { photoURL: undefined } as any);
           } catch {
-            Alert.alert('Error', 'Could not remove photo.');
+            Alert.alert('That didn’t work', 'Could not remove photo.');
           } finally {
             setIsUploadingPhoto(false);
           }
@@ -106,7 +106,7 @@ export default function SettingsScreen() {
     } catch (err: any) {
       if (__DEV__) console.error('[Photo Upload]', err);
       const detail = err?.code || err?.message || String(err);
-      Alert.alert('Upload Failed', `Could not upload photo.\n\n(${detail})`);
+      Alert.alert('Upload didn’t work', `Could not upload photo.\n\n(${detail})`);
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -121,7 +121,7 @@ export default function SettingsScreen() {
       setShowEmojiModal(false);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert('Error', 'Could not update avatar. Please try again.');
+      Alert.alert('That didn’t work', 'Could not update avatar. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -130,7 +130,7 @@ export default function SettingsScreen() {
   // ── Account ──────────────────────────────────────────────────────────────
 
   async function handleLogout() {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+    Alert.alert('Log out?', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Log Out',

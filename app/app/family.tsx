@@ -32,6 +32,7 @@ import { APP_STORE_URL } from '@/constants/strings';
 import { pickPhotoUri as pickPhotoViaRNIP } from '@/lib/photoPicker';
 import { Avatar } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { EmojiIcon } from '@/components/ui/EmojiIcon';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCard';
 import { AvatarPicker } from '@/components/ui/AvatarPicker';
 import type { MemberDoc } from '@/lib/firebase';
@@ -101,9 +102,9 @@ export default function FamilyScreen() {
       updateMember(target.id, { role: newRole });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowRoleModal(null);
-      Alert.alert('Role Updated ✅', `${target.displayName} is now ${newRole.replace('_', ' ')}.`);
+      Alert.alert('Role updated ✅', `${target.displayName} is now ${newRole.replace('_', ' ')}.`);
     } catch {
-      Alert.alert('Error', 'Could not update role.');
+      Alert.alert('That didn’t work', 'Could not update role.');
     }
   }
 
@@ -125,7 +126,7 @@ export default function FamilyScreen() {
               setMembers(members.filter((m) => m.id !== target.id) as any);
               await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             } catch {
-              Alert.alert('Error', 'Could not remove member.');
+              Alert.alert('That didn’t work', 'Could not remove member.');
             }
           },
         },
@@ -164,7 +165,10 @@ export default function FamilyScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>👨‍👩‍👧 {family?.name ?? 'Family'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <EmojiIcon emoji="👨‍👩‍👧" size={30} />
+              <Text style={[styles.headerTitle, { color: colors.text }]}>{family?.name ?? 'Family'}</Text>
+            </View>
             <Text style={[styles.headerSub, { color: colors.textSecondary }]}>{members.length} members</Text>
           </View>
         </View>
@@ -482,7 +486,7 @@ function AddChildModal({ familyId, onClose, onAdded }: {
   }
 
   async function handleAdd() {
-    if (!name.trim()) { Alert.alert('Missing Name', 'Please enter a name.'); return; }
+    if (!name.trim()) { Alert.alert('Add a name', 'Please enter a name.'); return; }
     try {
       setIsLoading(true);
       const child = await createManagedMember({
@@ -503,7 +507,7 @@ function AddChildModal({ familyId, onClose, onAdded }: {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onAdded(finalChild);
     } catch {
-      Alert.alert('Error', 'Could not add child profile.');
+      Alert.alert('That didn’t work', 'Could not add child profile.');
     } finally {
       setIsLoading(false);
     }
@@ -604,7 +608,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (e) {
         if (__DEV__) console.error('[Edit Member Photo Upload]', e);
-        Alert.alert('Upload Failed', 'Could not upload the photo. Please try again.');
+        Alert.alert('Upload didn’t work', 'Could not upload the photo. Please try again.');
       } finally {
         setIsPhotoBusy(false);
       }
@@ -617,7 +621,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
       await removeMemberPhoto(familyId, member.id);
       setPhotoURL(null);
     } catch {
-      Alert.alert('Error', 'Could not remove the photo.');
+      Alert.alert('That didn’t work', 'Could not remove the photo.');
     } finally {
       setIsPhotoBusy(false);
     }
@@ -625,7 +629,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
 
   function handleChangePhotoPress() {
     if (photoURL) {
-      Alert.alert('Profile Photo', `Update or remove the photo for ${member.displayName}?`, [
+      Alert.alert('Profile photo', `Update or remove the photo for ${member.displayName}?`, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Remove Photo', style: 'destructive', onPress: handleRemovePhoto },
         { text: 'Change Photo', onPress: handlePickPhoto },
@@ -636,7 +640,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
   }
 
   async function handleSave() {
-    if (!name.trim()) { Alert.alert('Missing Name', 'Please enter a name.'); return; }
+    if (!name.trim()) { Alert.alert('Add a name', 'Please enter a name.'); return; }
     try {
       setIsSaving(true);
       const updates: { displayName?: string; avatarEmoji?: string; age?: number; photoURL?: string } = {
@@ -649,7 +653,7 @@ function EditMemberModal({ familyId, member, onClose, onSaved }: {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onSaved({ displayName: name.trim(), avatarEmoji: emoji, age: parsedAge, photoURL: photoURL ?? undefined });
     } catch {
-      Alert.alert('Error', 'Could not save changes.');
+      Alert.alert('That didn’t work', 'Could not save changes.');
     } finally {
       setIsSaving(false);
     }

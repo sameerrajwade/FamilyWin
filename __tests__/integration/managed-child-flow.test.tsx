@@ -224,7 +224,7 @@ describe('Integration: Add child validation', () => {
     await act(async () => { fireEvent.press(saveBtn); });
 
     expect(createManagedMember).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Missing Name', expect.any(String));
+    expect(Alert.alert).toHaveBeenCalledWith('Add a name', expect.any(String));
   });
 
   it('blocks saving with whitespace-only name', async () => {
@@ -241,6 +241,6 @@ describe('Integration: Add child validation', () => {
     await act(async () => { fireEvent.press(saveBtn); });
 
     expect(createManagedMember).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Missing Name', expect.any(String));
+    expect(Alert.alert).toHaveBeenCalledWith('Add a name', expect.any(String));
   });
 });

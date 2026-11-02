@@ -156,7 +156,7 @@ export default function RewardsScreen() {
       }
     } catch (error) {
       if (__DEV__) console.error('Rewards loadData error:', error);
-      Alert.alert('Load Error', 'Could not load rewards. Please pull down to refresh.');
+      Alert.alert('Couldn’t load', 'Could not load rewards. Please pull down to refresh.');
     } finally {
       setIsLoading(false);
     }
@@ -192,7 +192,7 @@ export default function RewardsScreen() {
       await setSavingFor(family.id, effectiveMember.id, next);
     } catch {
       setSavingOverride(null);
-      Alert.alert('Error', 'Could not save that. Please try again.');
+      Alert.alert('That didn’t work', 'Could not save that. Please try again.');
     }
   }
 
@@ -219,7 +219,7 @@ export default function RewardsScreen() {
               await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Alert.alert('Payout requested 💸', 'A parent will approve it from the Rewards screen.');
               loadData();
-            } catch { Alert.alert('Error', 'Could not request the payout.'); }
+            } catch { Alert.alert('That didn’t work', 'Could not request the payout.'); }
           },
         },
       ],
@@ -256,10 +256,10 @@ export default function RewardsScreen() {
                 pointCost: reward.pointCost,
                 rewardTitle: reward.title,
               });
-              Alert.alert('Request Sent! 🎉', 'A parent will approve your reward soon.');
+              Alert.alert('Request sent 🎉', 'A parent will approve your reward soon.');
               loadData();
             } catch {
-              Alert.alert('Error', 'Could not submit redemption request.');
+              Alert.alert('That didn’t work', 'Could not submit redemption request.');
             } finally {
               setRedeemingId(null);
             }
@@ -311,7 +311,7 @@ export default function RewardsScreen() {
                 ]);
               }
             } catch {
-              Alert.alert('Error', 'Could not approve.');
+              Alert.alert('That didn’t work', 'Could not approve.');
             }
           },
         },
@@ -332,7 +332,7 @@ export default function RewardsScreen() {
       setRejectModal(null);
       loadData();
     } catch {
-      Alert.alert('Error', 'Could not reject redemption.');
+      Alert.alert('That didn’t work', 'Could not reject redemption.');
     }
   }
 
@@ -778,7 +778,7 @@ function CreateRewardModal({ familyId, memberId, colors, onClose, onCreated }: {
   ];
 
   async function handleCreate() {
-    if (!title.trim()) { Alert.alert('Missing Title', 'Please enter a reward title.'); return; }
+    if (!title.trim()) { Alert.alert('Add a title', 'Please enter a reward title.'); return; }
     const cost = parseInt(pointCost, 10);
     if (!cost || cost <= 0) { Alert.alert('Invalid Points', 'Please enter a valid point cost.'); return; }
     try {
@@ -800,7 +800,7 @@ function CreateRewardModal({ familyId, memberId, colors, onClose, onCreated }: {
       onCreated();
     } catch (err) {
       if (__DEV__) console.error('createReward error:', err);
-      Alert.alert('Error', 'Could not create reward. Please try again.');
+      Alert.alert('That didn’t work', 'Could not create reward. Please try again.');
     } finally {
       setIsLoading(false);
     }

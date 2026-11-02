@@ -125,7 +125,7 @@ describe('HomeScreen', () => {
   // the score chip on the profile strip.
   it('shows today progress and the profile score chip', async () => {
     const { findByText, findByLabelText, queryByText } = render(<HomeScreen />);
-    expect(await findByText(/done today|Let's make today count|All done/)).toBeTruthy();
+    expect(await findByText(/daily done|Let's make today count|All done/)).toBeTruthy();
     expect(await findByLabelText(/points to spend, level/)).toBeTruthy();
     expect(queryByText("Today's Tasks")).toBeNull();
   });

@@ -37,7 +37,7 @@ import { BountyBoard } from '@/components/ui/BountyBoard';
 import { DiscoverCard } from '@/components/ui/DiscoverCard';
 import { useMemberLevels } from '@/lib/memberLevels';
 import { LevelUpReveal } from '@/components/ui/LevelPerks';
-import { questProgress, questLabel } from '@/lib/surprisePacks';
+import { questProgress, questLabel, questExplainer } from '@/lib/surprisePacks';
 import { useTheme } from '@/lib/theme';
 import { Confetti, PointBurst, SlideIn, ShimmerBox } from '@/components/ui/Animations';
 import { Mascot, ChildTaskCard, CelebrationOverlay, StreakFlame } from '@/components/ui/ChildMode';
@@ -411,7 +411,7 @@ export default function HomeScreen() {
       grantSurprisePacks(todayStr);
     } catch (error) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', 'Could not complete task. Please try again.');
+      Alert.alert('That didn’t work', 'Could not complete task. Please try again.');
     } finally {
       setCompletingTaskId(null);
     }
@@ -455,7 +455,7 @@ export default function HomeScreen() {
       grantSurprisePacks(todayStr);
     } catch {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', 'Could not update this task. Please try again.');
+      Alert.alert('That didn’t work', 'Could not update this task. Please try again.');
     } finally {
       setCompletingTaskId(null);
     }
@@ -493,7 +493,7 @@ export default function HomeScreen() {
       await loadTasks();
     } catch (e) {
       if (__DEV__) console.error('[Undo]', e);
-      Alert.alert('Error', 'Could not undo this completion. Please try again.');
+      Alert.alert('That didn’t work', 'Could not undo this completion. Please try again.');
       await loadTasks(); // restore true state after a failed optimistic clear
     } finally {
       undoInFlightRef.current.delete(p.completionId);
@@ -513,7 +513,7 @@ export default function HomeScreen() {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             loadTasks();
           } catch {
-            Alert.alert('Error', 'Could not delete the task. Pull to refresh and try again.');
+            Alert.alert('That didn’t work', 'Could not delete the task. Pull to refresh and try again.');
           }
         },
       },
@@ -537,7 +537,7 @@ export default function HomeScreen() {
       Alert.alert('Can\'t Undo', 'Task completions can only be undone on the same day they were completed.');
       return;
     }
-    Alert.alert('Undo Completion?', `Mark "${task.title}" as not done and remove the ${task.completion.pointsAwarded} points?`, [
+    Alert.alert('Undo this?', `Mark "${task.title}" as not done and remove the ${task.completion.pointsAwarded} points?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Undo', style: 'destructive', onPress: async () => {
@@ -663,14 +663,23 @@ export default function HomeScreen() {
       >
         <SlideIn delay={0}>
           <View style={styles.header}>
-            {quest.total > 0 && <DailyQuestRing progress={quest} />}
+            {quest.total > 0 && (
+              <TouchableOpacity
+                onPress={() => { const e = questExplainer(); Alert.alert(e.title, e.body); }}
+                accessibilityRole="button"
+                accessibilityHint="Explains the bonus chest"
+                hitSlop={6}
+              >
+                <DailyQuestRing progress={quest} />
+              </TouchableOpacity>
+            )}
             <View style={styles.headerLeft}>
               <Text numberOfLines={1} style={[styles.greeting, { color: colors.text, fontSize: fontSize(FontSize.xxl) }]}>
                 {actingAsMember
                   ? `${effectiveMember?.displayName}'s tasks${isReadOnly ? ' 👁' : ''}`
                   : `Hey, ${member?.displayName?.split(' ')[0]}`}
               </Text>
-              <Text numberOfLines={2} style={[styles.date, { color: quest.complete ? colors.textAccent : colors.textSecondary }]}>
+              <Text numberOfLines={1} style={[styles.date, { color: quest.complete ? colors.textAccent : colors.textSecondary }]}>
                 {questLabel(quest)}
               </Text>
             </View>

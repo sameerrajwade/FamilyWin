@@ -104,7 +104,7 @@ describe('SettingsScreen — Parent', () => {
     const { findByText } = render(<SettingsScreen />);
     const logoutBtn = await findByText('Log Out');
     await act(async () => { fireEvent.press(logoutBtn); });
-    expect(Alert.alert).toHaveBeenCalledWith('Log Out', expect.any(String), expect.any(Array));
+    expect(Alert.alert).toHaveBeenCalledWith('Log out?', expect.any(String), expect.any(Array));
   });
 
   it('shows Delete My Account row', async () => {

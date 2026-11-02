@@ -1,5 +1,5 @@
 /**
- * lib/emojiAssets.ts — GENERATED (scripts/emoji3d — see its README). Do not hand-edit.
+ * lib/emojiAssets.ts — GENERATED (scripts/emoji3d — see README). Do not hand-edit.
  * ─────────────────────────────────────────────────────────────────────────────
  * Bundled Microsoft Fluent 3D emoji (MIT, see assets/emoji3d/LICENSE) for every
  * emoji the app shows as an icon — task icons, avatars, rewards and game UI —
@@ -175,9 +175,29 @@ const EMOJI_3D: Record<string, ImageSourcePropType> = {
   "📌": require('../assets/emoji3d/u1f4cc.png'),
   "🙂": require('../assets/emoji3d/u1f642.png'),
   "👤": require('../assets/emoji3d/u1f464.png'),
+  "🧒": require('../assets/emoji3d/u1f9d2.png'),
+  "👩‍💼": require('../assets/emoji3d/u1f469_200d_1f4bc.png'),
+  "⚖": require('../assets/emoji3d/u2696.png'),
+  "📈": require('../assets/emoji3d/u1f4c8.png'),
+  "📉": require('../assets/emoji3d/u1f4c9.png'),
+  "💫": require('../assets/emoji3d/u1f4ab.png'),
+  "➕": require('../assets/emoji3d/u2795.png'),
+  "➡": require('../assets/emoji3d/u27a1.png'),
+  "🙈": require('../assets/emoji3d/u1f648.png'),
+  "😤": require('../assets/emoji3d/u1f624.png'),
+  "🕐": require('../assets/emoji3d/u1f550.png'),
+  "🍬": require('../assets/emoji3d/u1f36c.png'),
+  "🛝": require('../assets/emoji3d/u1f6dd.png'),
+  "🎢": require('../assets/emoji3d/u1f3a2.png'),
+  "🎬": require('../assets/emoji3d/u1f3ac.png'),
+  "🗺": require('../assets/emoji3d/u1f5fa.png'),
+  "🏖": require('../assets/emoji3d/u1f3d6.png'),
+  "🎧": require('../assets/emoji3d/u1f3a7.png'),
   "🤗": require('../assets/emoji3d/u1f917.png'),
   "🦸": require('../assets/emoji3d/u1f9b8.png'),
   "🧙": require('../assets/emoji3d/u1f9d9.png'),
+  "👨‍👩‍👧": require('../assets/emoji3d/u1f468_200d_1f469_200d_1f467.png'),
+  "👨‍👩‍👧‍👦": require('../assets/emoji3d/u1f468_200d_1f469_200d_1f467_200d_1f466.png'),
 };
 
 /** The bundled 3D image for an emoji, or null if we don't ship one. */

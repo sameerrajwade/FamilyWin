@@ -80,7 +80,7 @@ describe('LoginScreen', () => {
   it('shows error alert when fields are empty', async () => {
     const { getByText } = render(<LoginScreen />);
     await act(async () => { fireEvent.press(getByText('Sign In')); });
-    expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please fill in all fields');
+    expect(Alert.alert).toHaveBeenCalledWith('A few things missing', 'Please fill in all fields');
   });
 
   it('shows password toggle button', () => {
@@ -112,7 +112,7 @@ describe('LoginScreen', () => {
       fireEvent.changeText(getByPlaceholderText('••••••••'), 'wrongpass');
     });
     await act(async () => { fireEvent.press(getByText('Sign In')); });
-    expect(Alert.alert).toHaveBeenCalledWith('Login Failed', expect.any(String));
+    expect(Alert.alert).toHaveBeenCalledWith('Couldn’t sign in', expect.any(String));
   });
 });
 
@@ -147,7 +147,7 @@ describe('RegisterScreen', () => {
   it('shows error when fields are empty', async () => {
     const { getByText } = render(<RegisterScreen />);
     await act(async () => { fireEvent.press(getByText('Create Account →')); });
-    expect(Alert.alert).toHaveBeenCalledWith('Missing Fields', 'Please fill in all fields.');
+    expect(Alert.alert).toHaveBeenCalledWith('A few things missing', 'Please fill in all fields.');
   });
 
   it('shows error when passwords do not match', async () => {
@@ -158,7 +158,7 @@ describe('RegisterScreen', () => {
       fireEvent.changeText(getByPlaceholderText('Repeat your password'), 'different456');
     });
     await act(async () => { fireEvent.press(getByText('Create Account →')); });
-    expect(Alert.alert).toHaveBeenCalledWith('Password Mismatch', 'Passwords do not match.');
+    expect(Alert.alert).toHaveBeenCalledWith('Passwords don’t match', 'Passwords do not match.');
   });
 
   it('shows error for password under 6 chars', async () => {
@@ -169,7 +169,7 @@ describe('RegisterScreen', () => {
       fireEvent.changeText(getByPlaceholderText('Repeat your password'), '123');
     });
     await act(async () => { fireEvent.press(getByText('Create Account →')); });
-    expect(Alert.alert).toHaveBeenCalledWith('Weak Password', 'Password must be at least 6 characters.');
+    expect(Alert.alert).toHaveBeenCalledWith('Password too short', 'Password must be at least 6 characters.');
   });
 
   it('calls signUp with valid credentials', async () => {

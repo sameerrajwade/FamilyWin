@@ -109,7 +109,7 @@ export default function DisciplineLogScreen() {
   }
 
   async function handleSubmit() {
-    if (!selectedMember) { Alert.alert('Select Member', 'Please select a family member.'); return; }
+    if (!selectedMember) { Alert.alert('Pick someone', 'Please select a family member.'); return; }
     if (!reason.trim()) { Alert.alert('Enter Reason', 'Please enter or select a reason.'); return; }
     if (!pointDelta || pointDelta <= 0) { Alert.alert('Enter Points', 'Please enter a valid point amount.'); return; }
     if (!family?.id || !member?.id) return;
@@ -145,7 +145,7 @@ export default function DisciplineLogScreen() {
                 [{ text: 'Done', onPress: () => router.back() }],
               );
             } catch (error) {
-              Alert.alert('Error', 'Could not log discipline event.');
+              Alert.alert('That didn’t work', 'Could not log discipline event.');
               if (__DEV__) console.error(error);
             } finally {
               setIsLoading(false);
@@ -362,7 +362,7 @@ function AddPenaltyModal({ colors, onClose, onCreate }: {
   async function submit() {
     if (!title.trim()) { Alert.alert('Enter a name', 'Please name this penalty.'); return; }
     try { setSaving(true); await onCreate(title.trim(), points, emoji); }
-    catch { Alert.alert('Error', 'Could not add penalty.'); setSaving(false); }
+    catch { Alert.alert('That didn’t work', 'Could not add penalty.'); setSaving(false); }
   }
 
   return (
