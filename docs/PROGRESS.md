@@ -13,6 +13,12 @@
 > **▶ NEW SESSION? Read [docs/HANDOFF.md](HANDOFF.md) first** — exact done/pending
 > list, decisions already made, and how to resume (written 2026-10-31).
 
+## Iteration 70 (2026-11-01) — Icon A + tagline C; quieter weekly twist
+- **User picked icon A + tagline C** → `65ead28`: glossy 3D crowned chest. ONE source drawing `scripts/brand/chest-a.svgfrag`; `node scripts/brand/render-icons.js` (headless Chrome, transparent) renders store icon, adaptive fg/bg/monochrome, all launcher mipmaps (PNG replaced the old webp), Android 12 splash logo, in-app `assets/brand/chest-3d.png` (ChestMark now an Image). Tagline "Do chores. Win the week." everywhere.
+- **User feedback: Team week banner unexplained + noisy** → `50ec30c`: plain-language how-it-works + example per twist (TWIST_HOW); pop-up once per week on Today; Today = one line with ✕ (hidden for the week); Scores keeps the line with team totals.
+- **Tests:** app 492/492 (+TwistBanner 3), tsc 0. APK installed 23:31 (not launched — user had the phone). Launcher may need a reboot to refresh the cached icon.
+- **Waiting on user:** package rename decision (verification emails come from Firebase Auth templates/public name, not the package id).
+
 ## Iteration 69 (2026-11-01) — User decisions applied + engagement features
 - **Mock page** (artifact https://claude.ai/artifact/8m6MPo96vZYYpXazkyHJd9): readability, tagline, League colour, glossy 3D icon options A/B/C + splash, engagement plan, all 8 share cards.
 - **User approved my colour picks** → built (`39221eb`): dark ink labels on green fills, `textSuccess`/`textWarning` tokens, light `textMuted` #6B7280, gold "League" wordmark.
