@@ -16,13 +16,13 @@ import { FontFamily, FontSize, Spacing } from '@/constants/theme';
 const FAQ: { q: string; a: string }[] = [
   { q: 'How do points work?', a: 'Each task is worth points by difficulty — Easy 10, Medium 25, Hard 50. Complete tasks to earn them. The member with the most points when the week resets wins the week.' },
   { q: 'When does the week reset?', a: 'At midnight on your chosen reset day (Monday by default). Any parent can change it in Family → Game rules.' },
-  { q: 'Do children need their own phone?', a: 'No. A parent adds a child profile and switches to it from the Tasks tab to complete tasks on the child\'s behalf. Older kids can also join with their own phone using the family invite code.' },
+  { q: 'Do children need their own phone?', a: 'No. A parent adds a child profile and taps the child at the top of the Today tab, or hands the phone over in Kid Mode so the child ticks off their own tasks. Older kids can also join on their own phone with the family code a parent shares.' },
   { q: 'How do rewards work?', a: 'Parents add rewards with a point cost. A member requests one, a parent approves it, and the points are deducted on approval. Points saved in the Vault carry across weeks.' },
   { q: 'What is the missed-task penalty?', a: 'Optional. When on, points come off a daily task that isn\'t done that day — but you can mark it done up to 2 days later on the Catch-up screen to win them back.' },
 ];
 
 const PRIVACY_POINTS = [
-  'Accounts are created and controlled by parents/guardians. Children do not sign in.',
+  'Accounts are created and controlled by parents/guardians. Younger kids play on a parent\'s phone; an older kid signs in only with the family code a parent shares.',
   'We collect only what runs the app: account email, family/profile info you enter, and the tasks, points and rewards you create.',
   'No location, contacts, messages, or payment data. No advertising identifiers, ever.',
   'Data is stored on Google Firebase acting as our processor, and is never sold or shared for advertising.',
@@ -32,7 +32,7 @@ const PRIVACY_POINTS = [
 const TERMS_POINTS = [
   'Chore League is provided as-is to help families track chores and rewards for personal, non-commercial use.',
   'You are responsible for the accounts and profiles you create and for supervising children\'s use.',
-  'Points and rewards have no monetary value and cannot be exchanged for cash.',
+  'Points have no monetary value. With the optional pocket-money feature, any money is paid by you, outside the app — Chore League never holds or moves money.',
   'We may update the app and these terms over time; continued use means you accept the current version.',
 ];
 

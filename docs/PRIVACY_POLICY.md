@@ -1,4 +1,4 @@
-# Lootboard Privacy Policy
+# Chore League Privacy Policy
 
 _Last updated: 2026-08-26_
 
@@ -7,14 +7,14 @@ _Last updated: 2026-08-26_
 > About screen if you switch it to a link. Replace `[EFFECTIVE DATE]` and confirm
 > the support email before publishing. Keep in sync with `docs/DATA_SAFETY.md`.
 
-Lootboard ("we", "us") is a family chore-tracking app. This policy explains what
+Chore League ("we", "us") is a family chore-tracking app. This policy explains what
 we collect, why, and your choices. Contact: **sameerrajwade@gmail.com**.
 
-## Who uses Lootboard
-Lootboard is set up and operated by an adult account holder (a parent or
+## Who uses Chore League
+Chore League is set up and operated by an adult account holder (a parent or
 guardian). Children usually participate as **parent-managed profiles** that do not
 have their own login. Where an older child joins with their own account via an
-invite code, they join with a limited "child" role. Lootboard is intended for ages
+invite code, they join with a limited "child" role. Chore League is intended for ages
 13 and up; younger children should be added by a parent as managed profiles.
 
 ## Information we collect
@@ -29,10 +29,11 @@ invite code, they join with a limited "child" role. Lootboard is intended for ag
   and daily deadlines are timed correctly. This is not precise location.
 - **Identifiers:** internal account/family/member IDs used to keep each family's
   data separate.
-- **Usage & diagnostics:** we use Google Firebase Analytics and Crashlytics to
-  understand how the app is used and to detect crashes (screen views, feature
-  events, crash reports, and device/OS diagnostics). This is used only to operate
-  and improve Lootboard — never for advertising.
+- **Usage:** we use Google Firebase Analytics to understand how the app is used
+  (screen views and feature events such as "a task was completed", with point
+  values but never names, task titles or reward titles). We do **not** collect
+  the advertising ID, and ad signals are switched off. This is used only to
+  operate and improve Chore League — never for advertising.
 
 We do **not** collect precise location, contacts, browsing history, or financial
 information, and we do **not** use advertising SDKs or sell/share your data.

@@ -37,9 +37,9 @@ describe('DisciplineLogScreen — Parent', () => {
     DisciplineScreen = require('@/app/app/discipline/log').default;
   });
 
-  it('renders Log Discipline Event title', async () => {
+  it('renders the penalty-or-bonus title', async () => {
     const { findByText } = render(<DisciplineScreen />);
-    expect(await findByText('Log Discipline Event')).toBeTruthy();
+    expect(await findByText('Penalty or bonus')).toBeTruthy();
   });
 
   it('shows family member selector', async () => {

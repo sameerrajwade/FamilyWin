@@ -136,7 +136,7 @@ export default function SplashOnboardingScreen() {
       {/* CTA */}
       <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.85}>
         <Text style={[styles.nextBtnText, { color: slide.bg }]}>
-          {isLast ? "Let's Start! 🚀" : 'Next →'}
+          {isLast ? "Start our league 🏆" : 'Next →'}
         </Text>
       </TouchableOpacity>
     </SafeAreaView>

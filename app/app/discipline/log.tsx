@@ -162,7 +162,7 @@ export default function DisciplineLogScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <ScreenHeader variant="modal" title="Log Discipline Event" />
+          <ScreenHeader variant="modal" title="Penalty or bonus" />
 
           <View style={styles.content}>
             {/* Select Member */}

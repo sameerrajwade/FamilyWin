@@ -224,7 +224,7 @@ export default function LeaderboardScreen() {
                 <View style={{ marginBottom: Spacing.md }}><EmojiIcon emoji="👨‍👩‍👧‍👦" size={64} /></View>
                 <Text style={[styles.emptyPodiumTitle, { color: colors.text }]}>Invite your family!</Text>
                 <Text style={[styles.emptyPodiumSub, { color: colors.textSecondary }]}>
-                  The leaderboard comes alive when more members join. Share your invite code from Settings.
+                  The leaderboard comes alive when more members join. Share your family code from the Family tab.
                 </Text>
               </View>
             )}

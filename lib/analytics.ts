@@ -3,6 +3,9 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Thin wrappers around Firebase Analytics + Crashlytics.
  * All calls are try/catch so they never crash the app if Firebase is not ready.
+ *
+ * PRIVACY (G11, kids' app): never send names, task/reward titles or member ids
+ * — only opaque ids (uid, family id) and numbers. Families-policy safe.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -13,7 +16,8 @@ import { analytics } from '@/lib/fb';
 export async function identifyUser(uid: string, displayName: string, familyId: string) {
   try {
     await analytics().setUserId(uid);
-    await analytics().setUserProperties({ family_id: familyId, display_name: displayName });
+    void displayName; // deliberately NOT sent — see PRIVACY above
+    await analytics().setUserProperties({ family_id: familyId });
   } catch { /* silent */ }
 }
 
@@ -29,20 +33,15 @@ export async function trackScreen(screenName: string) {
 
 export async function trackTaskCompleted(taskTitle: string, pointValue: number, memberId: string) {
   try {
-    await analytics().logEvent('task_completed', {
-      task_title: taskTitle,
-      point_value: pointValue,
-      member_id: memberId,
-    });
+    void taskTitle; void memberId; // not sent — see PRIVACY above
+    await analytics().logEvent('task_completed', { point_value: pointValue });
   } catch { /* silent */ }
 }
 
 export async function trackRewardRedeemed(rewardTitle: string, pointCost: number) {
   try {
-    await analytics().logEvent('reward_redeemed', {
-      reward_title: rewardTitle,
-      point_cost: pointCost,
-    });
+    void rewardTitle; // not sent — see PRIVACY above
+    await analytics().logEvent('reward_redeemed', { point_cost: pointCost });
   } catch { /* silent */ }
 }
 

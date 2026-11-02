@@ -1,4 +1,4 @@
-# Lootboard — Play Console Data Safety (source of truth)
+# Chore League — Play Console Data Safety (source of truth)
 
 > Fill the Play Console **Data safety** form from this document. Keep it in sync
 > whenever data collection changes. Package: `com.familywin.app` · Firebase:
@@ -21,19 +21,17 @@
 | **Push tokens (FCM)** | Yes | App functionality (weekly-result + reminder notifications) | Optional (tied to notification opt-in) | Stored in `notificationConfigs`. |
 | **Approximate device timezone** | Yes | App functionality (correct day boundaries / deadlines) | Required for scheduled logic | IANA timezone string (e.g. `America/Chicago`); not precise location. |
 | **App activity (task completions, points)** | Yes | App functionality (core gameplay) | Required | The product's own gameplay data. |
-| **App interactions / Analytics** | Yes | Analytics | — | **Firebase Analytics IS integrated** (`lib/analytics.ts`): screen views, `task_completed`/`reward_redeemed`/etc. events, user/family ID as user properties. Declare under "App activity › App interactions". ⚠️ See advertising-ID note below. |
-| **Crash logs & diagnostics** | Yes | Analytics / App functionality | — | **Crashlytics IS integrated** (`_layout.tsx` ErrorBoundary → `crashlytics().recordError`): crash stack traces + device/OS diagnostics. Declare under "App info and performance › Crash logs" and "Diagnostics". |
+| **App interactions / Analytics** | Yes | Analytics | — | **Firebase Analytics IS integrated** (`lib/analytics.ts`): screen views, `task_completed`/`reward_redeemed`/etc. events with numbers only (no names/titles), user + family ID. Declare under "App activity › App interactions". No advertising ID (see below). |
+| **Crash logs & diagnostics** | Yes | Analytics / App functionality | — | Crashlytics is **not** in the build (removed — its Gradle plugin crashed startup). Nothing to declare unless it is re-added. |
 
-## ⚠️ Advertising ID — DECISION NEEDED
-Firebase Analytics on Android **collects the Android Advertising ID (AAID) by
-default**. For a family/kids-adjacent app this is sensitive and affects the Data
-Safety "Device or other IDs" answer AND the COPPA posture. Recommended: **disable
-AAID + ad personalization** (add `<meta-data google_analytics_adid_collection_enabled=false>` and
-`google_analytics_default_allow_ad_personalization_signals=false` to the manifest,
-or `setAnalyticsCollectionEnabled(false)` for child profiles) BEFORE launch, then
-you can truthfully answer "no advertising ID". Until decided, you must declare
-"Device or other IDs — collected". Owner to confirm; keep this doc + the privacy
-policy in sync with the choice.
+## Advertising ID — OFF (done 2026-11-01)
+AAID collection and all ad signals are disabled: `firebase.json` → `react-native`
+(`google_analytics_adid_collection_enabled`, `…allow_ad_storage`, `…ad_user_data`,
+`…ad_personalization_signals` = false) and the `com.google.android.gms.permission.AD_ID`
+permission is removed (app.json `blockedPermissions` + AndroidManifest `tools:node="remove"`).
+So answer **"no advertising ID"**. Analytics events carry only opaque ids (uid, family id)
+and numbers — no names, task or reward titles (`lib/analytics.ts`).
+Note: Crashlytics was removed from the build (Gradle plugin crash); errors are logged locally only.
 
 ## NOT collected
 - Precise or coarse **location**, contacts, calendar, SMS, call logs, browsing history.

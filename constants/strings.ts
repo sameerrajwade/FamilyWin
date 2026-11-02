@@ -66,7 +66,7 @@ export const Strings = {
     autoFailHour: 'Auto-fail at',
     markDone: 'Mark Done',
     completed: 'Completed ✓',
-    failed: 'Auto-failed',
+    failed: 'Missed',
     noTasksToday: 'No tasks for today! 🎉',
     allDone: 'All done for today! 🏆',
   },
@@ -114,8 +114,8 @@ export const Strings = {
   },
 
   notifications: {
-    dailyReminderTitle: '📋 Task Check-in Time!',
-    dailyReminderBody: "Don't forget to mark today's tasks done or you'll lose points!",
+    dailyReminderTitle: 'Quick check-in ✅',
+    dailyReminderBody: "Tick off what's done and bank today's points.",
     weeklyWinnerTitle: '🏆 Weekly Results Are In!',
     streakTitle: '🔥 Keep your streak going!',
     missedTasksTitle: '⚠️ Missed tasks alert',

@@ -127,7 +127,7 @@ export function ProfilePickerModal({ visible, onClose }: ProfilePickerProps) {
               <View style={styles.emptyHint}>
                 <Text style={styles.emptyHintText}>
                   No managed children yet.{'\n'}
-                  Go to Settings → Manage Children to add them.
+                  Add them from the Family tab.
                 </Text>
               </View>
             )}

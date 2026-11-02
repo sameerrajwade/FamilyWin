@@ -195,7 +195,7 @@ export default function KidModeScreen() {
         <View style={styles.center}>
           <EmojiIcon emoji="👶" size={72} />
           <Text style={styles.emptyTitle}>No kid profiles yet</Text>
-          <Text style={styles.emptySub}>Add a child from Settings → Family first.</Text>
+          <Text style={styles.emptySub}>Add a child from the Family tab first.</Text>
           <TouchableOpacity style={styles.primaryBtn} onPress={leave}><Text style={styles.primaryBtnText}>Back</Text></TouchableOpacity>
         </View>
       </SafeAreaView>

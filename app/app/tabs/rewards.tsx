@@ -576,7 +576,7 @@ export default function RewardsScreen() {
             <View style={styles.modalOverlay}>
               <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
                 <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Reject Request ❌</Text>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Not this time?</Text>
                 <Text style={[{ fontSize: FontSize.sm, fontFamily: FontFamily.regular, color: colors.textSecondary, marginBottom: Spacing.md }]}>
                   Optional: tell {rejectModal.memberName ?? 'the member'} why this was rejected.
                 </Text>

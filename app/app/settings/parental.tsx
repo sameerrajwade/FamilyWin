@@ -213,7 +213,7 @@ export default function ParentalControlsScreen() {
       <SettingsGroup title="Points">
         <NavRow
           icon="alert-circle-outline"
-          label="Log Discipline Event"
+          label="Add a penalty or bonus"
           subtitle="Award bonuses or apply penalties"
           isLast
           onPress={() => router.push('/app/discipline/log')}
